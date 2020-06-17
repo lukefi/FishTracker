@@ -1,0 +1,1929 @@
+{
+    "frame": {
+        "frameIndex" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 0,
+            "title": "Frame Index",
+            "description": "Frame number inside the ARIS file",
+            "default": null,
+            "more": null,
+            "order": 0,
+            "obsolete": false
+
+        },
+        "frameTime" : {
+            "size": "uint64_t",
+            "bytes": 8,
+            "location": 4,
+            "title": "Frame Time",
+            "description": "PC Timestamp when recorded; microseconds since epoch (Jan. 1st, 1970)",
+            "default": null,
+            "more": null,
+            "order": 1,
+            "obsolete": false
+
+        },
+        "version" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 12,
+            "title": "Version",
+            "description": "ARIS file format version.",
+            "default": 88491076,
+            "more": null,
+            "order": 2,
+            "obsolete": false
+
+        },
+        "status" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 16,
+            "title": "Status",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 3,
+            "obsolete": false
+
+        },
+        "TS_Year" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 20,
+            "title": "Timestamp (Year)",
+            "description": "On-Sonar microsecond since epoch (Jan. 1st, 1970)",
+            "default": null,
+            "more": null,
+            "order": 4,
+            "obsolete": false
+
+        },
+        "TS_Month" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 24,
+            "title": "Timestamp (Month)",
+            "description": "On-Sonar microsecond since epoch (Jan. 1st, 1970)",
+            "default": null,
+            "more": null,
+            "order": 5,
+            "obsolete": false
+
+        },
+        "TS_Day" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 28,
+            "title": "Timestamp (Day)",
+            "description": "Part of the on-sonar timestamp indicating the day of recording",
+            "default": null,
+            "more": null,
+            "order": 6,
+            "obsolete": false
+
+        },
+        "TS_Hour" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 32,
+            "title": "Timestamp (Hour)",
+            "description": "Part of the on-sonar timestamp indicating the hour of recording",
+            "default": null,
+            "more": null,
+            "order": 7,
+            "obsolete": false
+
+        },
+        "TS_Minute" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 36,
+            "title": "Timestamp (Min.)",
+            "description": "Part of the on-sonar timestamp indicating the minute of recording",
+            "default": null,
+            "more": null,
+            "order": 8,
+            "obsolete": false
+
+        },
+        "TS_Second" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 40,
+            "title": "Timestamp (Sec.)",
+            "description": "Part of the on-sonar timestamp indicating the second of recording",
+            "default": null,
+            "more": null,
+            "order": 9,
+            "obsolete": false
+
+        },
+        "TS_Hsecond" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 44,
+            "title": "Timestamp (Hsec.)",
+            "description": "Part of the on-sonar timestamp indicating the hundredth of a second of recording",
+            "default": null,
+            "more": null,
+            "order": 10,
+            "obsolete": false
+
+        },
+        "transmitMode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 48,
+            "title": "Transmit Mode",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 11,
+            "obsolete": false
+
+        },
+        "windowStart" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 52,
+            "title": "Window Start",
+            "description": "Starting distance of the window in meters",
+            "default": null,
+            "more": null,
+            "order": 12,
+            "obsolete": false
+
+        },
+        "windowLengthIndex" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 56,
+            "title": "Window Lenght",
+            "description": "The length of the window in meters",
+            "default": null,
+            "more": "after reading the value in variable `x`, it has to be put in the follwing equation: `index = x + 1 + 2*(fileHeader.highResolution == 0)` where `index` will be used later to get the window length",
+            "order": 13,
+            "obsolete": false
+
+        },
+        "threshold" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 60,
+            "title": "Threshold",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 14,
+            "obsolete": false
+
+        },
+        "intensity" : {
+            "size": "int32_t",
+            "bytes": 4,
+            "location": 64,
+            "title": "Intensity",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 15,
+            "obsolete": false
+
+        },
+        "receiverGain" : {
+            "size": "int32_t",
+            "bytes": 4,
+            "location": 68,
+            "title": "Receiver Gain",
+            "description": "it has a range from 0 to 24 dB",
+            "default": null,
+            "more": null,
+            "order": 16,
+            "obsolete": false
+
+        },
+        "degC1" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 72,
+            "title": "CPU Temp. (C)",
+            "description": "CPU temperature in celsius",
+            "default": null,
+            "more": null,
+            "order": 17,
+            "obsolete": false
+
+        },
+        "degC2" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 76,
+            "title": "PSU Temp. (C)",
+            "description": "Power Suply Unit (PSU) temperature in celsius",
+            "default": null,
+            "more": null,
+            "order": 18,
+            "obsolete": false
+
+        },
+        "humidity" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 80,
+            "title": "Humidity",
+            "description": "Relative humidity",
+            "default": null,
+            "more": null,
+            "order": 19,
+            "obsolete": false
+
+        },
+        "focus" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 84,
+            "title": "Focus",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 20,
+            "obsolete": false
+
+        },
+        "battery" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 88,
+            "title": "Battery",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 21,
+            "obsolete": true
+
+        },
+        "status1" : {
+            "size": "char[16]",
+            "bytes": 16,
+            "location": 92,
+            "title": "User Value #1",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 22,
+            "obsolete": false
+
+        },
+        "status2" : {
+            "size": "char[8]",
+            "bytes": 8,
+            "location": 108,
+            "title": "User Value #2",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 23,
+            "obsolete": false
+
+        },
+        "panwcom" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 116,
+            "title": "Pan",
+            "description": "Return from Pan/Tilt if used when compass present",
+            "default": null,
+            "more": null,
+            "order": 24,
+            "obsolete": false
+
+        },
+        "tiltwcom" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 120,
+            "title": "Tilt",
+            "description": "Return from Pan/Tilt if used when compass present",
+            "default": null,
+            "more": null,
+            "order": 25,
+            "obsolete": false
+
+        },
+        "velocity" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 124,
+            "title": "Velocity",
+            "description": "Platform velocity from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 26,
+            "obsolete": false
+
+        },
+        "depth" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 128,
+            "title": "Depth",
+            "description": "Platform depth from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 27,
+            "obsolete": false
+
+        },
+        "altitude" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 132,
+            "title": "Altitude",
+            "description": "Platform altitude from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 28,
+            "obsolete": false
+
+        },
+        "pitch" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 136,
+            "title": "Pitch",
+            "description": "Platform pitch from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 29,
+            "obsolete": false
+
+        },
+        "pitchRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 140,
+            "title": "Pitch Rate",
+            "description": "Platform pitch rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 30,
+            "obsolete": false
+
+        },
+        "roll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 144,
+            "title": "Roll",
+            "description": "Platform roll from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 31,
+            "obsolete": false
+
+        },
+        "rollRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 148,
+            "title": "Roll Rate",
+            "description": "Platform roll rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 32,
+            "obsolete": false
+
+        },
+        "heading" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 152,
+            "title": "Heading",
+            "description": "Platform heading from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 33,
+            "obsolete": false
+
+        },
+        "headingRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 156,
+            "title": "Heading Rate",
+            "description": "Platform heading rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 34,
+            "obsolete": false
+
+        },
+        "sonarPan" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 160,
+            "title": "SONAR Pan",
+            "description": "SONAR Pan",
+            "default": null,
+            "more": null,
+            "order": 35,
+            "obsolete": false
+
+        },
+        "sonarTilt" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 164,
+            "title": "SONAR Tilt",
+            "description": "SONAR Tilt",
+            "default": null,
+            "more": null,
+            "order": 36,
+            "obsolete": false
+
+        },
+        "sonarRoll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 168,
+            "title": "SONAR Roll",
+            "description": "SONAR Roll",
+            "default": null,
+            "more": null,
+            "order": 37,
+            "obsolete": false
+
+        },
+        "latitude" : {
+            "size": "double",
+            "bytes": 8,
+            "location": 172,
+            "title": "Latitude",
+            "description": "Latitude from auxiliary GPS sensor",
+            "default": null,
+            "more": null,
+            "order": 41,
+            "obsolete": false
+
+        },
+        "longitude" : {
+            "size": "double",
+            "bytes": 8,
+            "location": 180,
+            "title": "Longitude",
+            "description": "Longitude from auxiliary GPS sensor",
+            "default": null,
+            "more": null,
+            "order": 42,
+            "obsolete": false
+
+        },
+        "sonarPosition" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 188,
+            "title": "Sonar Pos.",
+            "description": "Sonar Position, special for PNNL",
+            "default": null,
+            "more": null,
+            "order": 43,
+            "obsolete": false
+
+        },
+        "configFlags" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 192,
+            "title": "Config. Flags",
+            "description": "Configuration Flags",
+            "default": null,
+            "more": "bit0: 1=classic, 0=extended windows; bit1: 0=Standard, 1=LR",
+            "order": 44,
+            "obsolete": false
+
+        },
+        "padding" : {
+            "size": "char[60]",
+            "bytes": 60,
+            "location": 196,
+            "title": "User assigned padding",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 45,
+            "obsolete": false
+
+        },
+        "targetRange" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "targetBearing" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "targetPresent" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "firmwareRev" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "flags" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sourceFrame" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "waterTemp" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "timerPeriod" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarX" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarY" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarZ" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarPanFuture" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarTiltFuture" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarRollFuture" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panPNNL" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltPNNL" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollPNNL" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "vehicleTime" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "timeGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "dateGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "qualityGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "numStatsGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "DOPGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "EHTGGK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "heaveTSS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "yearGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "monthGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "dayGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "hourGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "minuteGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "secondGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "HSecondGPS" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarPanOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarTiltOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarRollOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarXOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarYOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarZOffset" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "Tmatrix" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sampleRate" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "accelX" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "accelY" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "accelZ" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "pingMode" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "freq" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "pulseWidth" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "cyclePeriod" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "samplePeriod" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "transmitEnable" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "frameRate" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "soundSpeed" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "samplesPerBeam" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "enable150V" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sampleStartDelay" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "largeLens" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "systemType" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "sonarSerialNumber" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "reservedEK" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "ARISErrorFlags" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "missedPackets" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "ARISAppVersion" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "available2" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "reordered" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "salinity" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "pressure" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "batteryVoltage" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "mainVoltage" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "switchVoltage" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusMotorMoving" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "voltageChanging" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusTimeoutFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusOverCurrentFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusNotFoundFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusStalledFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "FPGATimeoutFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "FPGABusyFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "FPGAStuckFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "CPUTempFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "PSUTempFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "waterTempFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "humidityFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "pressureFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "voltageReadFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "voltageWriteFault" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "focusCurrentPosition" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "targetPan" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "targetTilt" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "targetRoll" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panMotorErrorCode" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltMotorErrorCode" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollMotorErrorCode" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panAbsPos" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltAbsPos" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollAbsPos" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panAccelX" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panAccelY" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panAccelZ" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltAccelX" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltAccelY" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltAccelZ" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollAccelX" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollAccelY" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollAccelZ" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "appliedSett" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "constrainedSett" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "invalidSett" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "enableInterpacketDelay" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "interpacketDelayPeriod" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "uptime" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "ARISAppVersionMajor" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "ARISAppVersionMinor" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "goTime" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "panVelocity" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "tiltVelocity" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "rollVelocity" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "GPSTimeAge" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        },
+        "systemVariant" : {
+            "size": null,
+            "bytes": null,
+            "location": null,
+            "title": null,
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": null,
+            "obsolete": null
+
+        }
+
+    },
+    "headerSize":{
+        "size": 256,
+        "unit": "byte"
+    }
+}

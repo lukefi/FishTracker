@@ -1,0 +1,7 @@
+File		=	{{fileName}}
+TotalFish	=	{{totalFish}}
+
+Frame#	|Dir	|R(m)	|Theta	|L(cm)	|dR(cm)	|Aspect	|Time		|Date		|speed	|comments
+=====================================================================================================================
+{% for f  in fishes %}{{f.frame}}	|{{f.dir}}	|{{f.R}}	|{{f.theta}}	|{{f.L}}	|{{f.dR}}	|{{f.aspect}}	|{{f.time}}		|{{f.date}}		|{{f.speed}}	|{{f.comments}}
+{% endfor %}

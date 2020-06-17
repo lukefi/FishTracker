@@ -1,0 +1,1977 @@
+{
+    "frame": {
+        "frameIndex" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 0,
+            "title": "Frame Index",
+            "description": "Frame number inside the ARIS file",
+            "default": null,
+            "more": null,
+            "order": 0,
+            "obsolete": false
+
+        },
+        "frameTime" : {
+            "size": "uint64_t",
+            "bytes": 8,
+            "location": 4,
+            "title": "Frame Time",
+            "description": "PC Timestamp when recorded; microseconds since epoch (Jan. 1st, 1970)",
+            "default": null,
+            "more": null,
+            "order": 1,
+            "obsolete": false
+
+        },
+        "version" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 12,
+            "title": "Version",
+            "description": "ARIS file format version.",
+            "default": 88491076,
+            "more": null,
+            "order": 2,
+            "obsolete": false
+
+        },
+        "status" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 16,
+            "title": "Status",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 3,
+            "obsolete": false
+
+        },
+        "sonarTimeStamp" : {
+            "size": "uint64_t",
+            "bytes": 8,
+            "location": 20,
+            "title": "Sonar Timestamp",
+            "description": "On-Sonar microsecond since epoch (Jan. 1st, 1970)",
+            "default": null,
+            "more": null,
+            "order": 4,
+            "obsolete": false
+
+        },
+        "TS_Day" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 28,
+            "title": "Timestamp (Day)",
+            "description": "Part of the on-sonar timestamp indicating the day of recording",
+            "default": null,
+            "more": null,
+            "order": 5,
+            "obsolete": false
+
+        },
+        "TS_Hour" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 32,
+            "title": "Timestamp (Hour)",
+            "description": "Part of the on-sonar timestamp indicating the hour of recording",
+            "default": null,
+            "more": null,
+            "order": 6,
+            "obsolete": false
+
+        },
+        "TS_Minute" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 36,
+            "title": "Timestamp (Min.)",
+            "description": "Part of the on-sonar timestamp indicating the minute of recording",
+            "default": null,
+            "more": null,
+            "order": 7,
+            "obsolete": false
+
+        },
+        "TS_Second" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 40,
+            "title": "Timestamp (Sec.)",
+            "description": "Part of the on-sonar timestamp indicating the second of recording",
+            "default": null,
+            "more": null,
+            "order": 8,
+            "obsolete": false
+
+        },
+        "TS_Hsecond" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 44,
+            "title": "Timestamp (Hsec.)",
+            "description": "Part of the on-sonar timestamp indicating the hundredth of a second of recording",
+            "default": null,
+            "more": null,
+            "order": 9,
+            "obsolete": false
+
+        },
+        "transmitMode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 48,
+            "title": "Transmit Mode",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 10,
+            "obsolete": false
+
+        },
+        "windowStart" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 52,
+            "title": "Window Start",
+            "description": "Starting distance of the window in meters",
+            "default": null,
+            "more": null,
+            "order": 11,
+            "obsolete": false
+
+        },
+        "windowLength" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 56,
+            "title": "Window Lenght",
+            "description": "The length of the window in meters",
+            "default": null,
+            "more": null,
+            "order": 12,
+            "obsolete": false
+
+        },
+        "threshold" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 60,
+            "title": "Threshold",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 13,
+            "obsolete": false
+
+        },
+        "intensity" : {
+            "size": "int32_t",
+            "bytes": 4,
+            "location": 64,
+            "title": "Intensity",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 14,
+            "obsolete": false
+
+        },
+        "receiverGain" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 68,
+            "title": "Receiver Gain",
+            "description": "it has a range from 0 to 24 dB",
+            "default": null,
+            "more": null,
+            "order": 15,
+            "obsolete": false
+
+        },
+        "degC1" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 72,
+            "title": "CPU Temp. (C)",
+            "description": "CPU temperature in celsius",
+            "default": null,
+            "more": null,
+            "order": 16,
+            "obsolete": false
+
+        },
+        "degC2" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 76,
+            "title": "PSU Temp. (C)",
+            "description": "Power Suply Unit (PSU) temperature in celsius",
+            "default": null,
+            "more": null,
+            "order": 17,
+            "obsolete": false
+
+        },
+        "humidity" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 80,
+            "title": "Humidity",
+            "description": "Relative humidity",
+            "default": null,
+            "more": null,
+            "order": 18,
+            "obsolete": false
+
+        },
+        "focus" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 84,
+            "title": "Focus",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 19,
+            "obsolete": false
+
+        },
+        "battery" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 88,
+            "title": "Battery",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 20,
+            "obsolete": true
+
+        },
+        "userVal1" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 92,
+            "title": "User Value #1",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 21,
+            "obsolete": false
+
+        },
+        "userVal2" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 96,
+            "title": "User Value #2",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 22,
+            "obsolete": false
+
+        },
+        "userVal3" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 100,
+            "title": "User Value #3",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 23,
+            "obsolete": false
+
+        },
+        "userVal4" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 104,
+            "title": "User Value #4",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 24,
+            "obsolete": false
+
+        },
+        "userVal5" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 108,
+            "title": "User Value #5",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 25,
+            "obsolete": false
+
+        },
+        "userVal6" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 112,
+            "title": "User Value #6",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 26,
+            "obsolete": false
+
+        },
+        "userVal7" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 116,
+            "title": "User Value #7",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 27,
+            "obsolete": false
+
+        },
+        "userVal8" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 120,
+            "title": "User Value #8",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 28,
+            "obsolete": false
+
+        },
+        "velocity" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 124,
+            "title": "Velocity",
+            "description": "Platform velocity from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 29,
+            "obsolete": false
+
+        },
+        "depth" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 128,
+            "title": "Depth",
+            "description": "Platform depth from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 30,
+            "obsolete": false
+
+        },
+        "altitude" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 132,
+            "title": "Altitude",
+            "description": "Platform altitude from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 31,
+            "obsolete": false
+
+        },
+        "pitch" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 136,
+            "title": "Pitch",
+            "description": "Platform pitch from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 32,
+            "obsolete": false
+
+        },
+        "pitchRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 140,
+            "title": "Pitch Rate",
+            "description": "Platform pitch rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 33,
+            "obsolete": false
+
+        },
+        "roll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 144,
+            "title": "Roll",
+            "description": "Platform roll from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 34,
+            "obsolete": false
+
+        },
+        "rollRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 148,
+            "title": "Roll Rate",
+            "description": "Platform roll rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 35,
+            "obsolete": false
+
+        },
+        "heading" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 152,
+            "title": "Heading",
+            "description": "Platform heading from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 36,
+            "obsolete": false
+
+        },
+        "headingRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 156,
+            "title": "Heading Rate",
+            "description": "Platform heading rate from AUV integration",
+            "default": null,
+            "more": null,
+            "order": 37,
+            "obsolete": false
+
+        },
+        "compassHeading" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 160,
+            "title": "Compass Heading",
+            "description": "Sonar compass heading output",
+            "default": null,
+            "more": null,
+            "order": 38,
+            "obsolete": false
+
+        },
+        "compassPitch" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 164,
+            "title": "Compass Pitch",
+            "description": "Sonar compass pitch output",
+            "default": null,
+            "more": null,
+            "order": 39,
+            "obsolete": false
+
+        },
+        "compassRoll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 168,
+            "title": "Compass Roll",
+            "description": "Sonar compass roll output",
+            "default": null,
+            "more": null,
+            "order": 40,
+            "obsolete": false
+
+        },
+        "latitude" : {
+            "size": "double",
+            "bytes": 8,
+            "location": 172,
+            "title": "Latitude",
+            "description": "Latitude from auxiliary GPS sensor",
+            "default": null,
+            "more": null,
+            "order": 41,
+            "obsolete": false
+
+        },
+        "longitude" : {
+            "size": "double",
+            "bytes": 8,
+            "location": 180,
+            "title": "Longitude",
+            "description": "Longitude from auxiliary GPS sensor",
+            "default": null,
+            "more": null,
+            "order": 42,
+            "obsolete": false
+
+        },
+        "sonarPosition" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 188,
+            "title": "Sonar Pos.",
+            "description": "Sonar Position, special for PNNL",
+            "default": null,
+            "more": null,
+            "order": 43,
+            "obsolete": false
+
+        },
+        "configFlags" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 192,
+            "title": "Config. Flags",
+            "description": "Configuration Flags",
+            "default": null,
+            "more": null,
+            "order": 44,
+            "obsolete": false
+
+        },
+        "beamTilt" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 196,
+            "title": "Beam Tilt",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 45,
+            "obsolete": false
+
+        },
+        "targetRange" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 200,
+            "title": "Target Range",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 46,
+            "obsolete": false
+
+        },
+        "targetBearing" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 204,
+            "title": "Target Bearing",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 47,
+            "obsolete": false
+
+        },
+        "targetPresent" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 208,
+            "title": "Target Present",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 48,
+            "obsolete": false
+
+        },
+        "firmwareRev" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 212,
+            "title": "Firmware Rev.",
+            "description": "Firmware Revision",
+            "default": null,
+            "more": "Unused",
+            "order": 49,
+            "obsolete": true
+
+        },
+        "flags" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 216,
+            "title": "Flags",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 50,
+            "obsolete": false
+
+        },
+        "sourceFrame" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 220,
+            "title": "Source Frame",
+            "description": "Source file frame number for CSOT output files",
+            "default": null,
+            "more": null,
+            "order": 51,
+            "obsolete": false
+
+        },
+        "waterTemp" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 224,
+            "title": "Water Temp. (C)",
+            "description": "Water temperature from housing temperature sensor",
+            "default": null,
+            "more": null,
+            "order": 52,
+            "obsolete": false
+
+        },
+        "timerPeriod" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 228,
+            "title": "Timer Period",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 53,
+            "obsolete": false
+
+        },
+        "sonarX" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 232,
+            "title": "Sonar X",
+            "description": "Sonar X location for 3D processing",
+            "default": null,
+            "more": "Bluefin, external sensor data",
+            "order": 54,
+            "obsolete": false
+
+        },
+        "sonarY" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 236,
+            "title": "Sonar Y",
+            "description": "Sonar Y location for 3D processing",
+            "default": null,
+            "more": "Bluefin, external sensor data",
+            "order": 55,
+            "obsolete": false
+
+        },
+        "sonarZ" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 240,
+            "title": "Sonar Z",
+            "description": "Sonar Z location for 3D processing",
+            "default": null,
+            "more": "Bluefin, external sensor data",
+            "order": 56,
+            "obsolete": false
+
+        },
+        "sonarPan" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 244,
+            "title": "Sonar Pan",
+            "description": "X2 pan output",
+            "default": null,
+            "more": null,
+            "order": 57,
+            "obsolete": false
+
+        },
+        "sonarTilt" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 248,
+            "title": "Sonar Tilt",
+            "description": "X2 tilt output",
+            "default": null,
+            "more": null,
+            "order": 58,
+            "obsolete": false
+
+        },
+        "sonarRoll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 252,
+            "title": "Sonar Roll",
+            "description": "X2 roll output",
+            "default": null,
+            "more": null,
+            "order": 59,
+            "obsolete": false
+
+        },
+        "panPNNL" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 256,
+            "title": "Pan PNN",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 60,
+            "obsolete": false
+
+        },
+        "tiltPNNL" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 260,
+            "title": "Tilt PNNL",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 61,
+            "obsolete": false
+
+        },
+        "rollPNNL" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 264,
+            "title": "Roll PNNL",
+            "description": null,
+            "default": null,
+            "more": null,
+            "order": 62,
+            "obsolete": false
+
+        },
+        "vehicleTime" : {
+            "size": "double",
+            "bytes": 8,
+            "location": 268,
+            "title": "Vehicle Time",
+            "description": null,
+            "default": null,
+            "more": "special for Bluefin HAUV or other AUV integration",
+            "order": 63,
+            "obsolete": false
+
+        },
+        "timeGGK" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 276,
+            "title": "Time GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 64,
+            "obsolete": false
+
+        },
+        "dateGGK" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 280,
+            "title": "Date GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 65,
+            "obsolete": false
+
+        },
+        "qualityGGK" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 284,
+            "title": "Quality GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 66,
+            "obsolete": false
+
+        },
+        "numStatsGGK" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 288,
+            "title": "Number Stats GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 67,
+            "obsolete": false
+
+        },
+        "DOPGGK" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 292,
+            "title": "DOP GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 68,
+            "obsolete": false
+
+        },
+        "EHTGGK" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 296,
+            "title": "EHT GGK",
+            "description": "GPS output from NMEA GGK message",
+            "default": null,
+            "more": null,
+            "order": 69,
+            "obsolete": false
+
+        },
+        "heaveTSS" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 300,
+            "title": "Heave TSS",
+            "description": "External sensor",
+            "default": null,
+            "more": null,
+            "order": 70,
+            "obsolete": false
+
+        },
+        "yearGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 304,
+            "title": "Year (GPS)",
+            "description": "GPS year output",
+            "default": null,
+            "more": null,
+            "order": 71,
+            "obsolete": false
+
+        },
+        "monthGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 308,
+            "title": "Month (GPS)",
+            "description": "GPS month output",
+            "default": null,
+            "more": null,
+            "order": 72,
+            "obsolete": false
+
+        },
+        "dayGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 312,
+            "title": "Day (GPS)",
+            "description": "GPS day output",
+            "default": null,
+            "more": null,
+            "order": 73,
+            "obsolete": false
+
+        },
+        "hourGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 316,
+            "title": "Hour (GPS)",
+            "description": "GPS hour output",
+            "default": null,
+            "more": null,
+            "order": 74,
+            "obsolete": false
+
+        },
+        "minuteGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 320,
+            "title": "Min. (GPS)",
+            "description": "GPS minute output",
+            "default": null,
+            "more": null,
+            "order": 75,
+            "obsolete": false
+
+        },
+        "secondGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 324,
+            "title": "Sec. (GPS)",
+            "description": "GPS seconds output",
+            "default": null,
+            "more": null,
+            "order": 76,
+            "obsolete": false
+
+        },
+        "HSecondGPS" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 328,
+            "title": "H.Sec. (GPS)",
+            "description": "GPS hundredth of a second output",
+            "default": null,
+            "more": null,
+            "order": 77,
+            "obsolete": false
+
+        },
+        "sonarPanOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 332,
+            "title": "Sonar Pan Off. (m)",
+            "description": "Sonar Pan Offset; Sonar mount location pan offset for 3D processing. (meters)",
+            "default": null,
+            "more": null,
+            "order": 78,
+            "obsolete": false
+
+        },
+        "sonarTiltOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 336,
+            "title": "Sonar Tilt Off.",
+            "description": "Sonar Tilt Offset; Sonar mount location tilt offset for 3D processing",
+            "default": null,
+            "more": null,
+            "order": 79,
+            "obsolete": false
+
+        },
+        "sonarRollOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 340,
+            "title": "Sonar Roll Off.",
+            "description": "Sonar Roll Offset; Sonar mount location roll offset for 3D processing",
+            "default": null,
+            "more": null,
+            "order": 80,
+            "obsolete": false
+
+        },
+        "sonarXOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 344,
+            "title": "Sonar X Off.",
+            "description": "Sonar X Offset; Sonar mount location X offset for 3D processing",
+            "default": null,
+            "more": null,
+            "order": 81,
+            "obsolete": false
+
+        },
+        "sonarYOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 348,
+            "title": "Sonar Y Off.",
+            "description": "Sonar Y Offset; Sonar mount location Y offset for 3D processing",
+            "default": null,
+            "more": null,
+            "order": 82,
+            "obsolete": false
+
+        },
+        "sonarZOffset" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 352,
+            "title": "Sonar Z Off.",
+            "description": "Sonar Z Offset; Sonar mount location Z offset for 3D processing",
+            "default": null,
+            "more": null,
+            "order": 83,
+            "obsolete": false
+
+        },
+        "Tmatrix" : {
+            "size": "16 x 32-bit float",
+            "bytes": 64,
+            "location": 356,
+            "title": "Transformation Matrix",
+            "description": "3D processing transformation matrix",
+            "default": null,
+            "more": null,
+            "order": 84,
+            "obsolete": false
+
+        },
+        "sampleRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 420,
+            "title": "Sample Rate",
+            "description": "Calculated as 1e6/SamplePeriod",
+            "default": null,
+            "more": null,
+            "order": 85,
+            "obsolete": false
+
+        },
+        "accelX" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 424,
+            "title": "Acc. X",
+            "description": "X-axis sonar acceleration",
+            "default": null,
+            "more": null,
+            "order": 86,
+            "obsolete": false
+
+        },
+        "accelY" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 428,
+            "title": "Acc. Y",
+            "description": "Y-axis sonar acceleration",
+            "default": null,
+            "more": null,
+            "order": 87,
+            "obsolete": false
+
+        },
+        "accelZ" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 432,
+            "title": "Acc. Z",
+            "description": "Z-axis sonar acceleration",
+            "default": null,
+            "more": null,
+            "order": 88,
+            "obsolete": false
+
+        },
+        "pingMode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 436,
+            "title": "Ping Mode",
+            "description": "ARIS ping mode; helps deciding the beam count.",
+            "default": null,
+            "more": "It depends on the hardware model. It has values from 1 to 12. otherwise, file is corrupted.",
+            "order": 89,
+            "obsolete": false
+
+        },
+        "freq" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 440,
+            "title": "Frequency",
+            "description": "if 1, it's high frequency. if 0, it's low frequency.",
+            "default": null,
+            "more": null,
+            "order": 90,
+            "obsolete": false
+
+        },
+        "pulseWidth" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 444,
+            "title": "Pulse Width",
+            "description": "Width of transmit pulse",
+            "default": null,
+            "more": "It has values from 4 to 100 microseconds",
+            "order": 91,
+            "obsolete": false
+
+        },
+        "cyclePeriod" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 448,
+            "title": "Cycle Period",
+            "description": "Ping cycle time",
+            "default": null,
+            "more": "It has values from 1802 to 65535 microseconds",
+            "order": 92,
+            "obsolete": false
+
+        },
+        "samplePeriod" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 452,
+            "title": "Sample Period",
+            "description": "Downrange sample rate",
+            "default": null,
+            "more": "It has values from 4 to 100 microseconds",
+            "order": 93,
+            "obsolete": false
+
+        },
+        "transmitEnable" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 456,
+            "title": "Transmission",
+            "description": "Transmission Enable",
+            "default": null,
+            "more": "If 0, then Transmission is OFF. Otherwise, it's ON",
+            "order": 94,
+            "obsolete": false
+
+        },
+        "frameRate" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 460,
+            "title": "Frame Rate",
+            "description": "Instantaneous frame rate between frame N and frame N-1",
+            "default": null,
+            "more": "Measured in microseconds",
+            "order": 95,
+            "obsolete": false
+
+        },
+        "soundSpeed" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 464,
+            "title": "Sound Speed",
+            "description": "Sound velocity in water calculated from water temperature depth and salinity setting",
+            "default": null,
+            "more": "Measured in meters per second",
+            "order": 96,
+            "obsolete": false
+
+        },
+        "samplesPerBeam" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 468,
+            "title": "Samples per Beam",
+            "description": "Number of downrange samples in each beam",
+            "default": null,
+            "more": null,
+            "order": 97,
+            "obsolete": false
+
+        },
+        "enable150V" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 472,
+            "title": "Power Mode",
+            "description": "1 = 150V ON (Max Power), 0 = 150V OFF (Min Power, 12V)",
+            "default": null,
+            "more": null,
+            "order": 98,
+            "obsolete": false
+
+        },
+        "sampleStartDelay" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 476,
+            "title": "Sample start delay",
+            "description": "Delay from transmit until start of sampling (window start) in usec, [930..65535]",
+            "default": null,
+            "more": null,
+            "order": 99,
+            "obsolete": false
+
+        },
+        "largeLens" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 480,
+            "title": "Lens Type",
+            "description": "1 = telephoto lens (large lens, big lens, hi-res lens) present",
+            "default": null,
+            "more": null,
+            "order": 100,
+            "obsolete": false
+
+        },
+        "systemType" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 484,
+            "title": "System Type",
+            "description": "1 = ARIS 3000, 0 = ARIS 1800, 2 = ARIS 1200",
+            "default": null,
+            "more": null,
+            "order": 101,
+            "obsolete": false
+
+        },
+        "sonarSerialNumber" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 488,
+            "title": "Serial Number",
+            "description": "Sonar serial number as labeled on housing",
+            "default": null,
+            "more": null,
+            "order": 102,
+            "obsolete": false
+
+        },
+        "reservedEK" : {
+            "size": "uint64_t",
+            "bytes": 8,
+            "location": 496,
+            "title": "Reserved",
+            "description": "Reserved for future use",
+            "default": null,
+            "more": null,
+            "order": 103,
+            "obsolete": true
+
+        },
+        "ARISErrorFlags" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 500,
+            "title": "Error Flags",
+            "description": "Error flag code bits",
+            "default": null,
+            "more": null,
+            "order": 104,
+            "obsolete": false
+
+        },
+        "missedPackets" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 504,
+            "title": "Missed Packets",
+            "description": "Missed packet count for Ethernet statistics reporting",
+            "default": null,
+            "more": null,
+            "order": 105,
+            "obsolete": false
+
+        },
+        "ARISAppVersion" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 508,
+            "title": "ARIS App. Version",
+            "description": "Version number of ArisApp sending frame data",
+            "default": null,
+            "more": null,
+            "order": 106,
+            "obsolete": false
+
+        },
+        "available2" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 512,
+            "title": "Reserved",
+            "description": "Reserved for future use",
+            "default": null,
+            "more": null,
+            "order": 107,
+            "obsolete": false
+
+        },
+        "reordered" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 516,
+            "title": "Order",
+            "description": "1 = frame data already ordered into [beam,sample] array, 0 = needs reordering",
+            "default": null,
+            "more": null,
+            "order": 108,
+            "obsolete": false
+
+        },
+        "salinity" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 520,
+            "title": "Salinity",
+            "description": "Water salinity code:  0 = fresh, 15 = brackish, 35 = salt",
+            "default": null,
+            "more": null,
+            "order": 109,
+            "obsolete": false
+
+        },
+        "pressure" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 524,
+            "title": "Pressure (psi)",
+            "description": "Depth sensor output",
+            "default": null,
+            "more": "Measured in psi",
+            "order": 110,
+            "obsolete": false
+
+        },
+        "batteryVoltage" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 528,
+            "title": "Battery (mV)",
+            "description": "Battery input voltage before power steering",
+            "default": null,
+            "more": "Measured in milliVolts",
+            "order": 111,
+            "obsolete": false
+
+        },
+        "mainVoltage" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 532,
+            "title": "Main Voltage (mV)",
+            "description": "Main cable input voltage before power steerin",
+            "default": null,
+            "more": "Measured in milliVolts",
+            "order": 112,
+            "obsolete": false
+
+        },
+        "switchVoltage" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 536,
+            "title": "Switch Voltage (mV)",
+            "description": "Input voltage after power steering; filtered voltage",
+            "default": null,
+            "more": "Measured in milliVolts",
+            "order": 113,
+            "obsolete": false
+
+        },
+        "focusMotorMoving" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 540,
+            "title": "Autofocus",
+            "description": "Used for automatic recording",
+            "default": null,
+            "more": "Added 14-Aug-2012",
+            "order": 114,
+            "obsolete": false
+
+        },
+        "voltageChanging" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 544,
+            "title": "Voltage Change",
+            "description": "First two bits = 12V, second two bits = 150V",
+            "default": null,
+            "more": "Added 16-Aug (00 = not changing, 01 = turning on, 10 = turning off)",
+            "order": 115,
+            "obsolete": false
+
+        },
+        "focusTimeoutFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 548,
+            "title": "Focus Timeout",
+            "description": "Focus Timeout Fault",
+            "default": null,
+            "more": null,
+            "order": 116,
+            "obsolete": false
+
+        },
+        "focusOverCurrentFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 552,
+            "title": "Focus Over Current",
+            "description": "Focus Over Current Fault",
+            "default": null,
+            "more": null,
+            "order": 117,
+            "obsolete": false
+
+        },
+        "focusNotFoundFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 556,
+            "title": "Focus Not Found",
+            "description": "Focus Not Found Fault",
+            "default": null,
+            "more": null,
+            "order": 118,
+            "obsolete": false
+
+        },
+        "focusStalledFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 560,
+            "title": "Focus Stalled",
+            "description": "Focus Stalled Fault",
+            "default": null,
+            "more": null,
+            "order": 119,
+            "obsolete": false
+
+        },
+        "FPGATimeoutFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 564,
+            "title": "FPGA Timeout",
+            "description": "FPGA Timeout Fault",
+            "default": null,
+            "more": null,
+            "order": 120,
+            "obsolete": false
+
+        },
+        "FPGABusyFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 568,
+            "title": "FPGA Busy",
+            "description": "FPGA Busy Fault",
+            "default": null,
+            "more": null,
+            "order": 121,
+            "obsolete": false
+
+        },
+        "FPGAStuckFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 572,
+            "title": "FPGA Stuck",
+            "description": "FPGA Stuck Fault",
+            "default": null,
+            "more": null,
+            "order": 122,
+            "obsolete": false
+
+        },
+        "CPUTempFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 576,
+            "title": "CPU Temp.",
+            "description": "CPU Temperature Fault",
+            "default": null,
+            "more": null,
+            "order": 123,
+            "obsolete": false
+
+        },
+        "PSUTempFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 580,
+            "title": "PSU Temp.",
+            "description": "PSU Temperature Fault",
+            "default": null,
+            "more": null,
+            "order": 124,
+            "obsolete": false
+
+        },
+        "waterTempFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 584,
+            "title": "Water Temp.",
+            "description": "Water Temperature Fault",
+            "default": null,
+            "more": null,
+            "order": 125,
+            "obsolete": false
+
+        },
+        "humidityFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 588,
+            "title": "Humidity",
+            "description": "Humidity Fault",
+            "default": null,
+            "more": null,
+            "order": 126,
+            "obsolete": false
+
+        },
+        "pressureFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 592,
+            "title": "Pressure",
+            "description": "Pressure Fault",
+            "default": null,
+            "more": null,
+            "order": 127,
+            "obsolete": false
+
+        },
+        "voltageReadFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 596,
+            "title": "Voltage Read",
+            "description": "Voltage Read Fault",
+            "default": null,
+            "more": null,
+            "order": 128,
+            "obsolete": false
+
+        },
+        "voltageWriteFault" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 600,
+            "title": "Voltage Write",
+            "description": "Voltage Write Fault",
+            "default": null,
+            "more": null,
+            "order": 129,
+            "obsolete": false
+
+        },
+        "focusCurrentPosition" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 604,
+            "title": "Focus Position",
+            "description": "Focus Shaft Current Position",
+            "default": null,
+            "more": "It has values from 0 to 1000 motor units",
+            "order": 130,
+            "obsolete": false
+
+        },
+        "targetPan" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 608,
+            "title": "Target Pan",
+            "description": "Commanded pan position",
+            "default": null,
+            "more": null,
+            "order": 131,
+            "obsolete": false
+
+        },
+        "targetTilt" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 612,
+            "title": "Target Tilt",
+            "description": "Commanded tilt position",
+            "default": null,
+            "more": null,
+            "order": 132,
+            "obsolete": false
+
+        },
+        "targetRoll" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 616,
+            "title": "Target Roll",
+            "description": "Commanded roll position",
+            "default": null,
+            "more": null,
+            "order": 133,
+            "obsolete": false
+
+        },
+        "panMotorErrorCode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 620,
+            "title": "Pan Motor Error",
+            "description": "Pan Motor Error Code",
+            "default": null,
+            "more": null,
+            "order": 134,
+            "obsolete": false
+
+        },
+        "tiltMotorErrorCode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 624,
+            "title": "Tilt Motor Error",
+            "description": "Tilt Motor Error Code",
+            "default": null,
+            "more": null,
+            "order": 135,
+            "obsolete": false
+
+        },
+        "rollMotorErrorCode" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 628,
+            "title": "Roll Motor Error",
+            "description": "Roll Motor Error Code",
+            "default": null,
+            "more": null,
+            "order": 136,
+            "obsolete": false
+
+        },
+        "panAbsPos" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 632,
+            "title": "Pan Abs. Pos.",
+            "description": "Pan Absolute Position; Low-resolution magnetic encoder absolute pan position (NaN indicates no arm detected for axis since 2.6.0.8403)",
+            "default": null,
+            "more": null,
+            "order": 137,
+            "obsolete": false
+
+        },
+        "tiltAbsPos" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 636,
+            "title": "Tilt Abs. Pos",
+            "description": "Tilt Absolute Postion; Low-resolution magnetic encoder absolute tilt position (NaN indicates no arm detected for axis since 2.6.0.8403)",
+            "default": null,
+            "more": null,
+            "order": 138,
+            "obsolete": false
+
+        },
+        "rollAbsPos" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 640,
+            "title": "Roll Abs. Pos.",
+            "description": "Roll Absolute Position; Low-resolution magnetic encoder absolute roll position (NaN indicates no arm detected for axis since 2.6.0.8403)",
+            "default": null,
+            "more": null,
+            "order": 139,
+            "obsolete": false
+
+        },
+        "panAccelX" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 644,
+            "title": "Pan Accel. X",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 140,
+            "obsolete": false
+
+        },
+        "panAccelY" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 648,
+            "title": "Pan Accel. Y",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 141,
+            "obsolete": false
+
+        },
+        "panAccelZ" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 652,
+            "title": "Pan Accel. Z",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 142,
+            "obsolete": false
+
+        },
+        "tiltAccelX" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 656,
+            "title": "Tilt Accel. X",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 143,
+            "obsolete": false
+
+        },
+        "tiltAccelY" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 660,
+            "title": "Tilt Accel. Y",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 144,
+            "obsolete": false
+
+        },
+        "tiltAccelZ" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 664,
+            "title": "Tilt Accel. Z",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 145,
+            "obsolete": false
+
+        },
+        "rollAccelX" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 668,
+            "title": "Roll Accel. X",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 146,
+            "obsolete": false
+
+        },
+        "rollAccelY" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 672,
+            "title": "Roll Accel. Y",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 147,
+            "obsolete": false
+
+        },
+        "rollAccelZ" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 676,
+            "title": "Roll Accel. Z",
+            "description": "Accelerometer outputs from AR2 CPU board sensor",
+            "default": null,
+            "more": null,
+            "order": 148,
+            "obsolete": false
+
+        },
+        "appliedSett" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 680,
+            "title": "Applied Settings",
+            "description": "Cookie indices for command acknowlege in frame header",
+            "default": null,
+            "more": null,
+            "order": 149,
+            "obsolete": false
+
+        },
+        "constrainedSett" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 684,
+            "title": "Constrained Settings",
+            "description": "Cookie indices for command acknowlege in frame header",
+            "default": null,
+            "more": null,
+            "order": 150,
+            "obsolete": false
+
+        },
+        "invalidSett" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 688,
+            "title": "Invalid Settings",
+            "description": "Cookie indices for command acknowlege in frame header",
+            "default": null,
+            "more": null,
+            "order": 151,
+            "obsolete": false
+
+        },
+        "enableInterpacketDelay" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 692,
+            "title": "Interpacket Delay",
+            "description": "If true delay is added between sending out image data packets",
+            "default": null,
+            "more": null,
+            "order": 152,
+            "obsolete": false
+
+        },
+        "interpacketDelayPeriod" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 696,
+            "title": "Interpacket Delay Period (us)",
+            "description": "packet delay factor in us (does not include function overhead time)",
+            "default": null,
+            "more": null,
+            "order": 153,
+            "obsolete": false
+
+        },
+        "uptime" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 700,
+            "title": "Uptime (s)",
+            "description": "Total time the sonar has been running over its lifetime.",
+            "default": null,
+            "more": "Measured in seconds",
+            "order": 154,
+            "obsolete": false
+
+        },
+        "ARISAppVersionMajor" : {
+            "size": "uint16_t",
+            "bytes": 2,
+            "location": 704,
+            "title": "Version (Major)",
+            "description": "ARIS application major version number",
+            "default": null,
+            "more": null,
+            "order": 155,
+            "obsolete": false
+
+        },
+        "ARISAppVersionMinor" : {
+            "size": "uint16_t",
+            "bytes": 2,
+            "location": 706,
+            "title": "Version (Minor)",
+            "description": "ARIS application minor version number",
+            "default": null,
+            "more": null,
+            "order": 156,
+            "obsolete": false
+
+        },
+        "goTime" : {
+            "size": "uint64_t",
+            "bytes": 8,
+            "location": 708,
+            "title": "Go Time",
+            "description": "Sonar time when frame cycle is initiated in hardware",
+            "default": null,
+            "more": null,
+            "order": 157,
+            "obsolete": false
+
+        },
+        "panVelocity" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 716,
+            "title": "Pan Velocity (deg/s)",
+            "description": "AR2 pan velocity",
+            "default": null,
+            "more": "Measured in degrees/second",
+            "order": 158,
+            "obsolete": false
+
+        },
+        "tiltVelocity" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 720,
+            "title": "Tilt Velocity (deg/s)",
+            "description": "AR2 tilt velocity",
+            "default": null,
+            "more": "Measured in degrees/second",
+            "order": 159,
+            "obsolete": false
+
+        },
+        "rollVelocity" : {
+            "size": "float",
+            "bytes": 4,
+            "location": 724,
+            "title": "Roll Velocity (deg/s)",
+            "description": "AR2 roll velocity",
+            "default": null,
+            "more": "Measured in degrees/second",
+            "order": 160,
+            "obsolete": false
+
+        },
+        "GPSTimeAge" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 728,
+            "title": "GPS Time Age",
+            "description": "Age of the last GPS fix acquired; capped at 0xFFFFFFFF; zero if none",
+            "default": null,
+            "more": "Measured in microseconds",
+            "order": 161,
+            "obsolete": false
+
+        },
+        "systemVariant" : {
+            "size": "uint32_t",
+            "bytes": 4,
+            "location": 732,
+            "title": "System Variant",
+            "description": "Bit 0 = Defender",
+            "default": null,
+            "more": null,
+            "order": 162,
+            "obsolete": false
+
+        },
+        "padding" : {
+            "size": "char[288]",
+            "bytes": 288,
+            "location": 736,
+            "title": "Padding",
+            "description": "Padding to fill out to 1024 bytes",
+            "default": null,
+            "more": null,
+            "order": 163,
+            "obsolete": true
+
+        }
+
+    },
+    "headerSize":{
+        "size": 1024,
+        "unit": "byte"
+    }
+}

@@ -14,20 +14,18 @@ class PlaybackManager():
         self.threadpool = QThreadPool()
 
     def open_file(self):
-        root = tk.Tk()
-        root.withdraw()
-        self.path = filedialog.askopenfilename()
-        self.sonar = FOpenSonarFile(self.path)
-
-        #self.display_frame(0)
-        self.thread = PlaybackThread(self.sonar)
-        self.thread.signals.frame_available.connect(self.display_frame)
-        self.threadpool.start(self.thread)
-
         try:
-            pass
+            root = tk.Tk()
+            root.withdraw()
+            self.path = filedialog.askopenfilename()
+            self.sonar = FOpenSonarFile(self.path)
+
+            #self.display_frame(0)
+            self.thread = PlaybackThread(self.sonar)
+            self.thread.signals.frame_available.connect(self.display_frame)
+            self.threadpool.start(self.thread)
         except FileNotFoundError as err:
-            print("File not found.", err)
+            print(err)
 
     def display_frame(self, tuple):
         ind, frame = tuple

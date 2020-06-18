@@ -9,15 +9,15 @@ class UIManager():
         self.main_window = main_window
         self.ui = Ui_MainWindow()
         self.playback = playback_manager
-        self.playback.frame_available.append(self.ShowSonarFrame)
+        self.playback.frame_available.append(self.showSonarFrame)
         self.ui.setupUi(main_window)
-        self.SetUpFunctions()
+        self.setUpFunctions()
 
-    def SetUpFunctions(self):
+    def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')
         self.ui.action_Open.triggered.connect(self.playback.open_file)
 
-    def ShowSonarFrame(self, image):
+    def showSonarFrame(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
         self.ui.sonar_frame.setPixmap(QtGui.QPixmap.fromImage(image))

@@ -26,8 +26,17 @@ class FTestContainer(QtWidgets.QMainWindow):
 
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
+        self.openFile()
         self.initUI()
         return
+
+    def openFile(self):
+        homeDirectory = str(os.path.expanduser("~"))
+        filePathTuple = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                    "Open File",
+                                                    homeDirectory,
+                                                    "Sonar Files (*.aris *.ddf)")
+        self.FFilePath = filePathTuple[0]
         
         
 
@@ -37,7 +46,7 @@ class FTestContainer(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon(FGetIcon(self._CONFIG["icon"], OS = sys.platform)))
         self.setWindowTitle(self._CONFIG["windowTitle"])
 
-        self.FMainMenu_init()
+        self.initMainMenu()
         self.showNormal()
         self.width = self._CONFIG["initWidth"]
         self.height = self._CONFIG["initHeight"]
@@ -50,7 +59,7 @@ class FTestContainer(QtWidgets.QMainWindow):
         #self.setCentralWidget(self.FWelcomeInfo)
 
         
-    def FMainMenu_init(self):
+    def initMainMenu(self):
         self.mainMenu = self.menuBar()
         fileMainMenu.FFileMenu_init(self)
         editMainMenu.FEditMenu_init(self)

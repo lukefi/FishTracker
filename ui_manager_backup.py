@@ -1,44 +1,21 @@
-import sys, os, cv2
-from PyQt5 import QtGui, QtCore, QtWidgets
-from sonar_widget import SonarViewer
+import sys
+import cv2
+from sonar_view import Ui_MainWindow
 from playback_manager import PlaybackManager
-from sonar_view2 import Ui_MainWindow
+from PyQt5 import QtGui, QtCore, QtWidgets
 
 class UIManager():
     def __init__(self, main_window, playback_manager):
         self.main_window = main_window
-
+        self.ui = Ui_MainWindow()
         self.playback = playback_manager
         self.playback.frame_available.append(self.showSonarFrame)
-
-        self.ui = Ui_MainWindow()
         self.ui.setupUi(main_window)
         self.setUpFunctions()
 
-
-    def openFile(self):
-        self.playback.openFile()
-        self.setupWidgets()
-
-    def openTestFile(self):
-        self.playback.openTestFile()
-        self.setupWidgets()
-
-    def setupWidgets(self):
-        sonar = SonarViewer(self.playback)
-        self.ui.splitter.replaceWidget(0, sonar)
-        self.ui.sonar_widget = sonar
-
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')
-        self.ui.action_Open.triggered.connect(self.openFile)
-
-        self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
-        self.ui.action_OpenTest.setObjectName("action_OpenTest")
-        self.ui.menu_File.addAction(self.ui.action_OpenTest)
-        self.ui.action_OpenTest.setShortcut('Ctrl+T')
-        self.ui.action_OpenTest.triggered.connect(self.openTestFile)
-        self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
+        self.ui.action_Open.triggered.connect(self.playback.open_file)
 
     def showSonarFrame(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
@@ -50,10 +27,11 @@ class UIManager():
         #ffigure.setAlignment(pyqtCore.Qt.AlignCenter)
 
 
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    playback_manager = PlaybackManager(main_window)
+    playback_manager = PlaybackManager()
     ui_manager = UIManager(main_window, playback_manager)
     main_window.show()
     sys.exit(app.exec_())

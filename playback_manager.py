@@ -50,6 +50,12 @@ class PlaybackManager():
 
     def openTestFile(self):
         self.path = "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
+        if not os.path.exists(self.path):
+            self.path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
+        if not os.path.exists(self.path):
+            self.openFile()
+            return
+
         self.sonar = FOpenSonarFile(self.path)
         self.main_window.setWindowTitle(self.path)
 

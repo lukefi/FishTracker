@@ -6,15 +6,23 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import time
 
+from debug import Debug
+
 class PlaybackManager():
-    def __init__(self, main_window):
+    def __init__(self, app, main_window):
         self.sonar = None
         self.path = None
 
         self.frame_available = Event()
+        self.frame_available.append(self.printDisplay)
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
+        self.thread = None
+
+        self.playing = False
+
+        app.aboutToQuit.connect(self.applicationClosing)
 
     def open_file(self):
         try:
@@ -23,21 +31,14 @@ class PlaybackManager():
             self.path = filedialog.askopenfilename()
             self.sonar = FOpenSonarFile(self.path)
 
-            #self.display_frame(0)
-            self.thread = PlaybackThread(self.sonar)
-            self.thread.signals.frame_available.connect(self.display_frame)
+            self.thread = PlaybackThread(self)
+            self.thread.signals.frame_signal.connect(self.displayFrame)
             self.threadpool.start(self.thread)
         except FileNotFoundError as err:
             print(err)
 
     def openFile(self):
-        ## DEBUG : remove filePathTuple and uncomment filePathTuple
-        # homeDirectory = str(Path.home())
         homeDirectory = str(os.path.expanduser("~"))
-        # filePathTuple = ('/home/mghobria/Documents/work/data/data.aris',) # laptop
-        # filePathTuple = ('data.aris',) # Home PC & windows Laptop
-        # filePathTuple = ('/home/mghobria/Documents/work/data/data 1/data.aris',) # work PC
-        # filePathTuple = ("C:\\Users\\mghobria\\Downloads\\data.aris",) # Home PC windows
         filePathTuple = QFileDialog.getOpenFileName(self.main_window,
                                                     "Open File",
                                                     homeDirectory,
@@ -59,31 +60,92 @@ class PlaybackManager():
         self.sonar = FOpenSonarFile(self.path)
         self.main_window.setWindowTitle(self.path)
 
-    def display_frame(self, tuple):
+    def showNextImage(self):
+        """Show the next frame image.
+        """
+        self.frame_index +=1
+        if (self.frame_index >= self.sonar.frameCount):
+            self.frame_index  = 0
+        
+        if self.thread is None:
+            self.frame_available(self.sonar.getFrame(self.frame_index))
+
+    def showPreviousImage(self):
+        """Show the previous frame image
+        """
+
+        self.frame_index  -= 1
+        if (self.frame_index  < 0 ):
+            self.frame_index  = self.sonar.frameCount-1
+
+        if self.thread is None:
+            self.frame_available(self.sonar.getFrame(self.frame_index))
+
+    def play(self):
+        self.playing = not self.playing
+        if self.playing:
+            if self.thread is not None:
+                self.thread.exit()
+            self.thread = PlaybackThread(self)
+            self.thread.signals.frame_signal.connect(self.displayFrame)
+            self.thread.signals.eof.connect(self.endOfFile)
+            self.threadpool.start(self.thread)
+
+    def displayFrame(self, tuple):
+        """Called from PlaybackThread
+        """
+
         ind, frame = tuple
         self.frame_index = ind
-        self.frame_available(frame)
+        if frame is not None:
+            self.frame_available(frame)
 
-    def display_frame_by_ind(self, ind):
+    def setFrameInd(self, ind):
+        if self.thread is not None:
+            self.thread.ind = self.frame_index
+
         self.frame_index = ind
-        self.frame_available(self.sonar.getFrame(ind))
+
+    def printDisplay(self, _):
+        Debug.Log("Frame: " + str(self.frame_index))
+
+    def endOfFile(self):
+        self.playing = False
+
+    def applicationClosing(self):
+        print("Closing PlaybackManager . . .")
+        self.playing = False
+        time.sleep(1)
 
 class PlaybackSignals(QObject):
-    frame_available = pyqtSignal(tuple)
+    frame_signal = pyqtSignal(tuple)
+    eof = pyqtSignal()
 
 class PlaybackThread(QRunnable):
-    def __init__(self, sonar):
+    def __init__(self, manager):
         super().__init__()
-        self.sonar = sonar
+        self.sonar = manager.sonar
+        self.manager = manager
         self.signals = PlaybackSignals()
         self.fps = 24.0
+        self.ind = manager.frame_index
 
     def run(self):
         prev_update = time.time()
         target_update = 1. / self.fps
 
-        for i in range(100):
-            self.signals.frame_available.emit((i, self.sonar.getFrame(i)))
+        while self.ind < self.manager.sonar.frameCount and self.manager.playing:
+            if (self.ind >= self.sonar.frameCount):
+                self.signals.eof.emit()
+                break
+
+            frame = self.sonar.getFrame(self.ind)
+            if frame is None:
+                break
+
+            self.signals.frame_signal.emit((self.ind, frame))
+            self.ind += 1
+
             time_since = time.time() - prev_update
             prev_update = time.time()
             if(target_update > time_since):
@@ -100,5 +162,8 @@ class Event(list):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = QMainWindow()
-    playbackManager = PlaybackManager(main_window)
-    playbackManager.openFile()
+    playback_manager = PlaybackManager(app, main_window)
+    playback_manager.openTestFile()
+    playback_manager.play()
+    main_window.show()
+    sys.exit(app.exec_())

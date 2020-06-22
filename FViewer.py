@@ -282,6 +282,7 @@ class FViewer(pyqtWidget.QDialog):
             img = pyqtGUI.QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat)
         
         else:
+            print(type(self.FFrames))
             img = pyqtGUI.QImage(self.FFrames, self.FFrames.shape[1], self.FFrames.shape[0], self.FFrames.strides[0], qformat)
         
         img = img.rgbSwapped()
@@ -290,6 +291,7 @@ class FViewer(pyqtWidget.QDialog):
         ffigure.setAlignment(pyqtCore.Qt.AlignCenter)
         self.FParent.FStatusBarFrameNumber.setText("Frame : "+str(self.UI_FRAME_INDEX+1)+"/"+str(self.File.frameCount))
         ffigure.setUpdatesEnabled(True)
+        print("Frame: ", self.UI_FRAME_INDEX)
 
 
     def FLoadSONARFile(self, filePath):

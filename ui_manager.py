@@ -9,7 +9,7 @@ class UIManager():
         self.main_window = main_window
 
         self.playback = playback_manager
-        self.playback.frame_available.append(self.showSonarFrame)
+        #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(main_window)
@@ -53,7 +53,7 @@ class UIManager():
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    playback_manager = PlaybackManager(main_window)
+    playback_manager = PlaybackManager(app, main_window)
     ui_manager = UIManager(main_window, playback_manager)
     main_window.show()
     sys.exit(app.exec_())

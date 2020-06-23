@@ -7,21 +7,26 @@ class EchoFigure(QtWidgets.QLabel):
     def __init__(self, parent):
         self.parent = parent
         self.figurePixmap = None
+        self.test_img = cv2.imread('echo_placeholder.png', 0)
         QtWidgets.QLabel.__init__(self, parent)
 
     def showTestImage(self):
-        img = cv2.imread('echo_placeholder.png', 0)
-        img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
-        self.figurePixmap = QtGui.QPixmap.fromImage(img)
-        self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
         self.setAlignment(QtCore.Qt.AlignCenter)
         # self.setScaledContents(True)
         self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
 
     def resizeEvent(self, event):
-        print("ASD")
+        img = cv2.resize(self.test_img, self.getScale())
+        img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
+        self.figurePixmap = QtGui.QPixmap.fromImage(img)
+        self.setPixmap(self.figurePixmap) #(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+
         if isinstance(self.figurePixmap, QtGui.QPixmap):
             self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+
+    def getScale(self):
+        sz = self.size()
+        return (max(1, sz.width()), max(1, sz.height()))
 
 class EchogramViewer(QtWidgets.QDialog):
     def __init__(self, playback_manager):

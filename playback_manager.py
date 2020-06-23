@@ -153,6 +153,7 @@ class PlaybackThread(QRunnable):
             self.ind += 1   
 
             time_since = time.time() - prev_update
+            print(1.0 / time_since)
             prev_update = time.time()
             if(target_update > time_since):
                 time.sleep(max(0, target_update - time_since))

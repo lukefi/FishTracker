@@ -2,6 +2,7 @@ import sys, os, cv2
 from PyQt5 import QtGui, QtCore, QtWidgets
 from sonar_widget import SonarViewer
 from echogram_widget import EchogramViewer
+from info_widget import InfoWidget
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
 
@@ -33,6 +34,7 @@ class UIManager():
         echo = EchogramViewer(self.playback)
         self.ui.splitter_2.replaceWidget(0, echo)
         self.ui.echogram_widget = echo
+        echo.setMaximumHeight(200)
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')

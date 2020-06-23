@@ -138,6 +138,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.FDetectedDict = results
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
+        self.playback_manager.end_of_file.append(self.choosePlayIcon)
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -160,7 +161,7 @@ class SonarViewer(QtWidgets.QDialog):
         FPreviousBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('previous')))
         
         self.FPlayBTN = QtWidgets.QPushButton(self)
-        self.FPlayBTN.clicked.connect(self.playback_manager.play)
+        self.FPlayBTN.clicked.connect(self.togglePlayPause) #self.playback_manager.play
         self.FPlayBTN.setShortcut(QtCore.Qt.Key_Space)
         self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('play')))
         #self.FPlayBTN.setCheckable(True)
@@ -269,8 +270,6 @@ class SonarViewer(QtWidgets.QDialog):
         font = cv2.FONT_HERSHEY_SIMPLEX          
         ffigure.setUpdatesEnabled(False)
         ffigure.clear()
-
-        self.FSlider.setValue(self.playback_manager.frame_index)
         qformat = QtGui.QImage.Format_Indexed8
 
         if len(frame.shape)==3:
@@ -303,6 +302,12 @@ class SonarViewer(QtWidgets.QDialog):
         ffigure.setAlignment(QtCore.Qt.AlignCenter)
         #self.FParent.FStatusBarFrameNumber.setText("Frame : "+str(self.UI_FRAME_INDEX+1)+"/"+str(self.File.frameCount))
         ffigure.setUpdatesEnabled(True)
+        self.updateSliderValue(self.playback_manager.frame_index)
+
+    def updateSliderValue(self, value):
+        self.FSlider.blockSignals(True)
+        self.FSlider.setValue(value)
+        self.FSlider.blockSignals(False)
 
 
     def FLoadSONARFile(self, filePath):
@@ -512,6 +517,16 @@ class SonarViewer(QtWidgets.QDialog):
             self.FParent.setCentralWidget(self.FResultsViewer)
         return
 
+    def togglePlayPause(self):
+        self.playback_manager.play()
+        self.choosePlayIcon()
+            
+    def choosePlayIcon(self):
+        if self.playback_manager.isPlaying():
+            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('pause')))
+        else:
+            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('play')))
+
     def FPlay(self, eventQt):
         ## problem
         self.play = not self.play
@@ -520,8 +535,7 @@ class SonarViewer(QtWidgets.QDialog):
             self.FShowNextImage()
         else: # pause
             self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('play')))
-            
-        return
+
 
     def FListDetected(self):
         index = 1

@@ -14,13 +14,12 @@ class PlaybackManager():
         self.path = None
 
         self.frame_available = Event()
-        self.frame_available.append(self.printDisplay)
+        self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
+        self.end_of_file = Event()
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
         self.thread = None
-
-        self.playing = False
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -82,14 +81,24 @@ class PlaybackManager():
             self.frame_available(self.sonar.getFrame(self.frame_index))
 
     def play(self):
-        self.playing = not self.playing
-        if self.playing:
-            if self.thread is not None:
-                self.thread.exit()
+        if self.isPlaying():
+            self.stop()
+        else:
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
             self.thread.signals.eof.connect(self.endOfFile)
             self.threadpool.start(self.thread)
+            
+
+    def stop(self):
+        if self.thread is not None:
+            self.thread.is_playing = False
+            self.thread = None
+
+    def endOfFile(self):
+        self.stop()
+        self.end_of_file()
+
 
     def displayFrame(self, tuple):
         """Called from PlaybackThread
@@ -101,20 +110,19 @@ class PlaybackManager():
             self.frame_available(frame)
 
     def setFrameInd(self, ind):
-        if self.thread is not None:
-            self.thread.ind = self.frame_index
-
         self.frame_index = ind
+        if self.isPlaying():
+            self.thread.ind = self.frame_index
+        else:
+            self.displayFrame((ind, self.sonar.getFrame(ind)))
+            
 
-    def printDisplay(self, _):
-        Debug.Log("Frame: " + str(self.frame_index))
-
-    def endOfFile(self):
-        self.playing = False
+    def isPlaying(self):
+        return self.thread is not None and self.thread.is_playing
 
     def applicationClosing(self):
         print("Closing PlaybackManager . . .")
-        self.playing = False
+        self.stop()
         time.sleep(1)
 
 class PlaybackSignals(QObject):
@@ -124,32 +132,32 @@ class PlaybackSignals(QObject):
 class PlaybackThread(QRunnable):
     def __init__(self, manager):
         super().__init__()
-        self.sonar = manager.sonar
         self.manager = manager
+        self.sonar = manager.sonar
         self.signals = PlaybackSignals()
         self.fps = 24.0
         self.ind = manager.frame_index
+        self.is_playing = True
+        print("Init thread")
 
     def run(self):
         prev_update = time.time()
         target_update = 1. / self.fps
 
-        while self.ind < self.manager.sonar.frameCount and self.manager.playing:
-            if (self.ind >= self.sonar.frameCount):
-                self.signals.eof.emit()
-                break
-
+        while self.ind < self.manager.sonar.frameCount and self.is_playing:
             frame = self.sonar.getFrame(self.ind)
             if frame is None:
                 break
 
             self.signals.frame_signal.emit((self.ind, frame))
-            self.ind += 1
+            self.ind += 1   
 
             time_since = time.time() - prev_update
             prev_update = time.time()
             if(target_update > time_since):
                 time.sleep(max(0, target_update - time_since))
+
+        self.signals.eof.emit()
 
 class Event(list):
     def __call__(self, *args, **kwargs):

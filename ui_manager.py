@@ -1,6 +1,7 @@
 import sys, os, cv2
 from PyQt5 import QtGui, QtCore, QtWidgets
 from sonar_widget import SonarViewer
+from echogram_widget import EchogramViewer
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
 
@@ -28,6 +29,10 @@ class UIManager():
         sonar = SonarViewer(self.playback)
         self.ui.splitter.replaceWidget(0, sonar)
         self.ui.sonar_widget = sonar
+
+        echo = EchogramViewer(self.playback)
+        self.ui.splitter_2.replaceWidget(0, echo)
+        self.ui.echogram_widget = echo
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')

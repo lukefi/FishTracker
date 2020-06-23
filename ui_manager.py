@@ -27,14 +27,18 @@ class UIManager():
         self.setupWidgets()
 
     def setupWidgets(self):
-        sonar = SonarViewer(self.playback)
-        self.ui.splitter.replaceWidget(0, sonar)
-        self.ui.sonar_widget = sonar
-
         echo = EchogramViewer(self.playback)
         self.ui.splitter_2.replaceWidget(0, echo)
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(200)
+
+        sonar = SonarViewer(self.playback)
+        self.ui.splitter.replaceWidget(0, sonar)
+        self.ui.sonar_widget = sonar
+
+        info = InfoWidget(self.playback)
+        self.ui.splitter.replaceWidget(1, info)
+        self.ui.info_widget = info
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')

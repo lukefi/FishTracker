@@ -28,7 +28,10 @@ class InfoWidget(QtWidgets.QDialog):
         self.horizontalLayout.addWidget(self.testBtn2)
         self.horizontalLayout.addWidget(self.testBtn3)
 
+        self.verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+
         self.verticalLayout.addLayout(self.horizontalLayout)
+        self.verticalLayout.addItem(self.verticalSpacer)
 
         self.setLayout(self.verticalLayout)
 

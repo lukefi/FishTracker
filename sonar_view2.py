@@ -52,8 +52,12 @@ class Ui_MainWindow(object):
         self.splitter.setObjectName("splitter")
         self.sonar_widget = QtWidgets.QWidget(self.splitter)
         self.sonar_widget.setObjectName("sonar_widget")
-        self.info_widget = QtWidgets.QWidget(self.splitter)
+        self.info_widget = QtWidgets.QTabWidget(self.splitter)
+        self.info_widget.setTabShape(QtWidgets.QTabWidget.Rounded)
         self.info_widget.setObjectName("info_widget")
+        self.tab_1 = QtWidgets.QWidget()
+        self.tab_1.setObjectName("tab_1")
+        self.info_widget.addTab(self.tab_1, "")
         self.verticalLayout.addWidget(self.splitter_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -71,10 +75,12 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menu_File.menuAction())
 
         self.retranslateUi(MainWindow)
+        self.info_widget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.info_widget.setTabText(self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.action_Open.setText(_translate("MainWindow", "&Open"))

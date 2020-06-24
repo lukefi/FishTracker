@@ -60,7 +60,19 @@ border-radius: 4px;
         <enum>Qt::Horizontal</enum>
        </property>
        <widget class="QWidget" name="sonar_widget" native="true"/>
-       <widget class="QWidget" name="info_widget" native="true"/>
+       <widget class="QTabWidget" name="info_widget">
+        <property name="tabShape">
+         <enum>QTabWidget::Rounded</enum>
+        </property>
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="tab_1">
+         <attribute name="title">
+          <string>Tab 1</string>
+         </attribute>
+        </widget>
+       </widget>
       </widget>
      </widget>
     </item>

@@ -2,21 +2,24 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import Qt
 
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 
-fish_header_labels = ["ID", "Length", "Direction"]
+fish_headers = ["ID", "Length", "Direction"]
+fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue()]
 
 class FishManager(QtCore.QAbstractTableModel):
     def __init__(self):
         super().__init__()
         self.fishes = list()
+        self.sort_ind = 0
+        self.sort_order = QtCore.Qt.DescendingOrder
 
     def testPopulate(self):
         self.fishes.clear()
         for i in range(10):
-            fish = FishEntry("Fish " + str(i + 1))
+            fish = FishEntry(i + 1)
             fish.length = np.random.normal(120, 10)
-            fish.direction = SwimDirection(np.random.randint(low=1, high=3))
+            fish.direction = SwimDirection(np.random.randint(low=0, high=2))
             self.fishes.append(fish)
 
 
@@ -41,12 +44,75 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            return fish_header_labels[section]
+            return fish_headers[section]
 
-class SwimDirection(Enum):
-    NONE = 0
-    UP = 1
-    DOWN = 2
+    def sort(self, col, order=QtCore.Qt.AscendingOrder):
+        #self.layoutAboutToBeChanged.emit()
+
+        self.sort_ind = col
+        self.sort_order = order
+
+        reverse = order != QtCore.Qt.AscendingOrder
+        self.fishes.sort(key = fish_sort_keys[col], reverse = reverse)
+
+        #self.layoutChanged.emit()
+        self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def addFish(self):
+        self.fishes.append(FishEntry(len(self.fishes) + 1))
+        self.layoutChanged.emit()
+        self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def removeFish(self, rows):
+        for row in sorted(rows, reverse=True):
+            if row >= len(self.fishes):
+                continue
+
+            print(row)
+            fish_id = self.fishes[row].id
+            del self.fishes[row]
+            for fish in self.fishes:
+                if fish.id > fish_id:
+                    fish.id -= 1
+
+
+    def mergeFish(self, rows):
+        if rows == None or len(rows) == 0:
+            return
+
+        id = None
+        length = 0
+        direction = 0
+        count = len(rows)
+
+        for row in sorted(rows):
+            fish = self.fishes[row]
+
+            if id is None:
+                id = fish.id
+            else:
+                id = min(id, fish.id)
+            length += fish.length
+            direction += int(fish.direction)
+
+        fish = FishEntry(len(self.fishes) + 1)
+        fish.id = id
+        fish.length = length / count
+        fish.direction = SwimDirection(np.rint(direction / count))
+
+        self.removeFish(rows)
+        self.fishes.append(fish)
+        self.sort(self.sort_ind, self.sort_order)
+
+    def refreshLayout(self):
+        self.layoutChanged.emit()
+        self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+
+class SwimDirection(IntEnum):
+    UP = 0
+    DOWN = 1
+    NONE = 2
 
 class FishEntry():
     def __init__(self, id):
@@ -56,6 +122,9 @@ class FishEntry():
 
     def __repr__(self):
         return "Fish {}: {:.1f} {}".format(self.id, self.length, self.direction.name)
+
+    def dirSortValue(self):
+        return self.direction.value * 10**8 + self.id
 
 if __name__ == "__main__":
     fish_manager = FishManager()

@@ -5,12 +5,16 @@ class FishList(QtWidgets.QDialog):
         super().__init__()
         self.fish_manager = fish_manager
 
-        self.scroll = QtWidgets.QScrollArea(self)
-        self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        #self.scroll = QtWidgets.QScrollArea(self)
+        #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        self.table = QtWidgets.QTableView(self)
+        self.table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.table.setModel(fish_manager)
 
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
-        self.verticalLayout.addWidget(self.scroll)
+        self.verticalLayout.addWidget(self.table)
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setContentsMargins(0,0,0,0)
         self.setLayout(self.verticalLayout)
@@ -26,7 +30,7 @@ if __name__ == "__main__":
     #playback_manager = PlaybackManager(app, main_window)
     #playback_manager.openTestFile()
     fish_manager = FishManager()
-    fish_manager.testFill()
+    fish_manager.testPopulate()
     #info_w = InfoWidget(playback_manager, fish_manager)
     fish_list =FishList(fish_manager)
     main_window.setCentralWidget(fish_list)

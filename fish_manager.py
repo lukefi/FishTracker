@@ -35,11 +35,11 @@ class FishManager(QtCore.QAbstractTableModel):
                 return self.fishes[row].direction.name
             else:
                 return ""
-
-    def rowCount(self, index):
+    
+    def rowCount(self, index=None):
         return len(self.fishes)
 
-    def columnCount(self, index):
+    def columnCount(self, index=None):
         return 3;
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
@@ -108,6 +108,45 @@ class FishManager(QtCore.QAbstractTableModel):
         self.layoutChanged.emit()
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.ItemIsEnabled
+
+        return Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled
+
+    def setData(self, index, value, role):
+        if index.isValid() and role == Qt.EditRole:
+            col = index.column()
+            row = index.row()
+            fish = self.fishes[row]
+
+            if col == 0:
+                id, success = intTryParse(value)
+                if success:
+                    fish.id = id
+            elif col == 1:
+                length, success = floatTryParse(value)
+                if success:
+                    fish.length = length
+            elif col == 2:
+                try:
+                    fish.direction = SwimDirection[value]
+                except KeyError:
+                    pass
+
+            self.dataChanged.emit(index, index)
+            return True
+        return False
+
+    def isDropdown(self, index):
+        return index.column() == 2
+
+    def dropdown_options(self):
+        return [sd.name for sd in list(SwimDirection)]
+
+    def getDropdownIndex(self, index):
+        return self.fishes[index.row()].direction
+
 
 class SwimDirection(IntEnum):
     UP = 0
@@ -125,6 +164,18 @@ class FishEntry():
 
     def dirSortValue(self):
         return self.direction.value * 10**8 + self.id
+
+def floatTryParse(value):
+    try:
+        return float(value), True
+    except ValueError:
+        return value, False
+
+def intTryParse(value):
+    try:
+        return int(value), True
+    except ValueError:
+        return value, False
 
 if __name__ == "__main__":
     fish_manager = FishManager()

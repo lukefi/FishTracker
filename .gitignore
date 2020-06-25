@@ -3,6 +3,7 @@
 *.aris
 .vs
 .idea
+LocalTests/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

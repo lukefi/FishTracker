@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from dropdown_delegate import DropdownDelegate
 
 class FishList(QtWidgets.QDialog):
     def __init__(self, fish_manager):
@@ -13,11 +14,23 @@ class FishList(QtWidgets.QDialog):
         self.table.setModel(fish_manager)
         self.table.setSortingEnabled(True)
         self.table.sortByColumn(0, QtCore.Qt.AscendingOrder);
+        self.table.setItemDelegate(DropdownDelegate())
         self.table.setStyleSheet("QTableView\n"
                                  "{\n"
                                  "border: none;\n"
                                  "}\n"
                                  "")
+
+        ### Enables easier interaction with dropdown fields.
+        ### Can be disabled if turns out to break things.
+
+        for row in range(fish_manager.rowCount()):
+            for column in range(fish_manager.columnCount()):
+                index=fish_manager.index(row, column)
+                if fish_manager.isDropdown(index):
+                    self.table.openPersistentEditor(index)
+
+        ###
 
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.vertical_layout.setObjectName("verticalLayout")

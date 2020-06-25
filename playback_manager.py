@@ -33,6 +33,7 @@ class PlaybackManager():
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
             self.threadpool.start(self.thread)
+
         except FileNotFoundError as err:
             print(err)
 
@@ -124,6 +125,9 @@ class PlaybackManager():
         print("Closing PlaybackManager . . .")
         self.stop()
         time.sleep(1)
+
+    def getFrameNumberText(self):
+        return "Frame : {}/{}".format(self.frame_index, self.sonar.frameCount)
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)

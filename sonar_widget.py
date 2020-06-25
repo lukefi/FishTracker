@@ -3,6 +3,7 @@ files, and also used to show results of the analysis, and details about
 the detected fishes.
 """
 from PyQt5 import QtCore, QtGui, QtWidgets
+from main import MainWindow
 
 ## DEBUG :{ following block of libraries for debug only
 import os
@@ -85,29 +86,36 @@ class MyFigure(QtWidgets.QLabel):
         pass
     
     def mouseMoveEvent(self, event):
-        if isinstance(self.__parent, SonarViewer):
-            sonar_viewer = self.__parent
-            #print(self.pixmap().width(), self.pixmap().height())
-            if self.pixmap():
-                marginx = (self.width() - self.pixmap().width()) / 2
+        if not isinstance(self.__parent, SonarViewer):
+            return
 
-                if not sonar_viewer.subtractBackground:
-                    xs = (event.x() - marginx) / self.pixmap().width()
+        sonar_viewer = self.__parent
+        if not isinstance(sonar_viewer.main_window, MainWindow):
+            return
+
+        #print(self.pixmap().width(), self.pixmap().height())
+        if self.pixmap():
+            marginx = (self.width() - self.pixmap().width()) / 2
+
+            if not sonar_viewer.subtractBackground:
+                xs = (event.x() - marginx) / self.pixmap().width()
+            else:
+                xs = event.x() - marginx
+
+                real_width = self.pixmap().width() / 2
+                if xs > real_width:
+                    xs = (xs - real_width) / real_width
                 else:
-                    xs = event.x() - marginx
+                    xs = xs / real_width
 
-                    real_width = self.pixmap().width() / 2
-                    if xs > real_width:
-                        xs = (xs - real_width) / real_width
-                    else:
-                        xs = xs / real_width
+            marginy = (self.height() - self.pixmap().height()) / 2
+            ys = (event.y() - marginy) / self.pixmap().height()
+            output = sonar_viewer.playback_manager.sonar.getBeamDistance(xs, ys)
+            txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(output[0], output[1])
+            sonar_viewer.main_window.FStatusBarMousePos.setText(txt)
 
-                marginy = (self.height() - self.pixmap().height()) / 2
-                ys = (event.y() - marginy) / self.pixmap().height()
-                output = sonar_viewer.playback_manager.sonar.getBeamDistance(xs, ys)
-                #sonar_viewer.FParent.FStatusBarMousePos.setText("distance={}m\t,angle={}deg\t".format(output[0], output[1]))
-                # self.mousePosDist = output[0]
-                # self.mousePosAng = output[1]
+            # self.mousePosDist = output[0]
+            # self.mousePosAng = output[1]
     
     def resizeEvent(self, event):
         if isinstance(self.figurePixmap, QtGui.QPixmap):
@@ -130,7 +138,7 @@ class SonarViewer(QtWidgets.QDialog):
     play = False
     marker = None
 
-    def __init__(self, playback_manager, resultsView = False, results=False):
+    def __init__(self, main_window, playback_manager, resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
@@ -139,12 +147,14 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.end_of_file.append(self.choosePlayIcon)
+        self.main_window = main_window
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
         ##  Reading the file
         # self.FLoadSONARFile(self.FParent.FFilePath)
-        #self.FParent.FStatusBarFrameNumber.setText("Frame : "+str(self.UI_FRAME_INDEX+1)+"/"+str(self.File.frameCount))
+        if isinstance(self.main_window, MainWindow):
+            self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
 
         QtWidgets.QDialog.__init__(self)
         #self.setWindowTitle("Fisher - " + self.FFilePath)
@@ -300,7 +310,8 @@ class SonarViewer(QtWidgets.QDialog):
         figurePixmap = QtGui.QPixmap.fromImage(img)
         ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
         ffigure.setAlignment(QtCore.Qt.AlignCenter)
-        #self.FParent.FStatusBarFrameNumber.setText("Frame : "+str(self.UI_FRAME_INDEX+1)+"/"+str(self.File.frameCount))
+        if isinstance(self.main_window, MainWindow):
+            self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
         ffigure.setUpdatesEnabled(True)
         self.updateSliderValue(self.playback_manager.frame_index)
 
@@ -622,7 +633,7 @@ if __name__ == "__main__":
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
-    sonar_viewer = SonarViewer(playback_manager)
+    sonar_viewer = SonarViewer(main_window, playback_manager)
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()
     sys.exit(app.exec_())

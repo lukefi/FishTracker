@@ -1,5 +1,6 @@
 import sys, os, cv2
 from PyQt5 import QtGui, QtCore, QtWidgets
+from main import MainWindow
 from sonar_widget import SonarViewer
 from echogram_widget import EchogramViewer
 from fish_manager import FishManager
@@ -19,6 +20,7 @@ class UIManager():
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(main_window)
+        self.main_window.setupStatusBar()
         self.setUpFunctions()
 
 
@@ -38,7 +40,7 @@ class UIManager():
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(200)
 
-        sonar = SonarViewer(self.playback)
+        sonar = SonarViewer(self.main_window, self.playback)
         self.ui.splitter.replaceWidget(0, sonar)
         self.ui.sonar_widget = sonar
 
@@ -75,7 +77,7 @@ class UIManager():
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    main_window = QtWidgets.QMainWindow()
+    main_window = MainWindow() #QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     fish_manager = FishManager()
     ui_manager = UIManager(main_window, playback_manager, fish_manager)

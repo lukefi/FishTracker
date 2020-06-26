@@ -4,6 +4,7 @@ the detected fishes.
 """
 from PyQt5 import QtCore, QtGui, QtWidgets
 from main import MainWindow
+from image_manipulation import ImageProcessor
 
 ## DEBUG :{ following block of libraries for debug only
 import os
@@ -45,11 +46,12 @@ class SonarViewer(QtWidgets.QDialog):
         """
         self._postAnalysisViewer = resultsView
         self.FDetectedDict = results
+        self.main_window = main_window
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.sliderLimitsFromEvent)
-        self.main_window = main_window
+        self.image_processor = ImageProcessor()
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -208,6 +210,7 @@ class SonarViewer(QtWidgets.QDialog):
             #    img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat)
             #img = img.rgbSwapped()
 
+            frame = self.image_processor.processImage(frame)
             img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
             figurePixmap = QtGui.QPixmap.fromImage(img)
             ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
@@ -540,6 +543,9 @@ class SonarViewer(QtWidgets.QDialog):
             json.dump(data, outFile)
         
         return
+
+    def setAutomaticContrast(self, value):
+        self.automatic_contrast = value
 
 class MyFigure(QtWidgets.QLabel):
     __parent = None

@@ -52,7 +52,7 @@ class UIManager():
 
         self.fish_manager
         self.fish_list = FishList(self.fish_manager)
-        self.parameter_list = ParameterList(self.fish_manager)
+        self.parameter_list = ParameterList(sonar.image_processor, self.fish_manager)
 
         self.ui.info_widget.removeTab(0)
         self.ui.info_widget.addTab(self.fish_list, "")

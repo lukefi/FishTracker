@@ -11,6 +11,7 @@ from sonar_view2 import Ui_MainWindow
 
 class UIManager():
     def __init__(self, main_window, playback_manager, fish_manager):
+        self.widgets_initialized = False
         self.main_window = main_window
 
         self.playback = playback_manager
@@ -23,14 +24,19 @@ class UIManager():
         self.main_window.setupStatusBar()
         self.setUpFunctions()
 
+        self.main_window.show()
+        self.setupWidgets()
+
 
     def openFile(self):
         self.playback.openFile()
-        self.setupWidgets()
 
     def openTestFile(self):
         self.playback.openTestFile()
-        self.setupWidgets()
+
+    def closeFile(self):
+        self.main_window.FStatusBarMousePos.setText("")
+        self.playback.closeFile()
 
     def setupWidgets(self):
         _translate = QtCore.QCoreApplication.translate
@@ -65,6 +71,13 @@ class UIManager():
         self.ui.action_OpenTest.triggered.connect(self.openTestFile)
         self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
 
+        self.ui.action_close_file = QtWidgets.QAction(self.main_window)
+        self.ui.action_close_file.setObjectName("action_close_file")
+        self.ui.menu_File.addAction(self.ui.action_close_file)
+        self.ui.action_close_file.setShortcut('Ctrl+Q')
+        self.ui.action_close_file.triggered.connect(self.closeFile)
+        self.ui.action_close_file.setText(QtCore.QCoreApplication.translate("MainWindow", "&Close file"))
+
     def showSonarFrame(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
@@ -81,5 +94,4 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     fish_manager = FishManager()
     ui_manager = UIManager(main_window, playback_manager, fish_manager)
-    main_window.show()
     sys.exit(app.exec_())

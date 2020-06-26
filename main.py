@@ -12,7 +12,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.FStatusBar = QtWidgets.QStatusBar()
         self.FStatusBarFrameNumber = QtWidgets.QLabel()
-        self.FStatusBarFrameNumber.setText("No File Loaded")
         self.FStatusBarMousePos = QtWidgets.QLabel()
         self.FStatusBar.addPermanentWidget(self.FStatusBarMousePos)
         self.FStatusBar.addPermanentWidget(self.FStatusBarFrameNumber)

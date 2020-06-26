@@ -23,105 +23,6 @@ import numpy as np
 import time
 from ast import literal_eval
 
-
-class FFishListItem():
-    def __init__(self, cls, inputDict, fishNumber):
-        self.fishNumber = fishNumber
-        self.inputDict = inputDict
-        self.listItem = QtWidgets.QListWidgetItem()
-        self.FWdiget = QtWidgets.QWidget()
-
-        self.FWdigetText = QtWidgets.QLabel("Fish #{}".format(self.fishNumber))
-
-        self.avgFishLength = QtWidgets.QLabel()
-        self.avgFishLength.setText("Length: {}".format(uif.getAvgLength()))
-        
-        self.FIfFish = QtWidgets.QCheckBox("is Fish")
-        self.FIfFish.setChecked(False)
-        
-        self.FWdigetBTN = QtWidgets.QPushButton("Show")
-
-        self.linkFish = QtWidgets.QPushButton()
-        self.linkFish.setIcon(QtGui.QIcon(uiIcons.FGetIcon("link")))
-
-        self.nameLengthLayout = QtWidgets.QHBoxLayout()
-        self.nameLengthLayout.addWidget(self.FWdigetText)
-        self.nameLengthLayout.addWidget(self.avgFishLength)
-
-        self.infoLayout = QtWidgets.QHBoxLayout()
-        self.infoLayout.addWidget(self.FIfFish)
-        self.infoLayout.addWidget(self.linkFish)
-
-        self.FWdigetBTN.clicked.connect(
-            lambda: cls.showFish(self.fishNumber, self.inputDict)
-        )
-        self.FWdigetLayout = QtWidgets.QVBoxLayout()
-        self.FWdigetLayout.addLayout(self.nameLengthLayout)
-        self.FWdigetLayout.addLayout(self.infoLayout)
-        self.FWdigetLayout.addWidget(self.FWdigetBTN)
-        self.FWdigetLayout.addStretch()
-        # self.FWdigetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
-        self.FWdiget.setLayout(self.FWdigetLayout)
-        self.listItem.setSizeHint(self.FWdiget.sizeHint())
-
-
-    
-class MyFigure(QtWidgets.QLabel):
-    __parent = None
-
-    def __init__(self, parent):
-        self.__parent = parent
-        self.figurePixmap = None
-        QtWidgets.QLabel.__init__(self, parent)
-
-    #def paintEvent(self, paintEvent):
-    #    if isinstance(self.__parent, SonarViewer):
-    #        sonar_viewer = self.__parent
-    #        if sonar_viewer.play:
-    #            sonar_viewer.FShowNextImage()
-            
-    #    QtWidgets.QLabel.paintEvent(self, paintEvent)
-
-    def updateImage(self):
-        pass
-    
-    def mouseMoveEvent(self, event):
-        if not isinstance(self.__parent, SonarViewer):
-            return
-
-        sonar_viewer = self.__parent
-        if not isinstance(sonar_viewer.main_window, MainWindow):
-            return
-
-        #print(self.pixmap().width(), self.pixmap().height())
-        if self.pixmap():
-            marginx = (self.width() - self.pixmap().width()) / 2
-
-            if not sonar_viewer.subtractBackground:
-                xs = (event.x() - marginx) / self.pixmap().width()
-            else:
-                xs = event.x() - marginx
-
-                real_width = self.pixmap().width() / 2
-                if xs > real_width:
-                    xs = (xs - real_width) / real_width
-                else:
-                    xs = xs / real_width
-
-            marginy = (self.height() - self.pixmap().height()) / 2
-            ys = (event.y() - marginy) / self.pixmap().height()
-            output = sonar_viewer.playback_manager.sonar.getBeamDistance(xs, ys)
-            txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(output[0], output[1])
-            sonar_viewer.main_window.FStatusBarMousePos.setText(txt)
-
-            # self.mousePosDist = output[0]
-            # self.mousePosAng = output[1]
-    
-    def resizeEvent(self, event):
-        if isinstance(self.figurePixmap, QtGui.QPixmap):
-            self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
-
-
 class SonarViewer(QtWidgets.QDialog):
     """This class holds the main window which will be used to 
     show the SONAR images, analyze them and edit images.
@@ -147,6 +48,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.end_of_file.append(self.choosePlayIcon)
+        self.playback_manager.file_opened.append(self.sliderLimitsFromEvent)
         self.main_window = main_window
 
         #self.FParent = parent
@@ -216,11 +118,10 @@ class SonarViewer(QtWidgets.QDialog):
         self.FToolbar.setOrientation(QtCore.Qt.Vertical)
         self.FToolbar.setFixedWidth(self.FToolbar.minimumSizeHint().width())
         
+
         self.FSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.FSlider.setMinimum(1)
-        self.FSlider.setMaximum(self.playback_manager.sonar.frameCount)
+        self.updateSliderLimits(0,0,0)
         self.FSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
-        self.FSlider.setTickInterval(int(0.05*self.playback_manager.sonar.frameCount))
         self.FSlider.valueChanged.connect(self.playback_manager.setFrameInd)
 
         self.FLayout.addWidget(self.FToolbar,0,0,3,1)
@@ -268,57 +169,72 @@ class SonarViewer(QtWidgets.QDialog):
         self.FSlider.setValue(self.UI_FRAME_INDEX+1)
 
     def displayImage(self, frame):
-        #self.MyFigureWidget.clear()
+        if frame is not None:
+            #self.MyFigureWidget.clear()
 
-        #image = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-        #image = QtGui.QImage(image.data, image.shape[1], image.shape[0],  image.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped() #Format_RGB888
+            #image = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+            #image = QtGui.QImage(image.data, image.shape[1], image.shape[0],  image.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped() #Format_RGB888
 
-        #figurePixmap = QtGui.QPixmap.fromImage(image)
-        #self.MyFigureWidget.setPixmap(figurePixmap)
+            #figurePixmap = QtGui.QPixmap.fromImage(image)
+            #self.MyFigureWidget.setPixmap(figurePixmap)
 
-        ffigure = self.MyFigureWidget
-        font = cv2.FONT_HERSHEY_SIMPLEX          
-        ffigure.setUpdatesEnabled(False)
-        ffigure.clear()
-        qformat = QtGui.QImage.Format_Indexed8
+            ffigure = self.MyFigureWidget
+            font = cv2.FONT_HERSHEY_SIMPLEX          
+            ffigure.setUpdatesEnabled(False)
+            ffigure.clear()
+            qformat = QtGui.QImage.Format_Indexed8
 
-        if len(frame.shape)==3:
-            if frame.shape[2]==4:
-                qformat = QtGui.QImage.Format_RGBA8888
-            else:
-                qformat = QtGui.QImage.Format_RGB888
+            if len(frame.shape)==3:
+                if frame.shape[2]==4:
+                    qformat = QtGui.QImage.Format_RGBA8888
+                else:
+                    qformat = QtGui.QImage.Format_RGB888
         
-        #if(self.subtractBackground):
-        #    frameBlur = cv2.blur(frame, (5,5))
-        #    mask = self._fgbg.apply(frameBlur)
-        #    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.kernel)
-        #    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.kernel)
-        #    mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)[1]
+            #if(self.subtractBackground):
+            #    frameBlur = cv2.blur(frame, (5,5))
+            #    mask = self._fgbg.apply(frameBlur)
+            #    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.kernel)
+            #    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.kernel)
+            #    mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)[1]
         
-        #    if(self.marker):
-        #        cv2.circle(frame, literal_eval(self.marker), 30, (255,255,255), 1)
-        #        cv2.circle(mask, literal_eval(self.marker), 30, (255,255,255), 1)
+            #    if(self.marker):
+            #        cv2.circle(frame, literal_eval(self.marker), 30, (255,255,255), 1)
+            #        cv2.circle(mask, literal_eval(self.marker), 30, (255,255,255), 1)
                 
-        #    img = np.hstack((mask, frame))
-        #    img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat)
+            #    img = np.hstack((mask, frame))
+            #    img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat)
         
-        #else:
-        #    img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat)
-        #img = img.rgbSwapped()
+            #else:
+            #    img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat)
+            #img = img.rgbSwapped()
 
-        img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
-        figurePixmap = QtGui.QPixmap.fromImage(img)
-        ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
-        ffigure.setAlignment(QtCore.Qt.AlignCenter)
+            img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
+            figurePixmap = QtGui.QPixmap.fromImage(img)
+            ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
+            ffigure.setAlignment(QtCore.Qt.AlignCenter)
+            ffigure.setUpdatesEnabled(True)
+        else:
+            self.MyFigureWidget.clear()
+
         if isinstance(self.main_window, MainWindow):
             self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
-        ffigure.setUpdatesEnabled(True)
         self.updateSliderValue(self.playback_manager.frame_index)
 
     def updateSliderValue(self, value):
         self.FSlider.blockSignals(True)
         self.FSlider.setValue(value)
         self.FSlider.blockSignals(False)
+
+    def updateSliderLimits(self, s_min, s_max, s_current):
+        self.FSlider.blockSignals(True)
+        self.FSlider.setMinimum(s_min)
+        self.FSlider.setMaximum(s_max)
+        self.FSlider.setValue(s_min)
+        self.FSlider.setTickInterval(int(0.05 * s_max))
+        self.FSlider.blockSignals(False)
+
+    def sliderLimitsFromEvent(self, sonar):
+        self.updateSliderLimits(0, sonar.frameCount, 1)
 
 
     def FLoadSONARFile(self, filePath):
@@ -624,6 +540,102 @@ class SonarViewer(QtWidgets.QDialog):
             json.dump(data, outFile)
         
         return
+
+class MyFigure(QtWidgets.QLabel):
+    __parent = None
+
+    def __init__(self, parent):
+        self.__parent = parent
+        self.figurePixmap = None
+        QtWidgets.QLabel.__init__(self, parent)
+
+    #def paintEvent(self, paintEvent):
+    #    if isinstance(self.__parent, SonarViewer):
+    #        sonar_viewer = self.__parent
+    #        if sonar_viewer.play:
+    #            sonar_viewer.FShowNextImage()
+            
+    #    QtWidgets.QLabel.paintEvent(self, paintEvent)
+
+    def updateImage(self):
+        pass
+    
+    def mouseMoveEvent(self, event):
+        if not isinstance(self.__parent, SonarViewer):
+            return
+
+        sonar_viewer = self.__parent
+        if not isinstance(sonar_viewer.main_window, MainWindow):
+            return
+
+        #print(self.pixmap().width(), self.pixmap().height())
+        if self.pixmap():
+            marginx = (self.width() - self.pixmap().width()) / 2
+
+            if not sonar_viewer.subtractBackground:
+                xs = (event.x() - marginx) / self.pixmap().width()
+            else:
+                xs = event.x() - marginx
+
+                real_width = self.pixmap().width() / 2
+                if xs > real_width:
+                    xs = (xs - real_width) / real_width
+                else:
+                    xs = xs / real_width
+
+            marginy = (self.height() - self.pixmap().height()) / 2
+            ys = (event.y() - marginy) / self.pixmap().height()
+            output = sonar_viewer.playback_manager.getBeamDistance(xs, ys)
+            if output is not None:
+                txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(output[0], output[1])
+                sonar_viewer.main_window.FStatusBarMousePos.setText(txt)
+
+                # self.mousePosDist = output[0]
+                # self.mousePosAng = output[1]
+    
+    def resizeEvent(self, event):
+        if isinstance(self.figurePixmap, QtGui.QPixmap):
+            self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+
+class FFishListItem():
+    def __init__(self, cls, inputDict, fishNumber):
+        self.fishNumber = fishNumber
+        self.inputDict = inputDict
+        self.listItem = QtWidgets.QListWidgetItem()
+        self.FWdiget = QtWidgets.QWidget()
+
+        self.FWdigetText = QtWidgets.QLabel("Fish #{}".format(self.fishNumber))
+
+        self.avgFishLength = QtWidgets.QLabel()
+        self.avgFishLength.setText("Length: {}".format(uif.getAvgLength()))
+        
+        self.FIfFish = QtWidgets.QCheckBox("is Fish")
+        self.FIfFish.setChecked(False)
+        
+        self.FWdigetBTN = QtWidgets.QPushButton("Show")
+
+        self.linkFish = QtWidgets.QPushButton()
+        self.linkFish.setIcon(QtGui.QIcon(uiIcons.FGetIcon("link")))
+
+        self.nameLengthLayout = QtWidgets.QHBoxLayout()
+        self.nameLengthLayout.addWidget(self.FWdigetText)
+        self.nameLengthLayout.addWidget(self.avgFishLength)
+
+        self.infoLayout = QtWidgets.QHBoxLayout()
+        self.infoLayout.addWidget(self.FIfFish)
+        self.infoLayout.addWidget(self.linkFish)
+
+        self.FWdigetBTN.clicked.connect(
+            lambda: cls.showFish(self.fishNumber, self.inputDict)
+        )
+        self.FWdigetLayout = QtWidgets.QVBoxLayout()
+        self.FWdigetLayout.addLayout(self.nameLengthLayout)
+        self.FWdigetLayout.addLayout(self.infoLayout)
+        self.FWdigetLayout.addWidget(self.FWdigetBTN)
+        self.FWdigetLayout.addStretch()
+        # self.FWdigetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        self.FWdiget.setLayout(self.FWdigetLayout)
+        self.listItem.setSizeHint(self.FWdiget.sizeHint())
 
 if __name__ == "__main__":
     import sys

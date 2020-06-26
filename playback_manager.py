@@ -8,6 +8,12 @@ import time
 
 from debug import Debug
 
+"""
+TODO:
+When a file is opened a new playback thread should be created (currently created when the file is played)
+This enables smoother interaction with the playback controls even when the file is not being played.
+"""
+
 class PlaybackManager():
     def __init__(self, app, main_window):
         self.sonar = None
@@ -16,6 +22,7 @@ class PlaybackManager():
         self.frame_available = Event()
         self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
         self.end_of_file = Event()
+        self.file_opened = Event()
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
@@ -45,46 +52,67 @@ class PlaybackManager():
                                                     "Sonar Files (*.aris *.ddf)")
         if filePathTuple[0] != "" : 
             # if the user has actually chosen a specific file.
-            self.path = filePathTuple[0]
-            self.sonar = FOpenSonarFile(self.path)
-            self.main_window.setWindowTitle(self.path)
+            self.loadFile(filePathTuple[0])
 
     def openTestFile(self):
-        self.path = "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
-        if not os.path.exists(self.path):
-            self.path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
-        if not os.path.exists(self.path):
+        path = "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
+        if not os.path.exists(path):
+            path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
+        if not os.path.exists(path):
             self.openFile()
             return
+        self.loadFile(path)
 
+    def loadFile(self, path):
+        if self.thread:
+            # Rough fix for when a new file is loaded while the previous is still playing.
+            self.thread.ind = 0
+            self.thread.is_playing = False
+            self.thread = None
+
+        self.frame_index = 0
+        self.path = path
         self.sonar = FOpenSonarFile(self.path)
         self.main_window.setWindowTitle(self.path)
+        self.file_opened(self.sonar)
+        self.frame_available(self.sonar.getFrame(self.frame_index))
+
+    def closeFile(self):
+        self.stop()
+        time.sleep(1)
+        self.path = ""
+        self.sonar = None
+        self.frame_index = 0
+        self.frame_available(None)
 
     def showNextImage(self):
-        """Show the next frame image.
         """
-        self.frame_index +=1
-        if (self.frame_index >= self.sonar.frameCount):
-            self.frame_index  = 0
+        Show the next frame image.
+        """
+        if self.sonar:
+            self.frame_index +=1
+            if (self.frame_index >= self.sonar.frameCount):
+                self.frame_index  = 0
         
-        if self.thread is None:
-            self.frame_available(self.sonar.getFrame(self.frame_index))
+            if self.thread is None:
+                self.frame_available(self.sonar.getFrame(self.frame_index))
 
     def showPreviousImage(self):
-        """Show the previous frame image
         """
+        Show the previous frame image
+        """
+        if self.sonar:
+            self.frame_index  -= 1
+            if (self.frame_index  < 0 ):
+                self.frame_index  = self.sonar.frameCount-1
 
-        self.frame_index  -= 1
-        if (self.frame_index  < 0 ):
-            self.frame_index  = self.sonar.frameCount-1
-
-        if self.thread is None:
-            self.frame_available(self.sonar.getFrame(self.frame_index))
+            if self.thread is None:
+                self.frame_available(self.sonar.getFrame(self.frame_index))
 
     def play(self):
         if self.isPlaying():
             self.stop()
-        else:
+        elif self.sonar:
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
             self.thread.signals.eof.connect(self.endOfFile)
@@ -102,7 +130,8 @@ class PlaybackManager():
 
 
     def displayFrame(self, tuple):
-        """Called from PlaybackThread
+        """
+        Called from PlaybackThread to update displayed frame in GUI
         """
 
         ind, frame = tuple
@@ -127,7 +156,16 @@ class PlaybackManager():
         time.sleep(1)
 
     def getFrameNumberText(self):
-        return "Frame : {}/{}".format(self.frame_index, self.sonar.frameCount)
+        if self.sonar:
+            return "Frame: {}/{}".format(self.frame_index+1, self.sonar.frameCount)
+        else:
+            return "No File Loaded"
+
+    def getBeamDistance(self, x, y):
+        if self.sonar:
+            return self.sonar.getBeamDistance(x, y)
+        else:
+            return None
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)

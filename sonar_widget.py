@@ -47,7 +47,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.FDetectedDict = results
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
-        self.playback_manager.end_of_file.append(self.choosePlayIcon)
+        self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.sliderLimitsFromEvent)
         self.main_window = main_window
 

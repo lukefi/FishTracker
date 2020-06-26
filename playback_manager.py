@@ -21,8 +21,8 @@ class PlaybackManager():
 
         self.frame_available = Event()
         self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
-        self.end_of_file = Event()
         self.file_opened = Event()
+        self.playback_ended = Event()
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
@@ -64,22 +64,30 @@ class PlaybackManager():
         self.loadFile(path)
 
     def loadFile(self, path):
-        if self.thread:
-            # Rough fix for when a new file is loaded while the previous is still playing.
-            self.thread.ind = 0
-            self.thread.is_playing = False
-            self.thread = None
-
-        self.frame_index = 0
         self.path = path
+        if self.thread:
+            self.thread.signals.playback_ended_signal.connect(self.setLoadedFile)
+            self.stop()
+        else:
+            print("No thread active.")
+            self.setLoadedFile()
+
+    def closeFile(self):
+        if self.thread:
+            self.thread.signals.playback_ended_signal.connect(self.clearFile)
+            self.stop()
+        else:
+            print("No thread active.")
+            self.clearFile()
+
+    def setLoadedFile(self):
+        self.frame_index = 0
         self.sonar = FOpenSonarFile(self.path)
         self.main_window.setWindowTitle(self.path)
         self.file_opened(self.sonar)
         self.frame_available(self.sonar.getFrame(self.frame_index))
 
-    def closeFile(self):
-        self.stop()
-        time.sleep(1)
+    def clearFile(self):
         self.path = ""
         self.sonar = None
         self.frame_index = 0
@@ -115,7 +123,8 @@ class PlaybackManager():
         elif self.sonar:
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
-            self.thread.signals.eof.connect(self.endOfFile)
+            self.thread.signals.eof_signal.connect(self.endOfFile)
+            self.thread.signals.playback_ended_signal.connect(self.playBackEnded)
             self.threadpool.start(self.thread)
             
 
@@ -124,9 +133,15 @@ class PlaybackManager():
             self.thread.is_playing = False
             self.thread = None
 
-    def endOfFile(self):
+    def playBackEnded(self):
+        print("Stop")
         self.stop()
-        self.end_of_file()
+        self.playback_ended()
+
+    def endOfFile(self):
+        print("EOF")
+        self.stop()
+        self.playback_ended()
 
 
     def displayFrame(self, tuple):
@@ -169,7 +184,8 @@ class PlaybackManager():
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)
-    eof = pyqtSignal()
+    playback_ended_signal = pyqtSignal()
+    eof_signal = pyqtSignal()
 
 class PlaybackThread(QRunnable):
     def __init__(self, manager):
@@ -186,20 +202,25 @@ class PlaybackThread(QRunnable):
         prev_update = time.time()
         target_update = 1. / self.fps
 
-        while self.ind < self.manager.sonar.frameCount and self.is_playing:
+        while self.is_playing:
             frame = self.sonar.getFrame(self.ind)
             if frame is None:
                 break
+
+            if self.ind >= self.manager.sonar.frameCount:
+                self.signals.eof_signal.emit()
+                return
 
             self.signals.frame_signal.emit((self.ind, frame))
             self.ind += 1   
 
             time_since = time.time() - prev_update
             prev_update = time.time()
+
             if(target_update > time_since):
                 time.sleep(max(0, target_update - time_since))
 
-        self.signals.eof.emit()
+        self.signals.playback_ended_signal.emit()
 
 class Event(list):
     def __call__(self, *args, **kwargs):

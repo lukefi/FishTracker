@@ -145,7 +145,10 @@ class FishManager(QtCore.QAbstractTableModel):
         return [sd.name for sd in list(SwimDirection)]
 
     def getDropdownIndex(self, index):
-        return self.fishes[index.row()].direction
+        try:
+            return self.fishes[index.row()].direction
+        except IndexError:
+            return SwimDirection.NONE
 
 
 class SwimDirection(IntEnum):

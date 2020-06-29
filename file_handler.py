@@ -22,6 +22,8 @@ from file_handlers.v3.v3_file_info import *
 from file_handlers.v4.v4_file_info import *
 from file_handlers.v5.v5_file_info import *
 
+from image_manipulation import ImageManipulation
+
 class FSONAR_File():
     def __init__(self, filename):
         self.FILE_PATH = filename
@@ -45,6 +47,8 @@ class FSONAR_File():
         self.windowLength = None
         self.firstBeamAngle = None
 
+        self.distanceCompensation = False
+
 
     def getFrame(self, FI):
         
@@ -56,9 +60,14 @@ class FSONAR_File():
             self.FRAMES = np.array(struct.unpack(strCat, self.FILE_HANDLE.read(frameSize)), dtype=np.uint8)
         except:
             return None
+        #self.FRAMES = cv2.flip(self.FRAMES.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
+        #self.FRAMES = self.constructImages()
+        #return self.FRAMES
+
         self.FRAMES = cv2.flip(self.FRAMES.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
-        self.FRAMES = self.constructImages()
-        return self.FRAMES
+        if self.distanceCompensation:
+            self.FRAMES = ImageManipulation.distanceCompensation(self.FRAMES)
+        return self.FRAMES, self.constructImages()
 
     def constructImages(self, d0 = None, dm = None, am= None):
         """This function works on mapping the original samples
@@ -138,6 +147,9 @@ class FSONAR_File():
         ac = np.arctan(xc / yc)/np.pi*180
 
         return [dc/sd, ac]
+
+    def setDistanceCompensation(self, value):
+        self.distanceCompensation = value
 
 
 

@@ -23,6 +23,7 @@ import file_handler as FH
 import numpy as np
 import time
 from ast import literal_eval
+from matplotlib import pyplot as plt
 
 class SonarViewer(QtWidgets.QDialog):
     """This class holds the main window which will be used to 
@@ -184,6 +185,9 @@ class SonarViewer(QtWidgets.QDialog):
             font = cv2.FONT_HERSHEY_SIMPLEX          
             ffigure.setUpdatesEnabled(False)
             ffigure.clear()
+
+            frame = self.image_processor.processImage(frame)
+
             qformat = QtGui.QImage.Format_Indexed8
 
             if len(frame.shape)==3:
@@ -210,7 +214,6 @@ class SonarViewer(QtWidgets.QDialog):
             #    img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat)
             #img = img.rgbSwapped()
 
-            frame = self.image_processor.processImage(frame)
             img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
             figurePixmap = QtGui.QPixmap.fromImage(img)
             ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
@@ -222,6 +225,15 @@ class SonarViewer(QtWidgets.QDialog):
         if isinstance(self.main_window, MainWindow):
             self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
         self.updateSliderValue(self.playback_manager.frame_index)
+
+        #rect = self.playback_manager.rect
+        #if rect is not None:
+        #    #cv2.imshow("Rect400", cv2.resize(self.playback_manager.rect, (400, 800)))
+        #    #rect = cv2.resize(self.playback_manager.rect, (1, 800))
+        #    #cv2.imshow("Rect1", cv2.resize(rect, (400, 800)))
+        #    self.image_processor.distancePlot(rect)
+
+
 
     def updateSliderValue(self, value):
         self.FSlider.blockSignals(True)

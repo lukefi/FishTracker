@@ -27,6 +27,7 @@ class PlaybackManager():
         self.threadpool = QThreadPool()
         self.main_window = main_window
         self.thread = None
+        self.rect = None
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -85,7 +86,12 @@ class PlaybackManager():
         self.sonar = FOpenSonarFile(self.path)
         self.main_window.setWindowTitle(self.path)
         self.file_opened(self.sonar)
-        self.frame_available(self.sonar.getFrame(self.frame_index))
+        self.updateSonar()
+
+    def updateSonar(self):
+        self.rect, frame = self.sonar.getFrame(self.frame_index)
+        self.frame_available(frame)
+
 
     def clearFile(self):
         self.path = ""
@@ -103,7 +109,7 @@ class PlaybackManager():
                 self.frame_index  = 0
         
             if self.thread is None:
-                self.frame_available(self.sonar.getFrame(self.frame_index))
+                self.updateSonar()
 
     def showPreviousImage(self):
         """
@@ -115,7 +121,7 @@ class PlaybackManager():
                 self.frame_index  = self.sonar.frameCount-1
 
             if self.thread is None:
-                self.frame_available(self.sonar.getFrame(self.frame_index))
+                self.updateSonar()
 
     def play(self):
         if self.isPlaying():
@@ -123,6 +129,7 @@ class PlaybackManager():
         elif self.sonar:
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
+            self.thread.signals.rect_signal.connect(self.getRect)
             self.thread.signals.eof_signal.connect(self.endOfFile)
             self.thread.signals.playback_ended_signal.connect(self.playBackEnded)
             self.threadpool.start(self.thread)
@@ -154,12 +161,16 @@ class PlaybackManager():
         if frame is not None:
             self.frame_available(frame)
 
+    def getRect(self, rect):
+        self.rect = rect
+
     def setFrameInd(self, ind):
         self.frame_index = ind
         if self.isPlaying():
             self.thread.ind = self.frame_index
         else:
-            self.displayFrame((ind, self.sonar.getFrame(ind)))
+            #self.displayFrame((ind, self.sonar.getFrame(ind)))
+            self.updateSonar()
             
 
     def isPlaying(self):
@@ -182,8 +193,13 @@ class PlaybackManager():
         else:
             return None
 
+    def setDistanceCompensation(self, value):
+        if self.sonar:
+            self.sonar.setDistanceCompensation(value)
+
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)
+    rect_signal = pyqtSignal(object)
     playback_ended_signal = pyqtSignal()
     eof_signal = pyqtSignal()
 
@@ -203,7 +219,7 @@ class PlaybackThread(QRunnable):
         target_update = 1. / self.fps
 
         while self.is_playing:
-            frame = self.sonar.getFrame(self.ind)
+            rect, frame = self.sonar.getFrame(self.ind)
             if frame is None:
                 break
 
@@ -212,6 +228,7 @@ class PlaybackThread(QRunnable):
                 return
 
             self.signals.frame_signal.emit((self.ind, frame))
+            self.signals.rect_signal.emit(rect)
             self.ind += 1   
 
             time_since = time.time() - prev_update
@@ -221,7 +238,6 @@ class PlaybackThread(QRunnable):
                 time.sleep(max(0, target_update - time_since))
 
         self.signals.playback_ended_signal.emit()
-
 class Event(list):
     def __call__(self, *args, **kwargs):
         for f in self:

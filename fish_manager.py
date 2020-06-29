@@ -4,8 +4,8 @@ from PyQt5.QtCore import Qt
 import numpy as np
 from enum import IntEnum
 
-fish_headers = ["ID", "Length", "Direction"]
-fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue()]
+fish_headers = ["ID", "Length", "Direction", "Frame in"]
+fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in]
 
 class FishManager(QtCore.QAbstractTableModel):
     def __init__(self):
@@ -14,13 +14,19 @@ class FishManager(QtCore.QAbstractTableModel):
         self.sort_ind = 0
         self.sort_order = QtCore.Qt.DescendingOrder
 
-    def testPopulate(self):
+    def testPopulate(self, frame_count):
         self.fishes.clear()
+        fishes = []
         for i in range(10):
             fish = FishEntry(i + 1)
             fish.length = np.random.normal(120, 10)
             fish.direction = SwimDirection(np.random.randint(low=0, high=2))
-            self.fishes.append(fish)
+            fish.frame_in = np.random.randint(frame_count)
+            fishes.append(fish)
+
+        self.fishes = sorted(fishes, key=fish_sort_keys[3])
+        for i, fish in enumerate(self.fishes):
+            fish.id = i + 1
 
 
     def data(self, index, role):
@@ -33,6 +39,8 @@ class FishManager(QtCore.QAbstractTableModel):
                 return self.fishes[row].length
             elif col == 2:
                 return self.fishes[row].direction.name
+            elif col == 3:
+                return self.fishes[row].frame_in
             else:
                 return ""
     
@@ -40,7 +48,7 @@ class FishManager(QtCore.QAbstractTableModel):
         return len(self.fishes)
 
     def columnCount(self, index=None):
-        return 3;
+        return 4;
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
@@ -83,6 +91,7 @@ class FishManager(QtCore.QAbstractTableModel):
         id = None
         length = 0
         direction = 0
+        frame_in = None
         count = len(rows)
 
         for row in sorted(rows):
@@ -90,8 +99,10 @@ class FishManager(QtCore.QAbstractTableModel):
 
             if id is None:
                 id = fish.id
+                frame_in = fish.frame_in
             else:
                 id = min(id, fish.id)
+                frame_in = min(frame_in, fish.frame_in)
             length += fish.length
             direction += int(fish.direction)
 
@@ -158,6 +169,7 @@ class FishEntry():
         self.id = id
         self.length = 0
         self.direction = SwimDirection.NONE
+        self.frame_in = 0
 
     def __repr__(self):
         return "Fish {}: {:.1f} {}".format(self.id, self.length, self.direction.name)

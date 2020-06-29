@@ -2,9 +2,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
 
 class FishList(QtWidgets.QDialog):
-    def __init__(self, fish_manager):
+    def __init__(self, fish_manager, playback_manager):
         super().__init__()
         self.fish_manager = fish_manager
+        self.playback_manager = playback_manager
 
         #self.scroll = QtWidgets.QScrollArea(self)
         #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -38,6 +39,13 @@ class FishList(QtWidgets.QDialog):
         self.vertical_layout.setSpacing(0)
         self.vertical_layout.setContentsMargins(0,0,0,0)
 
+        self.display_btn = QtWidgets.QPushButton()
+        self.display_btn.setObjectName("displayFish")
+        self.display_btn.setText("Display fish")
+        self.display_btn.clicked.connect(self.displayFish)
+
+        self.btn_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+
         self.add_btn = QtWidgets.QPushButton()
         self.add_btn.setObjectName("addButton")
         self.add_btn.setText("Add")
@@ -58,6 +66,8 @@ class FishList(QtWidgets.QDialog):
         self.horizontal_layout.setSpacing(7)
         self.horizontal_layout.setContentsMargins(0,0,0,0)
 
+        self.horizontal_layout.addWidget(self.display_btn)
+        self.horizontal_layout.addItem(self.btn_spacer)
         self.horizontal_layout.addWidget(self.add_btn)
         self.horizontal_layout.addWidget(self.remove_btn)
         self.horizontal_layout.addWidget(self.merge_btn)
@@ -79,6 +89,15 @@ class FishList(QtWidgets.QDialog):
         self.fish_manager.mergeFish(rows)
         self.fish_manager.refreshLayout()
 
+    def displayFish(self):
+        try:
+            selection = self.table.selectionModel().selection().indexes();
+            ind = self.fish_manager.fishes[selection[0].row()].frame_in
+            self.playback_manager.setFrameInd(ind)
+        except IndexError:
+            return
+            
+
 
 
 if __name__ == "__main__":
@@ -88,12 +107,12 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    #playback_manager = PlaybackManager(app, main_window)
-    #playback_manager.openTestFile()
+    playback_manager = PlaybackManager(app, main_window)
+    playback_manager.openTestFile()
     fish_manager = FishManager()
-    fish_manager.testPopulate()
+    fish_manager.testPopulate(500)
     #info_w = InfoWidget(playback_manager, fish_manager)
-    fish_list =FishList(fish_manager)
+    fish_list = FishList(fish_manager, playback_manager)
     main_window.setCentralWidget(fish_list)
     main_window.show()
     sys.exit(app.exec_())

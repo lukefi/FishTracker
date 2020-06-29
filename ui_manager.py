@@ -17,7 +17,7 @@ class UIManager():
 
         self.playback = playback_manager
         self.fish_manager = fish_manager
-        self.fish_manager.testPopulate()
+        self.fish_manager.testPopulate(7000)
         #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
@@ -52,7 +52,7 @@ class UIManager():
         self.ui.sonar_widget = sonar
 
         self.fish_manager
-        self.fish_list = FishList(self.fish_manager)
+        self.fish_list = FishList(self.fish_manager, self.playback)
         self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager)
 
         self.ui.info_widget.removeTab(0)

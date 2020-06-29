@@ -157,6 +157,7 @@ class PlaybackManager():
         """
 
         ind, frame = tuple
+        print(frame.shape)
         self.frame_index = ind
         if frame is not None:
             self.frame_available(frame)
@@ -165,7 +166,11 @@ class PlaybackManager():
         self.rect = rect
 
     def setFrameInd(self, ind):
-        self.frame_index = ind
+        if self.sonar:
+            self.frame_index = max(0, min(ind, self.sonar.frameCount))
+        else:
+            self.frame_index = 0
+
         if self.isPlaying():
             self.thread.ind = self.frame_index
         else:

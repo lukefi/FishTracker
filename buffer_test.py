@@ -9,14 +9,19 @@ from file_handler import FOpenSonarFile
 FRAME_COUNT = 100
 BUFFER_SIZE = 5
 
+def testPrint(tuple):
+	print("***---***")
+
 class PlaybackThread(QRunnable):
 	def __init__(self, threadpool, figure):
 		super().__init__()
 		self.run = True
 		self.first_ind = 0
 		self.previous = time.time()
-		self.next_frame = 0
+		self.display_ind = 0
 		self.frame_count = 0
+		self.queued_frames = 0
+		self.queue_ind = 0
 		self.new_frames = []
 		self.threadpool = threadpool
 		self.figure = figure
@@ -27,29 +32,30 @@ class PlaybackThread(QRunnable):
 		for i in range(FRAME_COUNT):
 			wrap = FrameWrapper(i, prev)
 			self.buffer[i] = wrap
-			prev = wrap
-
-		for i in range(FRAME_COUNT):
-			frame = FrameDisplayThread(self.sonar, i)
-			frame.signals.frame_signal.connect(self.frameReady)
-			self.threadpool.start(frame)
-			
+			prev = wrap		
 		
 	def run(self):
 		while(self.run):
-			if len(self.new_frames) > 0:
-				for frame_tuple in self.new_frames:
-					ind, frame = frame_tuple
-					frame = frame
-					self.buffer[ind].frame = frame
-				self.new_frames.clear()
+
+			# Feed threadpool with new frames to process
+			while self.queued_frames < 2 * self.threadpool.maxThreadCount() and self.queue_ind < FRAME_COUNT:
+				if self.buffer[self.queue_ind].frame is None:
+					self.queueFrame(self.queue_ind)
+				self.queue_ind += 1
+
+			# Insert processed frames to buffer
+			while len(self.new_frames) > 0:
+				print("ASD")
+				ind, frame = self.new_frames.pop(0)
+				self.buffer[ind].frame = frame
 			
+			# Display frames from buffer
 			try:
-				wrap = self.buffer[self.next_frame]
+				wrap = self.buffer[self.display_ind]
 				if wrap.frame is not None:			
 					print("Frame:", wrap.ind, (time.time() - self.previous))
 					self.previous = time.time()
-					self.next_frame += 1
+					self.display_ind += 1
 					self.frame_count += 1
 					self.displayFrame(wrap.frame)
 					
@@ -62,10 +68,19 @@ class PlaybackThread(QRunnable):
 				print(self.buffer)
 
 			time.sleep(0.1)
+
+	def queueFrame(self, ind):
+		print("Queued:", ind)
+		frame = FrameDisplayThread(self.sonar, ind)
+		frame.signals.frame_signal.connect(self.frameReady)
+		frame.signals.frame_signal.connect(testPrint)
+		self.threadpool.start(frame)
+		self.queued_frames += 1
 			
 	def frameReady(self, frame_tuple):
 		print("Ready:", frame_tuple[0])
 		self.new_frames.append(frame_tuple)
+		self.queued_frames -= 1
 		
 	def remove_first(self):
 		print("Removed:", self.first_ind)
@@ -119,6 +134,7 @@ class FrameDisplayThread(QRunnable):
 	def __init__(self, sonar, ind):
 		super().__init__()
 		self.signals = FDSignals()
+		self.signals.frame_signal.connect(self.debugPrint)
 		self.ind = ind
 		self.sonar = sonar
 		self.polar = sonar.getPolarFrame(ind)
@@ -126,6 +142,10 @@ class FrameDisplayThread(QRunnable):
 	def run(self):
 		frame = self.sonar.constructImages(self.polar)
 		self.signals.frame_signal.emit((self.ind, frame))
+		print("---")
+
+	def debugPrint(self, tuple):
+		print("emit")
 		
 class FDSignals(QObject):
 	frame_signal = pyqtSignal(tuple)
@@ -163,6 +183,7 @@ if __name__ == "__main__":
 	main_window.setCentralWidget(figure)
 
 	threadpool = QThreadPool()
+	#threadpool.setMaxThreadCount(16)
 	thread = PlaybackThread(threadpool, figure)
 	threadpool.start(thread)
 	

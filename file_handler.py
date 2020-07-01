@@ -49,27 +49,32 @@ class FSONAR_File():
 
         self.distanceCompensation = False
 
-
-    def getFrame(self, FI):
-        
+    def getPolarFrame(self, FI):
         frameSize = self.DATA_SHAPE[0] * self.DATA_SHAPE[1]
         frameoffset = (self.FILE_HEADER_SIZE + self.FRAME_HEADER_SIZE +(FI*(self.FRAME_HEADER_SIZE+(frameSize))))
         self.FILE_HANDLE.seek(frameoffset, 0)
         strCat = frameSize*"B"
         try:
-            self.FRAMES = np.array(struct.unpack(strCat, self.FILE_HANDLE.read(frameSize)), dtype=np.uint8)
+            frame = np.array(struct.unpack(strCat, self.FILE_HANDLE.read(frameSize)), dtype=np.uint8)
         except:
             return None
+
         #self.FRAMES = cv2.flip(self.FRAMES.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
         #self.FRAMES = self.constructImages()
         #return self.FRAMES
 
-        self.FRAMES = cv2.flip(self.FRAMES.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
-        if self.distanceCompensation:
-            self.FRAMES = ImageManipulation.distanceCompensation(self.FRAMES)
-        return self.FRAMES, self.constructImages()
+        frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
+        return frame
 
-    def constructImages(self, d0 = None, dm = None, am= None):
+
+    def getFrame(self, FI):
+        polar = self.getPolarFrame(FI)
+        if self.distanceCompensation:
+            polar = ImageManipulation.distanceCompensation(polar)
+        self.FRAMES = self.constructImages(polar)
+        return polar, self.FRAMES
+
+    def constructImages(self, frames, d0 = None, dm = None, am= None):
         """This function works on mapping the original samples
         inside the file frames, to the actual real-life coordinates.
         
@@ -118,7 +123,7 @@ class FSONAR_File():
 
 
 
-        out = warp( self.FRAMES, invmap, output_shape=(K, L))
+        out = warp(frames, invmap, output_shape=(K, L))
         out = (out/np.amax(out)*255).astype(np.uint8)
         return out
 

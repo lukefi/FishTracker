@@ -14,6 +14,8 @@ When a file is opened a new playback thread should be created (currently created
 This enables smoother interaction with the playback controls even when the file is not being played.
 """
 
+FRAME_SIZE = 1.5
+
 class PlaybackManager():
     def __init__(self, app, main_window):
         self.sonar = None
@@ -28,6 +30,9 @@ class PlaybackManager():
         self.main_window = main_window
         self.thread = None
         self.rect = None
+        self.buffer = None
+
+        self.bufferSizeMb = 1000
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -84,6 +89,7 @@ class PlaybackManager():
     def setLoadedFile(self):
         self.frame_index = 0
         self.sonar = FOpenSonarFile(self.path)
+        self.buffer = SonarBuffer(self.sonar.frameCount, int(self.bufferSizeMb / FRAME_SIZE))
         self.main_window.setWindowTitle(self.path)
         self.file_opened(self.sonar)
         self.updateSonar()
@@ -201,6 +207,26 @@ class PlaybackManager():
     def setDistanceCompensation(self, value):
         if self.sonar:
             self.sonar.setDistanceCompensation(value)
+
+class SonarBuffer():
+    def __init__(self, frame_count, max_frames):
+        self.buffer = [None] * frame_count
+        self.buffer_size = 0
+        self.max_size = max_frames
+
+    def addFrame(self, ind, frame):
+        try:
+            if self.buffer[ind] is None:
+                self.buffer_size += 1
+            self.buffer[ind] = frame
+        except IndexError:
+            print("Frame [{}] out of bounds [{}]".format(ind, len(self.buffer)))
+
+    def clearFrame(self, ind):
+        try:
+            self.buffer[ind] = None
+        except IndexError:
+            print("Frame [{}] out of bounds [{}]".format(ind, len(self.buffer)))
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)

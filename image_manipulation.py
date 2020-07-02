@@ -101,6 +101,5 @@ class ImageProcessor:
         self.setAny()
 
     def setGamma(self, value):
-        print(value)
         self.gamma = value
         self.setAny()

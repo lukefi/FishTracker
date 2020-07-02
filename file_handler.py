@@ -69,6 +69,8 @@ class FSONAR_File():
 
     def getFrame(self, FI):
         polar = self.getPolarFrame(FI)
+        if polar is None:
+            return None, None
         if self.distanceCompensation:
             polar = ImageManipulation.distanceCompensation(polar)
         self.FRAMES = self.constructImages(polar)

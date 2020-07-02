@@ -21,10 +21,15 @@ class PlaybackManager():
         self.sonar = None
         self.path = None
 
+        # Event that passes the current frame to all connected functions.
         self.frame_available = Event()
-        self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
+        # Event that passes the current sonar file to all connected functions.
         self.file_opened = Event()
+        # Event that signals that playback has been terminated.
         self.playback_ended = Event()
+
+        self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
+
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
@@ -163,7 +168,6 @@ class PlaybackManager():
         """
 
         ind, frame = tuple
-        print(frame.shape)
         self.frame_index = ind
         if frame is not None:
             self.frame_available(frame)
@@ -191,6 +195,16 @@ class PlaybackManager():
         print("Closing PlaybackManager . . .")
         self.stop()
         time.sleep(1)
+
+    def getRelativeIndex(self):
+        if self.sonar:
+            return float(self.frame_index) / self.sonar.frameCount
+        else:
+            return 0
+
+    def setRelativeIndex(self, value):
+        if self.sonar:
+            self.setFrameInd(int(value * self.sonar.frameCount))
 
     def getFrameNumberText(self):
         if self.sonar:

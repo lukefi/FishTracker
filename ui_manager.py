@@ -17,7 +17,7 @@ class UIManager():
 
         self.playback = playback_manager
         self.fish_manager = fish_manager
-        self.fish_manager.testPopulate(7000)
+        self.fish_manager.testPopulate(frame_count=7000)
         #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()

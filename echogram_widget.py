@@ -31,10 +31,7 @@ class EchoFigure(QtWidgets.QLabel):
         img = self.fitToSize(self.test_img)
         img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
         self.figurePixmap = QtGui.QPixmap.fromImage(img)
-        self.setPixmap(self.figurePixmap) #(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
-
-        if isinstance(self.figurePixmap, QtGui.QPixmap):
-            self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+        self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
 
     def fitToSize(self, image):
         sz = self.size()

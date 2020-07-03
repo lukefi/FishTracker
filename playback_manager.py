@@ -96,8 +96,8 @@ class PlaybackManager():
         self.sonar = FOpenSonarFile(self.path)
         self.buffer = SonarBuffer(self.sonar.frameCount, int(self.bufferSizeMb / FRAME_SIZE))
         self.main_window.setWindowTitle(self.path)
-        self.file_opened(self.sonar)
         self.updateSonar()
+        self.file_opened(self.sonar)
 
     def updateSonar(self):
         self.rect, frame = self.sonar.getFrame(self.frame_index)

@@ -46,6 +46,10 @@ class ZoomableQLabel(QtWidgets.QLabel):
         # Debug window syncronization
         self.mouse_move_event = Event()
 
+    def setImage(self, image):
+        self.displayed_image = image
+        self.applyPixmap()
+
     def resizeEvent(self, event):
         self.applyPixmap()
 
@@ -97,8 +101,15 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.image_width = self.displayed_image.shape[1]
             self.image_height = self.displayed_image.shape[0]
 
+            qformat = QtGui.QImage.Format_Indexed8
+            if len(self.displayed_image.shape)==3:
+                if self.displayed_image.shape[2]==4:
+                    qformat = QtGui.QImage.Format_RGBA8888
+                else:
+                    qformat = QtGui.QImage.Format_RGB888
+
             img = self.fitToSize(self.displayed_image)
-            img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
+            img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
             self.figurePixmap = QtGui.QPixmap.fromImage(img)
             self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
 
@@ -248,7 +259,15 @@ class DebugZQLabel(QtWidgets.QLabel):
     def updatePixmap(self):
         sz = self.size()
         img = cv2.resize(self.z_qlabel.displayed_image, (sz.width(), sz.height()))
-        img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
+
+        qformat = QtGui.QImage.Format_Indexed8
+        if len(img.shape)==3:
+            if img.shape[2]==4:
+                qformat = QtGui.QImage.Format_RGBA8888
+            else:
+                qformat = QtGui.QImage.Format_RGB888
+
+        img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
         self.figurePixmap = QtGui.QPixmap.fromImage(img)
         self.setPixmap(self.figurePixmap.scaled(sz, QtCore.Qt.KeepAspectRatio))
 
@@ -284,7 +303,7 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    z_label = ZoomableQLabel(False, False, True)
+    z_label = ZoomableQLabel(True, True, True)
     z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
     z_label.resetView()
     main_window.setCentralWidget(z_label)

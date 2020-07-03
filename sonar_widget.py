@@ -5,6 +5,7 @@ the detected fishes.
 from PyQt5 import QtCore, QtGui, QtWidgets
 from main import MainWindow
 from image_manipulation import ImageProcessor
+from zoomable_qlabel import ZoomableQLabel
 
 ## DEBUG :{ following block of libraries for debug only
 import os
@@ -51,7 +52,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager = playback_manager
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
-        self.playback_manager.file_opened.append(self.sliderLimitsFromEvent)
+        self.playback_manager.file_opened.append(self.onFileOpen)
         self.image_processor = ImageProcessor()
 
         #self.FParent = parent
@@ -107,7 +108,7 @@ class SonarViewer(QtWidgets.QDialog):
         #self.FFigure = QtWidgets.QLabel("Frame Viewer", self)
         #self.FFigure.setUpdatesEnabled(True)
         
-        self.MyFigureWidget = MyFigure(self)
+        self.MyFigureWidget = SonarFigure(self)
         # self.MyFigureWidget.setUpdatesEnabled(True)
         self.MyFigureWidget.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.MyFigureWidget.setMouseTracking(True)
@@ -187,14 +188,6 @@ class SonarViewer(QtWidgets.QDialog):
             ffigure.clear()
 
             frame = self.image_processor.processImage(frame)
-
-            qformat = QtGui.QImage.Format_Indexed8
-
-            if len(frame.shape)==3:
-                if frame.shape[2]==4:
-                    qformat = QtGui.QImage.Format_RGBA8888
-                else:
-                    qformat = QtGui.QImage.Format_RGB888
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))
@@ -214,11 +207,13 @@ class SonarViewer(QtWidgets.QDialog):
             #    img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat)
             #img = img.rgbSwapped()
 
-            img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
-            figurePixmap = QtGui.QPixmap.fromImage(img)
-            ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
-            ffigure.setAlignment(QtCore.Qt.AlignCenter)
+            #img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
+            #figurePixmap = QtGui.QPixmap.fromImage(img)
+            ffigure.setImage(frame)
+            #ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
+            #ffigure.setAlignment(QtCore.Qt.AlignCenter)
             ffigure.setUpdatesEnabled(True)
+            #ffigure.update()
         else:
             self.MyFigureWidget.clear()
 
@@ -248,9 +243,10 @@ class SonarViewer(QtWidgets.QDialog):
         self.FSlider.setTickInterval(int(0.05 * s_max))
         self.FSlider.blockSignals(False)
 
-    def sliderLimitsFromEvent(self, sonar):
+    def onFileOpen(self, sonar):
         self.updateSliderLimits(0, sonar.frameCount, 1)
-
+        self.MyFigureWidget.resetView()
+        self.MyFigureWidget.applyPixmap()
 
     def FLoadSONARFile(self, filePath):
         self.FFilePath = filePath
@@ -559,26 +555,17 @@ class SonarViewer(QtWidgets.QDialog):
     def setAutomaticContrast(self, value):
         self.automatic_contrast = value
 
-class MyFigure(QtWidgets.QLabel):
+class SonarFigure(ZoomableQLabel):
     __parent = None
 
     def __init__(self, parent):
+        super().__init__(True, True, True)
         self.__parent = parent
-        self.figurePixmap = None
-        QtWidgets.QLabel.__init__(self, parent)
-
-    #def paintEvent(self, paintEvent):
-    #    if isinstance(self.__parent, SonarViewer):
-    #        sonar_viewer = self.__parent
-    #        if sonar_viewer.play:
-    #            sonar_viewer.FShowNextImage()
-            
-    #    QtWidgets.QLabel.paintEvent(self, paintEvent)
-
-    def updateImage(self):
-        pass
+        self.setStyleSheet("background-color: black;")
     
     def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+
         if not isinstance(self.__parent, SonarViewer):
             return
 
@@ -611,9 +598,10 @@ class MyFigure(QtWidgets.QLabel):
                 # self.mousePosDist = output[0]
                 # self.mousePosAng = output[1]
     
-    def resizeEvent(self, event):
-        if isinstance(self.figurePixmap, QtGui.QPixmap):
-            self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+    #def resizeEvent(self, event):
+    #    super().resizeEvent(event)
+    #    if isinstance(self.figurePixmap, QtGui.QPixmap):
+    #        self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
 
 class FFishListItem():
     def __init__(self, cls, inputDict, fishNumber):
@@ -662,8 +650,8 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    playback_manager.openTestFile()
     sonar_viewer = SonarViewer(main_window, playback_manager)
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()
+    playback_manager.openTestFile()
     sys.exit(app.exec_())

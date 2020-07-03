@@ -3,7 +3,14 @@ import cv2
 from playback_manager import Event
 
 class ZoomableQLabel(QtWidgets.QLabel):
-    def __init__(self, horizontal = True, vertical = True):
+    """
+    Base class that enables zooming and panning of the assigned image.
+    Horizontal zoomig, vertical zooming and preserving aspect ratio can be enabled/disabled individually.
+
+    BUG: If aspect ratio preserving is enabled and either of zooming options is disabled,
+         the image is shown only partially when zoomed in.
+    """
+    def __init__(self, maintain_aspect_ratio = False, horizontal = True, vertical = True):
         super().__init__()
         self.setMouseTracking(True)
         self.setAlignment(QtCore.Qt.AlignCenter)
@@ -14,6 +21,9 @@ class ZoomableQLabel(QtWidgets.QLabel):
         self.zoom_01 = 0
         self.zoom_step = 1.0 / 3000
         self.max_zoom = 3
+
+        self.maintain_aspect_ratio = maintain_aspect_ratio
+        self.size_mult = 1
 
         self.displayed_image = None
         self.window_width = 0
@@ -41,6 +51,9 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     def wheelEvent(self, event):
         if self.drag_data is None:
+            self.x_pos = self.view2imageX(event.x())
+            self.y_pos = self.view2imageY(event.y())
+
             self.zoom_01 = max(0, min(self.zoom_01 + event.angleDelta().y() * self.zoom_step, 1))
             self.applyWindowZoom(event.x(), event.y())
             self.applyPixmap()
@@ -95,17 +108,38 @@ class ZoomableQLabel(QtWidgets.QLabel):
             img = img[:, self.x_min_limit:self.x_max_limit]
         if self.vertical_z:
             img = img[self.y_min_limit:self.y_max_limit, :]
-        return cv2.resize(img, (self.window_width, self.window_height))
+        if self.maintain_aspect_ratio:
+            sz = (img.shape[1], img.shape[0])
+            if sz[0] > self.window_width:
+                mult = self.window_width / sz[0]
+                sz = (int(mult * sz[0]), int(mult * sz[1]))
+            if sz[1] > self.window_height:
+                mult = self.window_height / sz[1]
+                sz = (int(mult * sz[0]), int(mult * sz[1]))
+
+            return cv2.resize(img, sz)
+        else:
+            return cv2.resize(img, (self.window_width, self.window_height))
 
     def applyWindowZoom(self, x, y):
-        mouse_x = self.view2imageX(x)
-        mouse_y = self.view2imageY(y)
+        if self.maintain_aspect_ratio:
+            applied_min_zoom = min(self.window_width / self.image_width, self.window_height / self.image_height, 1)
+            applied_zoom = (self.zoom_01 * (self.max_zoom - applied_min_zoom) + applied_min_zoom)
+            total_width = applied_zoom  * self.image_width
+            total_height = applied_zoom * self.image_height
 
-        total_width = self.zoom_01 * (max(self.max_zoom * self.image_width, 2 * self.window_width) - self.window_width) + self.window_width
-        total_height = self.zoom_01 * (max(self.max_zoom * self.image_height, 2 * self.window_height) - self.window_height) + self.window_height
+            #x_min = 0
+            #x_max = int(self.window_width / total_width * self.image_width)
+            #y_min = 0
+            #y_max = int(self.window_height / total_height * self.image_height)
+
+        else:
+            total_width = self.zoom_01 * (max(self.max_zoom * self.image_width, 2 * self.window_width) - self.window_width) + self.window_width
+            total_height = self.zoom_01 * (max(self.max_zoom * self.image_height, 2 * self.window_height) - self.window_height) + self.window_height
 
         new_width = min(int(self.window_width / total_width * self.image_width), self.image_width)
         new_height = min(int(self.window_height / total_height * self.image_height), self.image_height)
+
         half_delta_width = (new_width - (self.x_max_limit - self.x_min_limit)) / 2
         half_delta_height = (new_height - (self.y_max_limit - self.y_min_limit)) / 2
 
@@ -116,8 +150,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
         self.applyLimits(x_min, x_max, y_min, y_max)
 
-        correct_towards_mouse_x = mouse_x - self.view2imageX(x)
-        correct_towards_mouse_y = mouse_y - self.view2imageY(y)
+        correct_towards_mouse_x = self.x_pos - self.view2imageX(x)
+        correct_towards_mouse_y = self.y_pos - self.view2imageY(y)
 
         x_min = self.x_min_limit + correct_towards_mouse_x
         x_max = self.x_max_limit + correct_towards_mouse_x
@@ -250,7 +284,7 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    z_label = ZoomableQLabel(True, False)
+    z_label = ZoomableQLabel(False, False, True)
     z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
     z_label.resetView()
     main_window.setCentralWidget(z_label)

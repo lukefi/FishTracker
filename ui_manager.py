@@ -45,7 +45,7 @@ class UIManager():
         echo = EchogramViewer(self.playback)
         self.ui.splitter_2.replaceWidget(0, echo)
         self.ui.echogram_widget = echo
-        echo.setMaximumHeight(200)
+        echo.setMaximumHeight(400)
 
         sonar = SonarViewer(self.main_window, self.playback)
         self.ui.splitter.replaceWidget(0, sonar)

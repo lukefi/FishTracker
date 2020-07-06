@@ -36,8 +36,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
         self.x_max_limit = 680
         self.y_min_limit = 50
         self.y_max_limit = 150
-
-        # In image coordinates
         self.x_pos = 0
         self.y_pos = 0
 
@@ -87,9 +85,20 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     def resetView(self):
         self.x_min_limit = 0
-        self.x_max_limit = self.image_width = self.displayed_image.shape[1]
         self.y_min_limit = 0
-        self.y_max_limit = self.image_height = self.displayed_image.shape[0]
+        if self.displayed_image is not None:
+            self.x_max_limit = self.image_width = self.displayed_image.shape[1]
+            self.y_max_limit = self.image_height = self.displayed_image.shape[0]
+        else:
+            self.x_max_limit = 1
+            self.y_max_limit = 1
+        self.zoom_01 = 0
+
+    def resetViewToShape(self, shape):
+        self.x_min_limit = 0
+        self.y_min_limit = 0
+        self.x_max_limit = shape[0]
+        self.y_max_limit = shape[1]
         self.zoom_01 = 0
 
     def applyPixmap(self):

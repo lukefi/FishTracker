@@ -21,12 +21,16 @@ class PlaybackManager():
         self.sonar = None
         self.path = None
 
-        # Event that passes the current frame to all connected functions.
+        # Event that passes the current frame (cartesian) to all connected functions.
         self.frame_available = Event()
+        # Event that passes the current frame (polar) to all connected functions.
+        self.polar_available = Event()
         # Event that passes the current sonar file to all connected functions.
         self.file_opened = Event()
         # Event that signals that playback has been terminated.
         self.playback_ended = Event()
+        # Event that signals that reading of polar frames has been terminated.
+        self.polar_ended = Event()
 
         self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
 
@@ -34,26 +38,26 @@ class PlaybackManager():
         self.threadpool = QThreadPool()
         self.main_window = main_window
         self.thread = None
-        self.rect = None
+        self.polar_thread = None
         self.buffer = None
 
         self.bufferSizeMb = 1000
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def open_file(self):
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            self.path = filedialog.askopenfilename()
-            self.sonar = FOpenSonarFile(self.path)
+    #def open_file(self):
+    #    try:
+    #        root = tk.Tk()
+    #        root.withdraw()
+    #        self.path = filedialog.askopenfilename()
+    #        self.sonar = FOpenSonarFile(self.path)
 
-            self.thread = PlaybackThread(self)
-            self.thread.signals.frame_signal.connect(self.displayFrame)
-            self.threadpool.start(self.thread)
+    #        self.thread = PlaybackThread(self)
+    #        self.thread.signals.frame_signal.connect(self.displayFrame)
+    #        self.threadpool.start(self.thread)
 
-        except FileNotFoundError as err:
-            print(err)
+    #    except FileNotFoundError as err:
+    #        print(err)
 
     def openFile(self):
         homeDirectory = str(os.path.expanduser("~"))
@@ -95,13 +99,15 @@ class PlaybackManager():
         self.frame_index = 0
         self.sonar = FOpenSonarFile(self.path)
         self.buffer = SonarBuffer(self.sonar.frameCount, int(self.bufferSizeMb / FRAME_SIZE))
+        self.playPolar()
         self.main_window.setWindowTitle(self.path)
-        self.updateSonar()
         self.file_opened(self.sonar)
+        self.updateSonar()
 
     def updateSonar(self):
-        self.rect, frame = self.sonar.getFrame(self.frame_index)
+        polar, frame = self.sonar.getFrame(self.frame_index)
         self.frame_available(frame)
+        #self.polar_available(self.frame_index, polar)
 
 
     def clearFile(self):
@@ -140,7 +146,7 @@ class PlaybackManager():
         elif self.sonar:
             self.thread = PlaybackThread(self)
             self.thread.signals.frame_signal.connect(self.displayFrame)
-            self.thread.signals.rect_signal.connect(self.getRect)
+            self.thread.signals.rect_signal.connect(self.displayPolar)
             self.thread.signals.eof_signal.connect(self.endOfFile)
             self.thread.signals.playback_ended_signal.connect(self.playBackEnded)
             self.threadpool.start(self.thread)
@@ -151,10 +157,25 @@ class PlaybackManager():
             self.thread.is_playing = False
             self.thread = None
 
+    def playPolar(self):
+        self.stopPolar()
+        self.polar_thread = PolarThread(self)
+        self.polar_thread.signals.rect_signal.connect(self.displayPolar)
+        self.polar_thread.signals.playback_ended_signal.connect(self.polarEnded)
+        self.threadpool.start(self.polar_thread)
+
+    def stopPolar(self):
+        if self.polar_thread is not None:
+            self.polar_thread.is_playing = False
+            self.polar_thread = None
+
     def playBackEnded(self):
         print("Stop")
         self.stop()
         self.playback_ended()
+
+    def polarEnded(self):
+        self.polar_ended()
 
     def endOfFile(self):
         print("EOF")
@@ -172,8 +193,10 @@ class PlaybackManager():
         if frame is not None:
             self.frame_available(frame)
 
-    def getRect(self, rect):
-        self.rect = rect
+    def displayPolar(self, tuple):
+        ind, polar = tuple
+        if polar is not None:
+            self.polar_available(ind, polar)
 
     def setFrameInd(self, ind):
         if self.sonar:
@@ -244,7 +267,7 @@ class SonarBuffer():
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)
-    rect_signal = pyqtSignal(object)
+    rect_signal = pyqtSignal(tuple)
     playback_ended_signal = pyqtSignal()
     eof_signal = pyqtSignal()
 
@@ -273,7 +296,7 @@ class PlaybackThread(QRunnable):
                 return
 
             self.signals.frame_signal.emit((self.ind, frame))
-            self.signals.rect_signal.emit(rect)
+            self.signals.rect_signal.emit((self.ind, rect))
             self.ind += 1   
 
             time_since = time.time() - prev_update
@@ -283,6 +306,33 @@ class PlaybackThread(QRunnable):
                 time.sleep(max(0, target_update - time_since))
 
         self.signals.playback_ended_signal.emit()
+
+
+class PolarThread(QRunnable):
+    def __init__(self, manager):
+        super().__init__()
+        self.manager = manager
+        self.sonar = manager.sonar
+        self.signals = PlaybackSignals()
+        self.ind = 0
+        self.is_playing = True
+        print("Init polar thread")
+
+    def run(self):
+        while self.is_playing:
+            polar = self.sonar.getPolarFrame(self.ind)
+            if polar is None:
+                break
+
+            if self.ind >= self.sonar.frameCount:
+                return
+
+            self.signals.rect_signal.emit((self.ind, polar))
+            self.ind += 1
+
+        self.signals.playback_ended_signal.emit()
+
+
 class Event(list):
     def __call__(self, *args, **kwargs):
         for f in self:

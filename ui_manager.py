@@ -17,7 +17,7 @@ class UIManager():
 
         self.playback = playback_manager
         self.fish_manager = fish_manager
-        self.fish_manager.testPopulate(7000)
+        self.fish_manager.testPopulate(frame_count=7000)
         #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
@@ -79,10 +79,10 @@ class UIManager():
         self.ui.action_close_file.triggered.connect(self.closeFile)
         self.ui.action_close_file.setText(QtCore.QCoreApplication.translate("MainWindow", "&Close file"))
 
-    def showSonarFrame(self, image):
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-        image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
-        self.ui.sonar_frame.setPixmap(QtGui.QPixmap.fromImage(image))
+    #def showSonarFrame(self, image):
+    #    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    #    image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
+    #    self.ui.sonar_frame.setPixmap(QtGui.QPixmap.fromImage(image))
 
         #figurePixmap = QtGui.QPixmap.fromImage(image)
         #self.ui.sonar_frame.setPixmap(figurePixmap.scaled(ffigure.size(), pyqtCore.Qt.KeepAspectRatio))

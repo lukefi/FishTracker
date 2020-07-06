@@ -1,46 +1,79 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from zoomable_qlabel import ZoomableQLabel
 import cv2
 
-class EchoFigure(QtWidgets.QLabel):
-    parent = None
+class EchoFigure(ZoomableQLabel):
 
     def __init__(self, parent):
+        super().__init__(False, True, False)
         self.parent = parent
-        self.figurePixmap = None
-        self.test_img = cv2.imread('echo_placeholder.png', 0)
-        QtWidgets.QLabel.__init__(self, parent)
+        self.displayed_image = cv2.imread('echo_placeholder.png', 0)
+        self.resetView()
+        self.progress = 0
 
-    def showTestImage(self):
-        self.setAlignment(QtCore.Qt.AlignCenter)
-        # self.setScaledContents(True)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
 
-    def resizeEvent(self, event):
-        img = cv2.resize(self.test_img, self.getScale())
-        img = QtGui.QImage(img, img.shape[1], img.shape[0], img.strides[0], QtGui.QImage.Format_Indexed8).rgbSwapped()
-        self.figurePixmap = QtGui.QPixmap.fromImage(img)
-        self.setPixmap(self.figurePixmap) #(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+    def frame2xPos(self, value):
+        # return value * width * self.applied_zoom
+        return (value * self.image_width - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * self.window_width
 
-        if isinstance(self.figurePixmap, QtGui.QPixmap):
-            self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
+    def xPos2Frame(self, value):
+        #return value / width / self.applied_zoom
+        return (value*(self.x_max_limit - self.x_min_limit)/self.window_width + self.x_min_limit) / self.image_width
 
-    def getScale(self):
-        sz = self.size()
-        return (max(1, sz.width()), max(1, sz.height()))
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        size = self.size()
+        width = size.width()
+        height = size.height()
 
-class EchogramViewer(QtWidgets.QDialog):
+        h_pos = self.frame2xPos(self.progress) #self.applied_zoom * self.progress * width
+
+        painter = QtGui.QPainter(self)
+        #painter.drawPixmap(self.rect(), self.figurePixmap)
+
+        if h_pos < width:
+            painter.setPen(QtCore.Qt.red)
+            painter.drawLine(h_pos, 0, h_pos, height)
+
+    #def mouseMoveEvent(self, event):
+    #    #if event.buttons() == QtCore.Qt.NoButton:
+    #    #    print("Simple mouse motion")
+    #    if event.buttons() == QtCore.Qt.LeftButton:
+    #        pass
+    #    elif event.buttons() == QtCore.Qt.RightButton:
+    #        pass
+    #    super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.parent.setFrame(self.xPos2Frame(event.x())) #float(event.x()) / self.size().width())
+        super().mousePressEvent(event)
+
+    #def wheelEvent(self, event):
+    #    self.zoom_01 = max(0, min(self.zoom_01 + event.angleDelta().y() / 2000, 1))
+    #    self.applyPixmap()
+
+class EchogramViewer(QtWidgets.QWidget):
     def __init__(self, playback_manager):
-        self.playback_manager = playback_manager
-        QtWidgets.QDialog.__init__(self)
+        super().__init__()
 
+        self.playback_manager = playback_manager
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
 
         self.figure = EchoFigure(self)
         self.horizontalLayout.addWidget(self.figure)
-        self.figure.showTestImage()
+        self.playback_manager.frame_available.append(self.updateLocation)
 
         self.setLayout(self.horizontalLayout)
+
+    def updateLocation(self, frame):
+        self.figure.progress = self.playback_manager.getRelativeIndex()
+        self.figure.update()
+
+    def setFrame(self, percentage):
+        self.playback_manager.setRelativeIndex(percentage)
+
 
 
 if __name__ == "__main__":
@@ -51,6 +84,7 @@ if __name__ == "__main__":
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
+    playback_manager.play()
     echogram = EchogramViewer(playback_manager)
     main_window.setCentralWidget(echogram)
     main_window.show()

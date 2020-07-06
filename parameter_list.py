@@ -77,7 +77,7 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     #playback_manager.openTestFile()
     fish_manager = FishManager()
-    fish_manager.testPopulate()
+    fish_manager.testPopulate(100)
     #info_w = InfoWidget(playback_manager, fish_manager)
     sonar_processor = ImageProcessor()
     parameter_list = ParameterList(playback_manager, sonar_processor, fish_manager)

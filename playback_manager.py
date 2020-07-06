@@ -14,20 +14,30 @@ When a file is opened a new playback thread should be created (currently created
 This enables smoother interaction with the playback controls even when the file is not being played.
 """
 
+FRAME_SIZE = 1.5
+
 class PlaybackManager():
     def __init__(self, app, main_window):
         self.sonar = None
         self.path = None
 
+        # Event that passes the current frame to all connected functions.
         self.frame_available = Event()
-        self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
+        # Event that passes the current sonar file to all connected functions.
         self.file_opened = Event()
+        # Event that signals that playback has been terminated.
         self.playback_ended = Event()
+
+        self.frame_available.append(lambda _: print("Frame: " + str(self.frame_index)))
+
         self.frame_index = 0
         self.threadpool = QThreadPool()
         self.main_window = main_window
         self.thread = None
         self.rect = None
+        self.buffer = None
+
+        self.bufferSizeMb = 1000
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -84,9 +94,10 @@ class PlaybackManager():
     def setLoadedFile(self):
         self.frame_index = 0
         self.sonar = FOpenSonarFile(self.path)
+        self.buffer = SonarBuffer(self.sonar.frameCount, int(self.bufferSizeMb / FRAME_SIZE))
         self.main_window.setWindowTitle(self.path)
-        self.file_opened(self.sonar)
         self.updateSonar()
+        self.file_opened(self.sonar)
 
     def updateSonar(self):
         self.rect, frame = self.sonar.getFrame(self.frame_index)
@@ -157,7 +168,6 @@ class PlaybackManager():
         """
 
         ind, frame = tuple
-        print(frame.shape)
         self.frame_index = ind
         if frame is not None:
             self.frame_available(frame)
@@ -186,6 +196,16 @@ class PlaybackManager():
         self.stop()
         time.sleep(1)
 
+    def getRelativeIndex(self):
+        if self.sonar:
+            return float(self.frame_index) / self.sonar.frameCount
+        else:
+            return 0
+
+    def setRelativeIndex(self, value):
+        if self.sonar:
+            self.setFrameInd(int(value * self.sonar.frameCount))
+
     def getFrameNumberText(self):
         if self.sonar:
             return "Frame: {}/{}".format(self.frame_index+1, self.sonar.frameCount)
@@ -201,6 +221,26 @@ class PlaybackManager():
     def setDistanceCompensation(self, value):
         if self.sonar:
             self.sonar.setDistanceCompensation(value)
+
+class SonarBuffer():
+    def __init__(self, frame_count, max_frames):
+        self.buffer = [None] * frame_count
+        self.buffer_size = 0
+        self.max_size = max_frames
+
+    def addFrame(self, ind, frame):
+        try:
+            if self.buffer[ind] is None:
+                self.buffer_size += 1
+            self.buffer[ind] = frame
+        except IndexError:
+            print("Frame [{}] out of bounds [{}]".format(ind, len(self.buffer)))
+
+    def clearFrame(self, ind):
+        try:
+            self.buffer[ind] = None
+        except IndexError:
+            print("Frame [{}] out of bounds [{}]".format(ind, len(self.buffer)))
 
 class PlaybackSignals(QObject):
     frame_signal = pyqtSignal(tuple)

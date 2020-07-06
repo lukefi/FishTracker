@@ -371,7 +371,9 @@ def v5_getAllFramesData(fhand, version, cls):
     cls.windowStart = cls.sampleStartDelay * 0.000001 * cls.soundSpeed/2
     cls.windowLength = cls.samplePeriod * cls.samplesPerBeam * 0.000001 * cls.soundSpeed/2
     cls.firstBeamAngle = beamLookUp.BeamLookUp(cls.BEAM_COUNT, cls.largeLens)[-1]
-    cls.FRAMES = cls.constructImages()
+    #cls.FRAMES = cls.constructImages()
+    cls.FRAMES = cls.constructImages(cls.FRAMES)
+
     
     return
 

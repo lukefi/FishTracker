@@ -45,23 +45,10 @@ class EchoFigure(ZoomableQLabel):
             painter.setPen(QtCore.Qt.red)
             painter.drawLine(h_pos, 0, h_pos, height)
 
-    #def mouseMoveEvent(self, event):
-    #    #if event.buttons() == QtCore.Qt.NoButton:
-    #    #    print("Simple mouse motion")
-    #    if event.buttons() == QtCore.Qt.LeftButton:
-    #        pass
-    #    elif event.buttons() == QtCore.Qt.RightButton:
-    #        pass
-    #    super().mouseMoveEvent(event)
-
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self.parent.setFrame(self.xPos2Frame(event.x())) #float(event.x()) / self.size().width())
         super().mousePressEvent(event)
-
-    #def wheelEvent(self, event):
-    #    self.zoom_01 = max(0, min(self.zoom_01 + event.angleDelta().y() / 2000, 1))
-    #    self.applyPixmap()
 
 class EchogramViewer(QtWidgets.QWidget):
     def __init__(self, playback_manager):
@@ -95,10 +82,8 @@ class EchogramViewer(QtWidgets.QWidget):
         self.echogram = Echogram(sonar.frameCount)
 
     def imageReady(self):
-        #self.figure.setImage(self.echogram.image)
-        self.figure.resetViewToShape(self.echogram.image.shape)
         self.figure.setImage(self.echogram.image)
-        self.figure.update()
+        self.figure.resetView()
 
 class Echogram():
     def __init__(self, length):
@@ -139,4 +124,5 @@ if __name__ == "__main__":
     playback_manager.openTestFile()
     main_window.setCentralWidget(echogram)
     main_window.show()
+    main_window.resize(900,300)
     sys.exit(app.exec_())

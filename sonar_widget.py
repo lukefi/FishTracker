@@ -54,6 +54,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.onFileOpen)
         self.image_processor = ImageProcessor()
+        self.show_first_frame = False
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -217,6 +218,12 @@ class SonarViewer(QtWidgets.QDialog):
         else:
             self.MyFigureWidget.clear()
 
+        if self.show_first_frame:
+            print("First frame shown")
+            self.MyFigureWidget.resetView()
+            self.MyFigureWidget.applyPixmap()
+            self.show_first_frame = False
+
         if isinstance(self.main_window, MainWindow):
             self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
         self.updateSliderValue(self.playback_manager.frame_index)
@@ -245,8 +252,7 @@ class SonarViewer(QtWidgets.QDialog):
 
     def onFileOpen(self, sonar):
         self.updateSliderLimits(0, sonar.frameCount, 1)
-        self.MyFigureWidget.resetView()
-        self.MyFigureWidget.applyPixmap()
+        self.show_first_frame = True
 
     def FLoadSONARFile(self, filePath):
         self.FFilePath = filePath

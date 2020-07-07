@@ -296,7 +296,7 @@ class PlaybackThread(QRunnable):
                 return
 
             self.signals.frame_signal.emit((self.ind, frame))
-            self.signals.rect_signal.emit((self.ind, rect))
+            #self.signals.rect_signal.emit((self.ind, rect))
             self.ind += 1   
 
             time_since = time.time() - prev_update

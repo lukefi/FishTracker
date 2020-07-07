@@ -82,32 +82,41 @@ class EchogramViewer(QtWidgets.QWidget):
         self.echogram = Echogram(sonar.frameCount)
 
     def imageReady(self):
-        self.figure.setImage(self.echogram.image)
+        self.figure.setImage(self.echogram.getDisplayedImage())
         self.figure.resetView()
 
 class Echogram():
+    """
+    Contains raw echogram data which can be edited on the go if needed.
+    The final image can be acquired through getDisplayedImage function.
+    """
     def __init__(self, length):
-        self.image = None
+        self.data = None
         self.length = length
 
     def insert(self, frame, ind):
-        if self.image is None:
-            self.image = np.zeros((frame.shape[0], self.length), np.uint8)
+        if self.data is None:
+            self.data = np.zeros((frame.shape[0], self.length), np.uint8)
 
         col_im = np.max(np.asarray(frame), axis=1)
         try:
-            self.image[:, ind] = col_im
+            self.data[:, ind] = col_im
         except IndexError as e:
             print(e)
 
         if(ind % 100 == 0):
-            print(ind)
+            print("EchoFrame:", ind)
         #    img = cv2.resize(self.echogram, (1000, 200))
         #    cv2.imshow("echogram", img)
 
     def clear(self):
-        if self.image is not None:
-            self.image = np.zeros(self.image.shape, np.uint8)
+        if self.data is not None:
+            self.data = np.zeros(self.data.shape, np.uint8)
+
+    def getDisplayedImage(self):
+        min_v = np.min(self.data)
+        max_v = np.max(self.data)
+        return (255 / (max_v - min_v) * (self.data - min_v)).astype(np.uint8)
 
 
 

@@ -3,15 +3,17 @@ from file_handler import FOpenSonarFile
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-import time
+import cv2, time
 from queue import Queue
 
 from debug import Debug
 
 FRAME_SIZE = 1.5
 
-class PlaybackManager():
+class PlaybackManager(QObject):
     def __init__(self, app, main_window, figure):
+        super().__init__()
+
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(16)
         self.playback_thread = None
@@ -20,6 +22,7 @@ class PlaybackManager():
         self.sonar = None
         app.aboutToQuit.connect(self.applicationClosing)
         self.figure = figure
+        self.frame_timer = None
 
     def openFile(self):
         homeDirectory = str(os.path.expanduser("~"))
@@ -52,11 +55,21 @@ class PlaybackManager():
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool, self.figure)
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
         self.thread_pool.start(self.playback_thread)
+        self.start()
 
     def startThread(self, tuple):
         thread, receiver = tuple
         thread.signals.frame_signal.connect(receiver)
         self.thread_pool.start(thread)
+
+    def start(self):
+        self.frame_timer = QTimer(self)
+        self.frame_timer.timeout.connect(self.playback_thread.displayFrame)
+        self.frame_timer.start(1000.0/10) #FPS: 10
+
+    def stop(self):
+        if self.frame_timer is not None:
+            self.frame_timer.stop()
 
     def stopAll(self):
         pass
@@ -137,32 +150,52 @@ class PlaybackThread(QRunnable):
 
         self.display_ind = 0
         self.next_to_process_ind = 0
+        #self.frame_time = 1.0 / 8.0 # FPS: 8
+
+        #self.show_next_frame = 0
+        self.prev_shown = 0
 
         self.figure = figure
 
     def run(self):
         self.signals.init_signal.emit()
+        #self.show_next_frame = time.time()
+        self.prev_shown = time.time()
+
         while self.alive:
             #print("Update")
             self.createProcesses()
             self.buffer.insertNewFrames()
-            self.displayFrame()
+            #self.displayFrame()
             self.buffer.removeExcessFrames()
 
     def createProcesses(self):
         while not self.frame_readers.empty():
-            if self.buffer[self.next_to_process_ind] is None:
-                frame_reader = self.frame_readers.get()
-                thread = frame_reader.getThread(self.next_to_process_ind)
-                self.signals.start_thread_signal.emit((thread, self.frameReady))
+            try:
+                if self.buffer[self.next_to_process_ind] is None:
+                    frame_reader = self.frame_readers.get()
+                    thread = frame_reader.getThread(self.next_to_process_ind)
+                    self.signals.start_thread_signal.emit((thread, self.frameReady))
 
-            self.next_to_process_ind += 1
+                self.next_to_process_ind += 1
+            except IndexError as e:
+                print(e)
 
     def displayFrame(self):
-        frame = self.buffer[self.display_ind]
-        if frame is not None:
-            self.displayImage(frame)
-            self.display_ind += 1
+        try:
+            frame = self.buffer[self.display_ind]
+            if frame is not None:
+                self.figure.frame_ind = self.display_ind
+                t = time.time()
+                self.figure.delta_time = t - self.prev_shown
+                self.displayImage(frame)
+                self.display_ind += 1
+
+                #self.show_next_frame = max(t, self.show_next_frame + self.frame_time)
+                self.prev_shown = t
+
+        except IndexError as e:
+            print(e, "Ind:", self.display_ind, "Len:", len(self.buffer.buffer))
 
 
     def initFrameReaders(self):
@@ -186,7 +219,8 @@ class PlaybackThread(QRunnable):
             else:
                 qformat = QImage.Format_RGB888
 
-        img = QImage(image, image.shape[1], image.shape[0], image.strides[0], qformat).rgbSwapped()
+        img = cv2.resize(image, (self.figure.size().width(), self.figure.size().height()))
+        img = QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
         figurePixmap = QPixmap.fromImage(img)
         self.figure.setPixmap(figurePixmap.scaled(self.figure.size(), Qt.KeepAspectRatio))
         self.figure.setAlignment(Qt.AlignCenter)
@@ -217,14 +251,30 @@ class ProcessFrameThread(QRunnable):
         self.signals.frame_signal.emit((self.frame_reader, frame))
 
 class TestFigure(QLabel):
+    def __init__(self):
+        super().__init__()
+        self.figurePixmap = None
+        self.frame_ind = 0
+        self.delta_time = 1
+        self.fps = 1
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
-	def __init__(self):
-		super().__init__()
-		self.figurePixmap = None
+    def resizeEvent(self, event):
+        if isinstance(self.figurePixmap, QPixmap):
+            self.setPixmap(self.figurePixmap.scaled(self.size(), Qt.KeepAspectRatio))
 
-	def resizeEvent(self, event):
-		if isinstance(self.figurePixmap, QPixmap):
-			self.setPixmap(self.figurePixmap.scaled(self.size(), Qt.KeepAspectRatio))
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setPen(Qt.red)
+        point = QPoint(10,20)
+        painter.drawText(point, str(self.frame_ind))
+
+        if self.delta_time != 0:
+            self.fps = 0.3 * (1.0 / self.delta_time) + 0.7 * self.fps
+        point = QPoint(10,50)
+        painter.drawText(point, str(self.fps))
+
 
 
 

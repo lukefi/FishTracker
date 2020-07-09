@@ -89,9 +89,12 @@ class PlaybackManager(QObject):
         time.sleep(1)
 
 class FrameBuffer():
+    """
+    Stores all the frames for faster access.
+    In first iteration the frames are stored as they are read (polar coordinates).
+    Later they are converted to cartesian coordinates, which is a process that consumes time the most.
+    """
     def __init__(self, size, max_size):
-        #self.new_polars = []
-        #self.new_frames = []
         self.buffer = [None] * size
         self.infos = [None] * size
         self.max_size = max_size
@@ -108,26 +111,8 @@ class FrameBuffer():
 
     def frameReady(self, ind, frame):
         print("Ready:", ind)
-        #self.new_frames.append((ind, frame))
         self.buffer[ind] = frame
         self.infos[ind].processed = True
-
-    #def insertNewFrames(self):
-    #    while len(self.new_polars) > 0:
-    #        ind, frame = self.new_frames.pop(0)
-    #        try:
-    #            self.buffer[ind].frame = frame
-    #            self.frame_count += 1
-    #        except IndexError as e:
-    #            print(e)
-
-    #    while len(self.new_frames) > 0:
-    #        ind, frame = self.new_frames.pop(0)
-    #        try:
-    #            self.buffer[ind].frame = frame
-    #            self.frame_count += 1
-    #        except IndexError as e:
-    #            print(e)
 
     def isFrameReady(self, ind):
         return self.infos[ind].processed
@@ -146,6 +131,11 @@ class FrameBuffer():
         return self.buffer[key]
 
 class FrameInfo:
+    """
+    Stores information about whether the frame is already converted to cartesian coordinates or not
+    and the order of the conversion. The order might change depending on which frames are played first,
+    and it is used when removing frames if the maximum frame capacity is exceeded.
+    """
     def __init__(self, ind):
         self.ind = ind
         self.next = 0
@@ -158,10 +148,20 @@ class FrameInfo:
             return "Empty"
 
 class PlaybackSignals(QObject):
+    """
+    PyQt signals used by PlaybackThread
+    """
     start_thread_signal = pyqtSignal(tuple)
     first_frame_signal = pyqtSignal()
 
 class PlaybackThread(QRunnable):
+    """
+    A QRunnable class, that is created when a new .aris-file is loaded.
+    It keeps track of the currently displayed frame and makes sure that new frames
+    are processed before / when they are needed.
+
+    Pausing does not stop this thread, since it is necessary for smoother interaction with UI.
+    """
     def __init__(self, path, sonar, thread_pool, figure):
         super().__init__()
         self.alive = True
@@ -170,10 +170,6 @@ class PlaybackThread(QRunnable):
         self.sonar = sonar
         self.buffer = FrameBuffer(sonar.frameCount, 1000)
         self.signals = PlaybackSignals()
-
-        self.frame_readers = None
-        self.frame_reader_count = 0
-        self.initFrameReaders()
 
         self.display_ind = 0
         self.next_to_process_ind = 0
@@ -184,29 +180,20 @@ class PlaybackThread(QRunnable):
 
         self.figure = figure
 
-    def initFrameReaders(self):
-        self.frame_readers = Queue()
-        for i in range(self.thread_pool.maxThreadCount() - 1):
-            frame_reader = FrameReader(self.path)
-            self.frame_readers.put(frame_reader)
-
     def run(self):
         self.processPolarFrames()
 
         self.prev_shown = time.time()
 
         while self.alive:
-            #print("Update")
-            self.createProcesses()
-            # self.buffer.insertNewFrames()
+            self.manageFrameProcesses()
             # self.buffer.removeExcessFrames()
 
     def processPolarFrames(self):
         limits = np.linspace(0, self.sonar.frameCount, self.thread_pool.maxThreadCount()).astype(np.int32)
         self.polars_to_process = len(limits) - 1
         for i in range(self.polars_to_process):
-            frame_reader = self.frame_readers.get()
-            thread = frame_reader.getPolarThread(limits[i], limits[i+1] - limits[i])
+            thread = ProcessPolarThread(self.path, limits[i], limits[i+1] - limits[i])
             self.signals.start_thread_signal.emit((thread, self.polarReady, thread.signals.frame_array_signal))
 
         while self.polars_to_process > 0:
@@ -216,15 +203,11 @@ class PlaybackThread(QRunnable):
         self.signals.first_frame_signal.emit()
 
 
-    def createProcesses(self):
-        #while not self.frame_readers.empty():
+    def manageFrameProcesses(self):
         while self.processing_thread_count < 2 * self.thread_pool.maxThreadCount():
             try:
-                #if self.buffer[self.next_to_process_ind] is None:
                 if not self.buffer.infos[self.next_to_process_ind].processed:
-                    # frame_reader = self.frame_readers.get()
-                    # thread = frame_reader.getThread(self.next_to_process_ind)
-                    thread = ProcessFrameThread2(self.buffer, self.sonar, self.next_to_process_ind)
+                    thread = ProcessFrameThread(self.buffer, self.sonar, self.next_to_process_ind)
                     self.signals.start_thread_signal.emit((thread, self.frameReady, thread.signals.frame_signal))
                     self.processing_thread_count += 1
 
@@ -233,21 +216,11 @@ class PlaybackThread(QRunnable):
                 print(e)
 
     def polarReady(self, tuple):
-        frame_reader, array = tuple
-        self.buffer.polarReady(frame_reader.ind, frame_reader.ind + frame_reader.count, array)
-        self.frame_readers.put(frame_reader)
+        self.buffer.polarReady(*tuple)
         self.polars_to_process -= 1
 
     def frameReady(self, tuple):
         self.processing_thread_count -= 1
-        ind, frame = tuple
-        self.buffer.frameReady(ind, frame)
-
-        #frame_reader, frame = tuple
-        #self.buffer.frameReady(frame_reader.ind, frame)
-        #self.frame_readers.put(frame_reader)
-
-    def frameReady2(self, tuple):
         ind, frame = tuple
         self.buffer.frameReady(ind, frame)
 
@@ -261,8 +234,6 @@ class PlaybackThread(QRunnable):
             self.figure.frame_ind = self.display_ind
             self.displayImage(frame)
             self.display_ind += 1
-
-            #self.show_next_frame = max(t, self.show_next_frame + self.frame_time)
             self.prev_shown = t
 
         except IndexError as e:
@@ -286,34 +257,22 @@ class PlaybackThread(QRunnable):
         self.figure.setUpdatesEnabled(True)
 
 class ProcessSignals(QObject):
+    """
+    PyQt signals used by processing threads.
+    """
     frame_signal = pyqtSignal(tuple)
     frame_array_signal = pyqtSignal(tuple)
 
-class FrameReader():
-    def __init__(self, path):
-        self.sonar = FOpenSonarFile(path)
-        self.ind = 0
-        self.count = 0
-
-    def getPolarThread(self, ind, count):
-        self.ind = ind
-        self.count = count
-        thread = ProcessPolarThread(self, ind, count)
-        return thread
-
-    def getThread(self, ind):
-        self.ind = ind
-        self.count = 1
-        thread = ProcessFrameThread(self, ind)
-        return thread
-
 class ProcessPolarThread(QRunnable):
-    def __init__(self, frame_reader, ind, count):
+    """
+    A QRunnable class that reads a range of frames in polar coordinates.
+    """
+    def __init__(self, path, ind, count):
         super().__init__()
         self.signals = ProcessSignals()
         self.ind = ind
         self.count = count
-        self.frame_reader = frame_reader
+        self.sonar = FOpenSonarFile(path)
 
     def run(self):
         print("Start: [{}-{}]".format(self.ind, self.ind + self.count))
@@ -322,11 +281,14 @@ class ProcessPolarThread(QRunnable):
             frame_ind = self.ind + i
             if frame_ind % 100 == 0:
                 print(frame_ind)
-            array[i] = self.frame_reader.sonar.getPolarFrame(frame_ind)
+            array[i] = self.sonar.getPolarFrame(frame_ind)
 
-        self.signals.frame_array_signal.emit((self.frame_reader, array))
+        self.signals.frame_array_signal.emit((self.ind, self.ind + self.count, array))
 
-class ProcessFrameThread2(QRunnable):
+class ProcessFrameThread(QRunnable):
+    """
+    A QRunnable class that converts a single frame from polar to cartesian coordinates.
+    """
     def __init__(self, buffer, sonar, ind):
         super().__init__()
         self.signals = ProcessSignals()
@@ -337,18 +299,6 @@ class ProcessFrameThread2(QRunnable):
     def run(self):
         frame = self.sonar.constructImages(self.buffer[self.ind])
         self.signals.frame_signal.emit((self.ind, frame))
-
-class ProcessFrameThread(QRunnable):
-    def __init__(self, frame_reader, ind):
-        super().__init__()
-        self.signals = ProcessSignals()
-        self.ind = ind
-        self.frame_reader = frame_reader
-
-    def run(self):
-        _, frame = self.frame_reader.sonar.getFrame(self.ind)
-
-        self.signals.frame_signal.emit((self.frame_reader, frame))
 
 class TestFigure(QLabel):
     def __init__(self):

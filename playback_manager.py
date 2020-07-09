@@ -12,18 +12,26 @@ from debug import Debug
 FRAME_SIZE = 1.5
 
 class PlaybackManager(QObject):
-    def __init__(self, app, main_window, figure):
+    def __init__(self, app, main_window):
         super().__init__()
 
+        # Event that passes the current frame (cartesian) to all connected functions.
+        self.frame_available = Event()
+        # Event that passes the current sonar file to all connected functions.
+        self.file_opened = Event()
+        # Event that signals that playback has been terminated.
+        self.playback_ended = Event()
+
+        self.main_window = main_window
         self.thread_pool = QThreadPool()
-        self.thread_pool.setMaxThreadCount(8)
+        self.thread_pool.setMaxThreadCount(16)
         self.playback_thread = None
 
         self.path = ""
         self.sonar = None
 
-        self.figure = figure
-        self.frame_timer = None
+        self.frame_timer = QTimer(self)
+        self.fps = 10
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -55,11 +63,12 @@ class PlaybackManager(QObject):
 
     def setLoadedFile(self):
         self.sonar = FOpenSonarFile(self.path)
-        self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool, self.figure)
+        self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
         self.playback_thread.signals.first_frame_signal.connect(self.start)
+        self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
         self.thread_pool.start(self.playback_thread)
-        # self.start()
+        self.file_opened(self.sonar)
 
     def startThread(self, tuple):
         thread, receiver, signal = tuple
@@ -72,13 +81,12 @@ class PlaybackManager(QObject):
 
     def start(self):
         print("Start")
-        self.frame_timer = QTimer(self)
         self.frame_timer.timeout.connect(self.playback_thread.displayFrame)
-        self.frame_timer.start(1000.0/10) #FPS: 10
+        self.frame_timer.start(1000.0 / self.fps)
 
     def stop(self):
-        if self.frame_timer is not None:
-            self.frame_timer.stop()
+        self.frame_timer.stop()
+        self.playback_ended()
 
     def stopAll(self):
         pass
@@ -151,8 +159,14 @@ class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread
     """
+    # Used to pass processes to a ThreadPool outside.
     start_thread_signal = pyqtSignal(tuple)
+
+    # Signals that playback can be started.
     first_frame_signal = pyqtSignal()
+
+    # Used to pass the current frame.
+    frame_available_signal = pyqtSignal(tuple)
 
 class PlaybackThread(QRunnable):
     """
@@ -162,29 +176,23 @@ class PlaybackThread(QRunnable):
 
     Pausing does not stop this thread, since it is necessary for smoother interaction with UI.
     """
-    def __init__(self, path, sonar, thread_pool, figure):
+    def __init__(self, path, sonar, thread_pool):
         super().__init__()
+        self.signals = PlaybackSignals()
         self.alive = True
         self.path = path
         self.thread_pool = thread_pool
         self.sonar = sonar
         self.buffer = FrameBuffer(sonar.frameCount, 1000)
-        self.signals = PlaybackSignals()
 
         self.display_ind = 0
         self.next_to_process_ind = 0
-        self.prev_shown = 0
         self.polars_to_process = 0
 
         self.processing_thread_count = 0
 
-        self.figure = figure
-
     def run(self):
         self.processPolarFrames()
-
-        self.prev_shown = time.time()
-
         while self.alive:
             self.manageFrameProcesses()
             # self.buffer.removeExcessFrames()
@@ -229,32 +237,11 @@ class PlaybackThread(QRunnable):
             if not self.buffer.isFrameReady(self.display_ind):
                 return
             frame = self.buffer[self.display_ind]
-            t = time.time()
-            self.figure.delta_time = t - self.prev_shown
-            self.figure.frame_ind = self.display_ind
-            self.displayImage(frame)
+            self.signals.frame_available_signal.emit((self.display_ind, frame))
             self.display_ind += 1
-            self.prev_shown = t
 
         except IndexError as e:
             print(e, "Ind:", self.display_ind, "Len:", len(self.buffer.buffer))
-
-    def displayImage(self, image):        
-        self.figure.setUpdatesEnabled(False)
-        self.figure.clear()
-        qformat = QImage.Format_Indexed8
-        if len(image.shape)==3:
-            if image.shape[2]==4:
-                qformat = QImage.Format_RGBA8888
-            else:
-                qformat = QImage.Format_RGB888
-
-        img = cv2.resize(image, (self.figure.size().width(), self.figure.size().height()))
-        img = QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
-        figurePixmap = QPixmap.fromImage(img)
-        self.figure.setPixmap(figurePixmap.scaled(self.figure.size(), Qt.KeepAspectRatio))
-        self.figure.setAlignment(Qt.AlignCenter)
-        self.figure.setUpdatesEnabled(True)
 
 class ProcessSignals(QObject):
     """
@@ -308,6 +295,30 @@ class TestFigure(QLabel):
         self.delta_time = 1
         self.fps = 1
         self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.prev_shown = 0
+
+    def displayImage(self, tuple):
+        self.frame_ind, image = tuple
+
+        t = time.time()
+        self.delta_time = t - self.prev_shown
+        self.prev_shown = t
+
+        self.setUpdatesEnabled(False)
+        self.clear()
+        qformat = QImage.Format_Indexed8
+        if len(image.shape)==3:
+            if image.shape[2]==4:
+                qformat = QImage.Format_RGBA8888
+            else:
+                qformat = QImage.Format_RGB888
+
+        img = cv2.resize(image, (self.size().width(), self.size().height()))
+        img = QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
+        figurePixmap = QPixmap.fromImage(img)
+        self.setPixmap(figurePixmap.scaled(self.size(), Qt.KeepAspectRatio))
+        self.setAlignment(Qt.AlignCenter)
+        self.setUpdatesEnabled(True)
 
     def resizeEvent(self, event):
         if isinstance(self.figurePixmap, QPixmap):
@@ -342,8 +353,9 @@ if __name__ == "__main__":
     figure = TestFigure()
     main_window.setCentralWidget(figure)
 
-    playback_manager = PlaybackManager(app, main_window, figure)
+    playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
+    playback_manager.frame_available.append(figure.displayImage)
     #playback_manager.play()
     main_window.show()
     sys.exit(app.exec_())

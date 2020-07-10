@@ -65,7 +65,7 @@ class PlaybackManager(QObject):
         self.sonar = FOpenSonarFile(self.path)
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
-        self.playback_thread.signals.first_frame_signal.connect(self.start)
+        self.playback_thread.signals.first_frame_signal.connect(self.play)
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
@@ -79,17 +79,63 @@ class PlaybackManager(QObject):
     def testSignal(self, param):
         print("TestSignal")
 
-    def start(self):
-        print("Start")
-        self.frame_timer.timeout.connect(self.playback_thread.displayFrame)
-        self.frame_timer.start(1000.0 / self.fps)
+    def play(self):
+        if self.playback_thread:
+            print("Start")
+            self.playback_thread.is_playing = True
+            self.frame_timer.timeout.connect(self.playback_thread.displayFrame)
+            self.frame_timer.start(1000.0 / self.fps)
+
+    def togglePlay(self):
+        if self.playback_thread:
+            if self.playback_thread.is_playing:
+                self.stop()
+            else:
+                self.play()
+
+    def showNextImage(self):
+        if self.playback_thread:
+            ind = self.playback_thread.display_ind + 1
+            if ind >= self.sonar.frameCount:
+                ind = 0
+            self.setFrameInd(ind)
+
+    def showPreviousImage(self):
+        if self.playback_thread:
+            ind = self.playback_thread.display_ind - 1
+            if ind < 0:
+                ind = self.sonar.frameCount - 1
+            self.setFrameInd(ind)
+
+    def getFrameInd(self):
+        if self.playback_thread:
+            return self.playback_thread.display_ind
+        else:
+            return 0
+
+    def setFrameInd(self, ind):
+        if self.playback_thread:
+            frame_ind = max(0, min(ind, self.sonar.frameCount - 1))
+            self.playback_thread.display_ind = frame_ind
+            self.playback_thread.next_to_process_ind = frame_ind
 
     def stop(self):
+        if self.playback_thread:
+            self.playback_thread.is_playing = False
         self.frame_timer.stop()
         self.playback_ended()
 
     def stopAll(self):
         pass
+
+    def getFrameNumberText(self):
+        if self.playback_thread:
+            return "Frame: {}/{}".format(self.frame_index+1, self.sonar.frameCount)
+        else:
+            return "No File Loaded"
+
+    def isPlaying(self):
+        return self.playback_thread is not None and self.playback_thread.is_playing
 
     def applicationClosing(self):
         print("Closing PlaybackManager . . .")
@@ -180,11 +226,13 @@ class PlaybackThread(QRunnable):
         super().__init__()
         self.signals = PlaybackSignals()
         self.alive = True
+        self.is_playing = False
         self.path = path
         self.thread_pool = thread_pool
         self.sonar = sonar
         self.buffer = FrameBuffer(sonar.frameCount, 1000)
 
+        self.last_displayed_ind = 0
         self.display_ind = 0
         self.next_to_process_ind = 0
         self.polars_to_process = 0
@@ -196,6 +244,10 @@ class PlaybackThread(QRunnable):
         while self.alive:
             self.manageFrameProcesses()
             # self.buffer.removeExcessFrames()
+
+            if not self.is_playing and self.last_displayed_ind != self.display_ind:
+                self.displayFrame()
+
 
     def processPolarFrames(self):
         limits = np.linspace(0, self.sonar.frameCount, self.thread_pool.maxThreadCount()).astype(np.int32)
@@ -212,7 +264,7 @@ class PlaybackThread(QRunnable):
 
 
     def manageFrameProcesses(self):
-        while self.processing_thread_count < 2 * self.thread_pool.maxThreadCount():
+        while self.processing_thread_count < self.thread_pool.maxThreadCount():
             try:
                 if not self.buffer.infos[self.next_to_process_ind].processed:
                     thread = ProcessFrameThread(self.buffer, self.sonar, self.next_to_process_ind)
@@ -238,7 +290,10 @@ class PlaybackThread(QRunnable):
                 return
             frame = self.buffer[self.display_ind]
             self.signals.frame_available_signal.emit((self.display_ind, frame))
-            self.display_ind += 1
+            self.last_displayed_ind = self.display_ind
+
+            if self.is_playing:
+                self.display_ind += 1
 
         except IndexError as e:
             print(e, "Ind:", self.display_ind, "Len:", len(self.buffer.buffer))

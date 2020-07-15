@@ -8,6 +8,7 @@ import numpy as np
 from queue import Queue
 
 from debug import Debug
+from polar_transform import PolarTransform
 
 FRAME_SIZE = 1.5
 
@@ -69,6 +70,10 @@ class PlaybackManager(QObject):
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
+
+    def unloadFile(self):
+        self.sonar = None
+        self.polar_transform = None
 
     def startThread(self, tuple):
         thread, receiver, signal = tuple
@@ -142,65 +147,6 @@ class PlaybackManager(QObject):
         self.stopAll()
         time.sleep(1)
 
-class FrameBuffer():
-    """
-    Stores all the frames for faster access.
-    In first iteration the frames are stored as they are read (polar coordinates).
-    Later they are converted to cartesian coordinates, which is a process that consumes time the most.
-    """
-    def __init__(self, size, max_size):
-        self.buffer = [None] * size
-        self.infos = [None] * size
-        self.max_size = max_size
-        self.frame_count = 0
-        self.first_ind = 0
-        self.last_ind = 0
-
-        for i in range(size):
-            self.infos[i] = FrameInfo(i)
-
-    def polarReady(self, min_ind, max_ind, array):
-        print("Polar ready: [{}-{}]".format(min_ind, max_ind))
-        self.buffer[min_ind:max_ind] = array
-
-    def frameReady(self, ind, frame):
-        print("Ready:", ind)
-        self.buffer[ind] = frame
-        self.infos[ind].processed = True
-
-    def isFrameReady(self, ind):
-        return self.infos[ind].processed
-
-    def removeExcessFrames(self):
-        while self.frame_count > self.max_size:
-            self.removeFirst()
-
-    def removeFirst(self):
-        new_first = self.buffer[self.first_ind].next
-        self.buffer[self.first_ind].frame = None
-        self.first_ind = new_first
-        self.frame_count -= 1
-
-    def __getitem__(self, key):
-        return self.buffer[key]
-
-class FrameInfo:
-    """
-    Stores information about whether the frame is already converted to cartesian coordinates or not
-    and the order of the conversion. The order might change depending on which frames are played first,
-    and it is used when removing frames if the maximum frame capacity is exceeded.
-    """
-    def __init__(self, ind):
-        self.ind = ind
-        self.next = 0
-        self.processed = False
-
-    def __repr__(self):
-        if self.processed:
-            return "FW " + str(self.ind)
-        else:
-            return "Empty"
-
 class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread
@@ -230,8 +176,7 @@ class PlaybackThread(QRunnable):
         self.path = path
         self.thread_pool = thread_pool
         self.sonar = sonar
-        self.buffer = FrameBuffer(sonar.frameCount, 1000)
-
+        self.buffer = buffer = [None] * sonar.frameCount
         self.last_displayed_ind = 0
         self.display_ind = 0
         self.next_to_process_ind = 0
@@ -240,14 +185,13 @@ class PlaybackThread(QRunnable):
         self.processing_thread_count = 0
 
     def run(self):
+        radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
+        self.polar_transform = PolarTransform(self.sonar.DATA_SHAPE, 200, radius_limits, self.sonar.firstBeamAngle)
+
         self.processPolarFrames()
         while self.alive:
-            self.manageFrameProcesses()
-            # self.buffer.removeExcessFrames()
-
             if not self.is_playing and self.last_displayed_ind != self.display_ind:
                 self.displayFrame()
-
 
     def processPolarFrames(self):
         limits = np.linspace(0, self.sonar.frameCount, self.thread_pool.maxThreadCount()).astype(np.int32)
@@ -262,33 +206,16 @@ class PlaybackThread(QRunnable):
         print("All processed!")
         self.signals.first_frame_signal.emit()
 
-
-    def manageFrameProcesses(self):
-        while self.processing_thread_count < self.thread_pool.maxThreadCount():
-            try:
-                if not self.buffer.infos[self.next_to_process_ind].processed:
-                    thread = ProcessFrameThread(self.buffer, self.sonar, self.next_to_process_ind)
-                    self.signals.start_thread_signal.emit((thread, self.frameReady, thread.signals.frame_signal))
-                    self.processing_thread_count += 1
-
-                self.next_to_process_ind += 1
-            except IndexError as e:
-                print(e)
-
     def polarReady(self, tuple):
-        self.buffer.polarReady(*tuple)
+        min_ind, max_ind, array = tuple
+        print("Polar ready: [{}-{}]".format(min_ind, max_ind))
+        self.buffer[min_ind:max_ind] = array
         self.polars_to_process -= 1
-
-    def frameReady(self, tuple):
-        self.processing_thread_count -= 1
-        ind, frame = tuple
-        self.buffer.frameReady(ind, frame)
 
     def displayFrame(self):
         try:
-            if not self.buffer.isFrameReady(self.display_ind):
-                return
-            frame = self.buffer[self.display_ind]
+            polar = self.buffer[self.display_ind]
+            frame = self.polar_transform.remap(polar)
             self.signals.frame_available_signal.emit((self.display_ind, frame))
             self.last_displayed_ind = self.display_ind
 
@@ -326,21 +253,6 @@ class ProcessPolarThread(QRunnable):
             array[i] = self.sonar.getPolarFrame(frame_ind)
 
         self.signals.frame_array_signal.emit((self.ind, self.ind + self.count, array))
-
-class ProcessFrameThread(QRunnable):
-    """
-    A QRunnable class that converts a single frame from polar to cartesian coordinates.
-    """
-    def __init__(self, buffer, sonar, ind):
-        super().__init__()
-        self.signals = ProcessSignals()
-        self.ind = ind
-        self.buffer = buffer
-        self.sonar = sonar
-
-    def run(self):
-        frame = self.sonar.constructImages(self.buffer[self.ind])
-        self.signals.frame_signal.emit((self.ind, frame))
 
 class TestFigure(QLabel):
     def __init__(self):

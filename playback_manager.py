@@ -5,7 +5,10 @@ from tkinter import filedialog
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import time
+import numpy as np
+import cv2
 
+from polar_transform import PolarTransform
 from debug import Debug
 
 """
@@ -42,6 +45,7 @@ class PlaybackManager():
         self.buffer = None
 
         self.bufferSizeMb = 1000
+        self.polar_transform = None
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -99,6 +103,10 @@ class PlaybackManager():
         self.frame_index = 0
         self.sonar = FOpenSonarFile(self.path)
         self.buffer = SonarBuffer(self.sonar.frameCount, int(self.bufferSizeMb / FRAME_SIZE))
+
+        radius_limits = (self.sonar.windowStart, self.sonar.windowStart +self.sonar.windowLength)
+        self.polar_transform = PolarTransform(self.sonar.DATA_SHAPE, 1000, radius_limits, 2 * self.sonar.firstBeamAngle/180*np.pi)
+
         self.playPolar()
         self.main_window.setWindowTitle(self.path)
         self.file_opened(self.sonar)
@@ -276,6 +284,7 @@ class PlaybackThread(QRunnable):
         super().__init__()
         self.manager = manager
         self.sonar = manager.sonar
+        self.polar_transform = manager.polar_transform
         self.signals = PlaybackSignals()
         self.fps = 24.0
         self.ind = manager.frame_index
@@ -287,9 +296,12 @@ class PlaybackThread(QRunnable):
         target_update = 1. / self.fps
 
         while self.is_playing:
-            rect, frame = self.sonar.getFrame(self.ind)
-            if frame is None:
+            #rect, frame = self.sonar.getFrame(self.ind)
+            polar = self.sonar.getPolarFrame(self.ind)
+            if polar is None:
                 break
+
+            frame = self.polar_transform.remap(polar, cv2.INTER_LINEAR)
 
             if self.ind >= self.manager.sonar.frameCount:
                 self.signals.eof_signal.emit()

@@ -123,7 +123,7 @@ class FSONAR_File():
             outp = np.array((a,d)).T
             return outp
 
-
+        #print(d0, dm, am, xm, K)
 
         out = warp(frames, invmap, output_shape=(K, L))
         out = (out/np.amax(out)*255).astype(np.uint8)

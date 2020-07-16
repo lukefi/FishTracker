@@ -18,7 +18,6 @@ def linear(x, min_x, max_x, min_y, max_y):
 class PolarTransform:
 	def __init__(self, pol_shape, cart_height, radius_limits, beam_angle):
 		self.pol_shape = pol_shape
-		print(radius_limits)
 		self.setCartShape(cart_height, beam_angle)
 		self.radius_limits = radius_limits
 		self.angle_limits = (np.pi/2 - beam_angle/2, np.pi/2 + beam_angle/2)

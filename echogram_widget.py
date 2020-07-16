@@ -62,8 +62,9 @@ class EchogramViewer(QtWidgets.QWidget):
         self.horizontalLayout.addWidget(self.figure)
         self.playback_manager.file_opened.append(self.onFileOpen)
         self.playback_manager.frame_available.append(self.onImageAvailable)
-        self.playback_manager.polar_available.append(self.onPolarAvailable)
-        self.playback_manager.polar_ended.append(self.imageReady)
+        self.playback_manager.polars_loaded.append(self.imageReady)
+        # self.playback_manager.polar_available.append(self.onPolarAvailable)
+        # self.playback_manager.polar_ended.append(self.imageReady)
 
         self.setLayout(self.horizontalLayout)
         self.echogram = None
@@ -72,8 +73,8 @@ class EchogramViewer(QtWidgets.QWidget):
         self.figure.progress = self.playback_manager.getRelativeIndex()
         self.figure.update()
 
-    def onPolarAvailable(self, ind, polar):
-        self.echogram.insert(polar, ind)
+    #def onPolarAvailable(self, ind, polar):
+    #    self.echogram.insert(polar, ind)
 
     def setFrame(self, percentage):
         self.playback_manager.setRelativeIndex(percentage)
@@ -82,6 +83,7 @@ class EchogramViewer(QtWidgets.QWidget):
         self.echogram = Echogram(sonar.frameCount)
 
     def imageReady(self):
+        self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
         self.figure.setImage(self.echogram.getDisplayedImage())
         self.figure.resetView()
 
@@ -94,20 +96,26 @@ class Echogram():
         self.data = None
         self.length = length
 
-    def insert(self, frame, ind):
-        if self.data is None:
-            self.data = np.zeros((frame.shape[0], self.length), np.uint8)
+    def processBuffer(self, buffer):
+        buf = [b for b in buffer if b is not None]
+        buf = np.asarray(buf, dtype=np.uint8)
+        print(buf.shape)
+        self.data = np.max(buf, axis=2).T
 
-        col_im = np.max(np.asarray(frame), axis=1)
-        try:
-            self.data[:, ind] = col_im
-        except IndexError as e:
-            print(e)
+    #def insert(self, frame, ind):
+    #    if self.data is None:
+    #        self.data = np.zeros((frame.shape[0], self.length), np.uint8)
 
-        if(ind % 100 == 0):
-            print("EchoFrame:", ind)
-        #    img = cv2.resize(self.echogram, (1000, 200))
-        #    cv2.imshow("echogram", img)
+    #    col_im = np.max(np.asarray(frame), axis=1)
+    #    try:
+    #        self.data[:, ind] = col_im
+    #    except IndexError as e:
+    #        print(e)
+
+    #    if(ind % 100 == 0):
+    #        print("EchoFrame:", ind)
+    #    #    img = cv2.resize(self.echogram, (1000, 200))
+    #    #    cv2.imshow("echogram", img)
 
     def clear(self):
         if self.data is not None:

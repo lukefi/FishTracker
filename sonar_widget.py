@@ -176,6 +176,7 @@ class SonarViewer(QtWidgets.QDialog):
     def displayImage(self, tuple):
         if tuple is not None:
             ind, frame = tuple
+            print("Frame:", ind)
             #self.MyFigureWidget.clear()
 
             #image = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)

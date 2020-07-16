@@ -16,6 +16,8 @@ class PlaybackManager(QObject):
     def __init__(self, app, main_window):
         super().__init__()
 
+        # Event that signals that all polar frames are loaded.
+        self.polars_loaded = Event()
         # Event that passes the current frame (cartesian) to all connected functions.
         self.frame_available = Event()
         # Event that passes the current sonar file to all connected functions.
@@ -31,8 +33,8 @@ class PlaybackManager(QObject):
         self.path = ""
         self.sonar = None
 
-        self.frame_timer = QTimer(self)
-        self.fps = 10
+        self.frame_timer = None
+        self.fps = 30
 
         app.aboutToQuit.connect(self.applicationClosing)
 
@@ -66,8 +68,10 @@ class PlaybackManager(QObject):
         self.sonar = FOpenSonarFile(self.path)
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
-        self.playback_thread.signals.first_frame_signal.connect(self.play)
+        # self.playback_thread.signals.first_frame_signal.connect(self.play)
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
+        self.playback_thread.signals.first_frame_signal.connect(self.polars_loaded)
+        self.playback_thread.signals.playback_ended_signal.connect(self.stop)
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
 
@@ -81,15 +85,24 @@ class PlaybackManager(QObject):
         # signal.connect(self.testSignal)
         self.thread_pool.start(thread)
 
-    def testSignal(self, param):
+    def testSignal(self):
         print("TestSignal")
+        self.playback_thread.testF()
 
     def play(self):
-        if self.playback_thread:
+        if self.playback_thread and self.playback_thread.polar_transform:
             print("Start")
             self.playback_thread.is_playing = True
-            self.frame_timer.timeout.connect(self.playback_thread.displayFrame)
-            self.frame_timer.start(1000.0 / self.fps)
+            self.showNextImage()
+
+            if(self.frame_timer is None):
+                self.frame_timer = QTimer(self)
+                self.frame_timer.timeout.connect(self.displayFrame)
+                self.frame_timer.start(1000.0 / self.fps)
+
+
+    def displayFrame(self):
+        self.playback_thread.displayFrame()
 
     def togglePlay(self):
         if self.playback_thread:
@@ -100,7 +113,7 @@ class PlaybackManager(QObject):
 
     def showNextImage(self):
         if self.playback_thread:
-            ind = self.playback_thread.display_ind + 1
+            ind = self.playback_thread.last_displayed_ind + 1
             if ind >= self.sonar.frameCount:
                 ind = 0
             self.setFrameInd(ind)
@@ -124,10 +137,17 @@ class PlaybackManager(QObject):
             self.playback_thread.display_ind = frame_ind
             self.playback_thread.next_to_process_ind = frame_ind
 
+    def getPolarBuffer(self):
+        if self.playback_thread:
+            return self.playback_thread.buffer
+        else:
+            return None
+
     def stop(self):
+        print("Stop")
         if self.playback_thread:
             self.playback_thread.is_playing = False
-        self.frame_timer.stop()
+            self.playback_thread.display_ind = self.playback_thread.last_displayed_ind
         self.playback_ended()
 
     def stopAll(self):
@@ -135,12 +155,32 @@ class PlaybackManager(QObject):
 
     def getFrameNumberText(self):
         if self.playback_thread:
-            return "Frame: {}/{}".format(self.frame_index+1, self.sonar.frameCount)
+            return "Frame: {}/{}".format(self.playback_thread.display_ind+1, self.sonar.frameCount)
         else:
             return "No File Loaded"
 
+    def getBeamDistance(self, x, y):
+        if self.sonar:
+            return (0, 0)
+        else:
+            return None
+
     def isPlaying(self):
         return self.playback_thread is not None and self.playback_thread.is_playing
+
+    def setDistanceCompensation(self, value):
+        pass
+
+    def getRelativeIndex(self):
+        if self.playback_thread:
+            return float(self.playback_thread.display_ind) / self.sonar.frameCount
+        else:
+            return 0
+
+
+    def setRelativeIndex(self, value):
+        if self.sonar:
+            self.setFrameInd(int(value * self.sonar.frameCount))
 
     def applicationClosing(self):
         print("Closing PlaybackManager . . .")
@@ -151,6 +191,7 @@ class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread
     """
+
     # Used to pass processes to a ThreadPool outside.
     start_thread_signal = pyqtSignal(tuple)
 
@@ -159,6 +200,9 @@ class PlaybackSignals(QObject):
 
     # Used to pass the current frame.
     frame_available_signal = pyqtSignal(tuple)
+
+    # Signals that playback has ended.
+    playback_ended_signal = pyqtSignal()
 
 class PlaybackThread(QRunnable):
     """
@@ -177,82 +221,99 @@ class PlaybackThread(QRunnable):
         self.thread_pool = thread_pool
         self.sonar = sonar
         self.buffer = buffer = [None] * sonar.frameCount
-        self.last_displayed_ind = 0
-        self.display_ind = 0
-        self.next_to_process_ind = 0
-        self.polars_to_process = 0
+        self.polar_transform = None
 
-        self.processing_thread_count = 0
+        self.last_displayed_ind = -1
+        self.display_ind = 0
+        self.polars_loaded = False
+
+    def __del__(self):
+        print("Playback thread destroyed")
 
     def run(self):
-        radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
-        self.polar_transform = PolarTransform(self.sonar.DATA_SHAPE, 200, radius_limits, self.sonar.firstBeamAngle)
+        map_worker = Worker(self.createMapping)
+        self.signals.start_thread_signal.emit((map_worker, self.mappingDone, map_worker.signals.result))
+        polar_worker = Worker(self.loadPolarFrames)
+        self.signals.start_thread_signal.emit((polar_worker, self.polarsDone, polar_worker.signals.result))
 
-        self.processPolarFrames()
-        while self.alive:
-            if not self.is_playing and self.last_displayed_ind != self.display_ind:
-                self.displayFrame()
+        #while self.alive:
+        #    if not self.is_playing and self.last_displayed_ind != self.display_ind and self.polar_transform:
+        #        self.displayFrame()
+        #        time.sleep(0.05)
 
-    def processPolarFrames(self):
-        limits = np.linspace(0, self.sonar.frameCount, self.thread_pool.maxThreadCount()).astype(np.int32)
-        self.polars_to_process = len(limits) - 1
-        for i in range(self.polars_to_process):
-            thread = ProcessPolarThread(self.path, limits[i], limits[i+1] - limits[i])
-            self.signals.start_thread_signal.emit((thread, self.polarReady, thread.signals.frame_array_signal))
+    def loadPolarFrames(self):
+        print("Start: [{}-{}]".format(0, self.sonar.frameCount))
+        for i in range(self.sonar.frameCount):
+            if i % 100 == 0:
+                print(i)
+            self.buffer[i] = self.sonar.getPolarFrame(i)
 
-        while self.polars_to_process > 0:
-            time.sleep(0.5)
-
-        print("All processed!")
+    def polarsDone(self, result):
+        print("Polar frames loaded")
         self.signals.first_frame_signal.emit()
+        self.polars_loaded = True
 
-    def polarReady(self, tuple):
-        min_ind, max_ind, array = tuple
-        print("Polar ready: [{}-{}]".format(min_ind, max_ind))
-        self.buffer[min_ind:max_ind] = array
-        self.polars_to_process -= 1
+        #frame = self.polar_transform.remap(self.buffer[0])
+        #self.signals.frame_available_signal.emit((0, frame))
+
+    def createMapping(self):
+        radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
+        return PolarTransform(self.sonar.DATA_SHAPE, 1200, radius_limits, 2 * self.sonar.firstBeamAngle/180*np.pi)
+
+    def mappingDone(self, result):
+        self.polar_transform = result
+        print("Polar transform done")
+        self.displayFrame()
+
+    def testF(self):
+        print("Test")
 
     def displayFrame(self):
-        try:
-            polar = self.buffer[self.display_ind]
-            frame = self.polar_transform.remap(polar)
-            self.signals.frame_available_signal.emit((self.display_ind, frame))
-            self.last_displayed_ind = self.display_ind
+        if self.last_displayed_ind != self.display_ind:
+            try:
+                polar = self.buffer[self.display_ind]
+                if polar is not None:
+                    frame = self.polar_transform.remap(polar)
+                    self.signals.frame_available_signal.emit((self.display_ind, frame))
+                    self.last_displayed_ind = self.display_ind
 
-            if self.is_playing:
-                self.display_ind += 1
+                    if self.is_playing:
+                        self.display_ind += 1
 
-        except IndexError as e:
-            print(e, "Ind:", self.display_ind, "Len:", len(self.buffer.buffer))
+            except IndexError as e:
+                print(e, self.display_ind, "/", len(self.buffer)-1)
+                self.signals.playback_ended_signal.emit()
 
-class ProcessSignals(QObject):
-    """
-    PyQt signals used by processing threads.
-    """
-    frame_signal = pyqtSignal(tuple)
-    frame_array_signal = pyqtSignal(tuple)
 
-class ProcessPolarThread(QRunnable):
-    """
-    A QRunnable class that reads a range of frames in polar coordinates.
-    """
-    def __init__(self, path, ind, count):
+class WorkerSignals(QObject):
+    finished = pyqtSignal()
+    error = pyqtSignal(tuple)
+    result = pyqtSignal(object)
+
+
+class Worker(QRunnable):
+    def __init__(self, fn, *args, **kwargs):
         super().__init__()
-        self.signals = ProcessSignals()
-        self.ind = ind
-        self.count = count
-        self.sonar = FOpenSonarFile(path)
 
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()     
+
+    @pyqtSlot()
     def run(self):
-        print("Start: [{}-{}]".format(self.ind, self.ind + self.count))
-        array = [None] * self.count
-        for i in range(self.count):
-            frame_ind = self.ind + i
-            if frame_ind % 100 == 0:
-                print(frame_ind)
-            array[i] = self.sonar.getPolarFrame(frame_ind)
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
 
-        self.signals.frame_array_signal.emit((self.ind, self.ind + self.count, array))
 
 class TestFigure(QLabel):
     def __init__(self):
@@ -323,6 +384,6 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
     playback_manager.frame_available.append(figure.displayImage)
-    #playback_manager.play()
+    playback_manager.playback_thread.signals.first_frame_signal.connect(lambda: playback_manager.play())
     main_window.show()
     sys.exit(app.exec_())

@@ -98,22 +98,9 @@ class Detector:
 		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
 		self.fgbg_mog.setShadowValue(0)
 
+		self.ts = 0
+
 		self.image_provider = image_provider
-	
-
-	def showWindow(self):
-		cv2.namedWindow('fg_mask_mog', 1)
-		cv2.namedWindow('image_o_rgb', 1)
-		cv2.namedWindow('image_o_gray', 1)
-		cv2.namedWindow('fg_mask_filt', 1)
-
-		cv2.createTrackbar('mog_var_thresh', 'image_o_rgb', 5, 30, nothing)
-		cv2.createTrackbar('median_size', 'image_o_rgb', 1, 21, nothing)
-		cv2.createTrackbar('min_fg_pixels', 'image_o_rgb', 10, 100, nothing)
-
-		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.mog_var_thresh)
-		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.min_fg_pixels)
-		cv2.setTrackbarPos('median_size','image_o_rgb', self.median_size)
 
 	def initMOG(self):
 		# Get number of files in path
@@ -138,90 +125,92 @@ class Detector:
 			if bg_counter == self.nof_bg_frames:
 				break;
 
-	def compute(self, show=False):
-		if show:
-			self.showWindow()
-
-		self.initMOG()
-
-		n_step = 0
-		ts = 0
-
-		start_time = time.time()
-		# for file in sorted(glob.glob(path)):
-		nof_frames = self.image_provider.getFrameCount()
-		for i in range(nof_frames):
+	def compute(self, image, get_images=False):
+		# Uodate timestamp, TODO read from data
+		self.ts += 0.1
 		
-			# Uodate timestamp, TODO read from data
-			ts = ts + 0.1
+		# NOTE: now all frames are resized to (500,100).
+		# Should be other way. This is now for keping parameter values same.
+		image_o = cv2.resize(image, (500,1000), interpolation = cv2.INTER_AREA)
+		image_o_gray = image_o
 
-			# Get new frame
-			# image_o = cv2.imread(file, 0)
-			image_o = self.image_provider.getFrame(i)
+		# Get foreground mask, without updating the  model (learningRate = 0)
+		fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
+
+		msg = str(self.ts) + ' 9999999999 '
+
+		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
+		fg_mask_cpy = fg_mask_mog
+		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.median_size)
+		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
+
+		ind = np.nonzero(np.asarray(fg_mask_filt))
+		data = np.asarray(ind).T
+
+		if data.shape[0] >= self.min_fg_pixels:
+
+			# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
+			clusterer = cluster.DBSCAN(eps=10, min_samples=10)		
+			labels = clusterer.fit_predict(data)
 		
-			# NOTE: now all frames are resized to (500,100).
-			# Should be other way. This is now for keping parameter values same.
-			image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
-			image_o_gray = image_o
+			data = data[labels != -1]
+			labels = labels[labels != -1]
 
-			# Get foreground mask, without updating the  model (learningRate = 0)
-			fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
+			detections = []
 
-			msg = str(ts) + ' 9999999999 '
-
-			# Read parameter values from trackbars
-			if(show):
-				self.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
-				self.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
-				self.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
-
-			self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
-			fg_mask_cpy = fg_mask_mog
-			fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.median_size)
-			image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
-
-			ind = np.nonzero(np.asarray(fg_mask_filt))
-			data = np.asarray(ind).T
-			print(data.shape)
-			print(self.min_fg_pixels)
-
-
-			if data.shape[0] >= self.min_fg_pixels:
-
-				# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
-				clusterer = cluster.DBSCAN(eps=10, min_samples=10)		
-				labels = clusterer.fit_predict(data)
-		
-				data = data[labels != -1]
-				labels = labels[labels != -1]
-
-				detections = []
-
-				if labels.shape[0] > 0:
-					for label in np.unique(labels):
-						foo = data[labels == label]
-						if foo.shape[0] < 2:
-							continue
+			if labels.shape[0] > 0:
+				for label in np.unique(labels):
+					foo = data[labels == label]
+					if foo.shape[0] < 2:
+						continue
 			
-						d = Detection(label, foo)
-						msg += " " + d.getMessage()
-						detections.append(d)
+					d = Detection(label, foo)
+					msg += " " + d.getMessage()
+					detections.append(d)
 
-					if show:
-						colors = sns.color_palette('deep', np.unique(labels).max() + 1)
-						for d in detections:
-							img = d.visualize(image_o_rgb, colors)
-							if img is not None:
-								image_o_rgb = img
+				if get_images:
+					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
+					for d in detections:
+						img = d.visualize(image_o_rgb, colors)
+						if img is not None:
+							image_o_rgb = img
 
 				
 			
-			# Print messaage: [timestamp camera_id position_x position_y length]
-			# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
-			print(msg)
-			if show:
-				self.updateWindows(fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
+		# Print messaage: [timestamp camera_id position_x position_y length]
+		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
+		print(msg)
 
+		if get_images:
+			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
+
+class DetectorDisplay:
+	def __init__(self):
+		self.array = [cv2.imread(file, 0) for file in sorted(glob.glob("out/*.png"))]
+		self.detector = Detector(self)
+
+	def run(self):
+		self.showWindow()
+		self.detector.initMOG()
+
+		for i in range(self.getFrameCount()):
+			self.readParameters()
+			images = self.detector.compute(self.getFrame(i), True)
+			self.updateWindows(*images)
+
+	def showWindow(self):
+		cv2.namedWindow('fg_mask_mog', 1)
+		cv2.namedWindow('image_o_rgb', 1)
+		cv2.namedWindow('image_o_gray', 1)
+		cv2.namedWindow('fg_mask_filt', 1)
+
+		cv2.createTrackbar('mog_var_thresh', 'image_o_rgb', 5, 30, nothing)
+		cv2.createTrackbar('median_size', 'image_o_rgb', 1, 21, nothing)
+		cv2.createTrackbar('min_fg_pixels', 'image_o_rgb', 10, 100, nothing)
+
+		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.mog_var_thresh)
+		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.detector.min_fg_pixels)
+		cv2.setTrackbarPos('median_size','image_o_rgb', self.detector.median_size)
 
 	def updateWindows(self, fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt):
 		pos_step = 600
@@ -241,9 +230,11 @@ class Detector:
 		if key == 32:
 			sleep = -sleep
 
-class TestProvider:
-	def __init__(self):
-		self.array = [cv2.imread(file, 0) for file in sorted(glob.glob("out/*.png"))]
+	def readParameters(self):
+		# Read parameter values from trackbars
+		self.detector.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
+		self.detector.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
+		self.detector.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
 
 	def getFrameCount(self):
 		return len(self.array)
@@ -251,19 +242,23 @@ class TestProvider:
 	def getFrame(self, ind):
 		return self.array[ind]
 
-if __name__ == "__main__":
+def simpleTest():
+	dd = DetectorDisplay()
+	dd.run()
+
+def playbackTest():
 	app = QtWidgets.QApplication(sys.argv)
 	main_window = QtWidgets.QMainWindow()
-	#playback_manager = PlaybackManager(app, main_window)
-	#playback_manager.openTestFile()
+	playback_manager = PlaybackManager(app, main_window)
+	playback_manager.openTestFile()
 
-	# detector = Detector(playback_manager)
-	# playback_manager.polars_loaded.append(detector.compute)
+	detector = Detector(playback_manager)
+	playback_manager.polars_loaded.append(detector.compute)
 
-	prov = TestProvider()
-	detector = Detector(prov)
-	detector.compute(True)
+	main_window.show()
+	sys.exit(app.exec_())
 
-	# main_window.show()
-	# sys.exit(app.exec_())
-	#main()
+
+if __name__ == "__main__":
+	simpleTest()
+	#playbackTest()

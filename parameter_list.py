@@ -20,10 +20,12 @@ class ParameterList(QtWidgets.QDialog):
         self.distance_tick = QtWidgets.QCheckBox("Distance compensation")
         self.distance_tick.setChecked(False)
         self.distance_tick.stateChanged.connect(self.playback_manager.setDistanceCompensation)
+        self.distance_tick.stateChanged.connect(self.playback_manager.refreshFrame)
 
         self.contrast_tick = QtWidgets.QCheckBox("Automatic contrast")
         self.contrast_tick.setChecked(False)
         self.contrast_tick.stateChanged.connect(self.sonar_processor.setAutomaticContrast)
+        self.contrast_tick.stateChanged.connect(self.playback_manager.refreshFrame)
 
         self.gamma_layout = QtWidgets.QHBoxLayout()
         self.gamma_layout.setObjectName("gammaLayout")
@@ -45,6 +47,7 @@ class ParameterList(QtWidgets.QDialog):
         self.gamma_slider.setTickInterval(1)
         self.gamma_slider.setValue(20)
         self.gamma_slider.valueChanged.connect(self.gammaSliderChanged)
+        self.gamma_slider.valueChanged.connect(self.playback_manager.refreshFrame)
 
         self.gamma_layout.addWidget(self.gamma_slider)
         self.gamma_layout.addWidget(self.gamma_value)
@@ -52,6 +55,7 @@ class ParameterList(QtWidgets.QDialog):
         self.colormap_tick = QtWidgets.QCheckBox("Use colormap")
         self.colormap_tick.setChecked(False)
         self.colormap_tick.stateChanged.connect(self.sonar_processor.setColorMap)
+        self.colormap_tick.stateChanged.connect(self.playback_manager.refreshFrame)
 
         self.verticalLayout.addWidget(self.image_controls_label)
         self.verticalLayout.addWidget(self.distance_tick)

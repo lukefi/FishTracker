@@ -18,9 +18,10 @@ def round_up_to_odd(f):
 
 def main():
 
+	sz = (400,800) #(500,1000)
 
 	# Test data, a folder with multiple png frames
-	directory = '/data/ttekoo/data/luke/2_vaihe_kaikki/frames/Teno1_test_6000-6999'
+	directory = 'D:/Projects/VTT/FishTracking/out'
 	body = '*.png'
 	path = directory + '/' + body
 
@@ -60,7 +61,7 @@ def main():
 		image_o = cv2.imread(file, 0)
 		# NOTE: now all frames are resized to (500,100).
 		# Should be other way. This is now for keping parameter values same.
-		image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
+		image_o = cv2.resize(image_o, sz, interpolation = cv2.INTER_AREA)
 		# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
 		fgbg_mog.apply(image_o, learningRate=0.01)
 		bg_counter = bg_counter + step
@@ -81,7 +82,7 @@ def main():
 		
 		# NOTE: now all frames are resized to (500,100).
 		# Should be other way. This is now for keping parameter values same.
-		image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
+		image_o = cv2.resize(image_o, sz, interpolation = cv2.INTER_AREA)
 		image_o_gray = image_o
 
 		# Get foreground mask, without updating the  model (learningRate = 0)
@@ -102,12 +103,13 @@ def main():
 
 		ind = np.nonzero(np.asarray(fg_mask_filt))
 		data = np.asarray(ind).T
+		print(data.shape)
 
 
 		if data.shape[0] >= min_fg_pixels:
 
 			# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
-			clusterer = cluster.DBSCAN(eps=10, min_samples=10)		
+			clusterer = cluster.DBSCAN(eps=10, min_samples=10)
 			labels = clusterer.fit_predict(data)
 		
 			data = data[labels != -1]			

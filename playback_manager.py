@@ -77,12 +77,14 @@ class PlaybackManager(QObject):
 
     def unloadFile(self):
         self.sonar = None
-        self.polar_transform = None
+        #self.polar_transform = None
 
     def startThread(self, tuple):
+        """
+        Used to start threads from another thread running in thread_pool.
+        """
         thread, receiver, signal = tuple
         signal.connect(lambda x: receiver(x)) #signal.connect(receiver) <- why this doesn't work?
-        # signal.connect(self.testSignal)
         self.thread_pool.start(thread)
 
     def testSignal(self):
@@ -90,21 +92,45 @@ class PlaybackManager(QObject):
         self.playback_thread.testF()
 
     def play(self):
+        """
+        Enables frame playback.
+        """
         if self.playback_thread and self.playback_thread.polar_transform:
             print("Start")
             self.playback_thread.is_playing = True
             self.showNextImage()
+            self.startFrameTimer()
 
-            if(self.frame_timer is None):
-                self.frame_timer = QTimer(self)
-                self.frame_timer.timeout.connect(self.displayFrame)
-                self.frame_timer.start(1000.0 / self.fps)
+    def startFrameTimer(self):
+        """
+        Used to start frame_timer, the main pipeline for displaying frames.
+        """
+        if self.frame_timer is None:
+            self.frame_timer = QTimer(self)
+            self.frame_timer.timeout.connect(self.displayFrame)
+            self.frame_timer.start(1000.0 / self.fps)
 
 
     def displayFrame(self):
-        self.playback_thread.displayFrame()
+        """
+        Reroutes the displayFrame function for frame_timer.
+        Signal progression might stop abruptly otherwise.
+        """
+        if self.playback_thread:
+            self.playback_thread.displayFrame()
+
+    def refreshFrame(self):
+        """
+        Used for one time refreshing only.
+        """
+        if self.playback_thread:
+            self.playback_thread.last_displayed_ind = -1
+            self.playback_thread.displayFrame()
 
     def togglePlay(self):
+        """
+        UI function that toggles playback.
+        """
         if self.playback_thread:
             if self.playback_thread.is_playing:
                 self.stop()
@@ -112,6 +138,9 @@ class PlaybackManager(QObject):
                 self.play()
 
     def showNextImage(self):
+        """
+        Shows next frame without entering play mode.
+        """
         if self.playback_thread:
             ind = self.playback_thread.last_displayed_ind + 1
             if ind >= self.sonar.frameCount:
@@ -119,6 +148,9 @@ class PlaybackManager(QObject):
             self.setFrameInd(ind)
 
     def showPreviousImage(self):
+        """
+        Shows previous frame without entering play mode.
+        """
         if self.playback_thread:
             ind = self.playback_thread.display_ind - 1
             if ind < 0:
@@ -126,12 +158,18 @@ class PlaybackManager(QObject):
             self.setFrameInd(ind)
 
     def getFrameInd(self):
+        """
+        Returns the index of the current frame being displayed.
+        """
         if self.playback_thread:
             return self.playback_thread.display_ind
         else:
             return 0
 
     def setFrameInd(self, ind):
+        """
+        Sets the index of the frame that is displayed next.
+        """
         if self.playback_thread:
             frame_ind = max(0, min(ind, self.sonar.frameCount - 1))
             self.playback_thread.display_ind = frame_ind
@@ -187,6 +225,16 @@ class PlaybackManager(QObject):
         self.stopAll()
         time.sleep(1)
 
+    def getFrame(self, i):
+        """
+        Non threaded option to get cartesinan frames.
+        """
+        polar = self.playback_thread.buffer[i]
+        return self.playback_thread.polar_transform.remap(polar)
+
+    def getFrameCount(self):
+        return self.sonar.frameCount
+
 class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread
@@ -220,7 +268,7 @@ class PlaybackThread(QRunnable):
         self.path = path
         self.thread_pool = thread_pool
         self.sonar = sonar
-        self.buffer = buffer = [None] * sonar.frameCount
+        self.buffer = [None] * sonar.frameCount
         self.polar_transform = None
 
         self.last_displayed_ind = -1
@@ -262,7 +310,7 @@ class PlaybackThread(QRunnable):
 
     def mappingDone(self, result):
         self.polar_transform = result
-        print("Polar transform done")
+        print("Polar mapping done")
         self.displayFrame()
 
     def testF(self):

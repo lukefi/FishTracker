@@ -15,7 +15,7 @@ if __name__ == "__main__":
 	playback_manager.fps = 1000
 	playback_manager.openTestFile()
 
-	playback_manager.playback_thread.signals.first_frame_signal.connect(lambda: playback_manager.play())
+	playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
 	playback_manager.frame_available.append(saveImage)
 
 	main_window.show()

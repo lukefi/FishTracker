@@ -70,7 +70,7 @@ class PlaybackManager(QObject):
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
         # self.playback_thread.signals.first_frame_signal.connect(self.play)
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
-        self.playback_thread.signals.first_frame_signal.connect(self.polars_loaded)
+        self.playback_thread.signals.polars_loaded_signal.connect(self.polars_loaded)
         self.playback_thread.signals.playback_ended_signal.connect(self.stop)
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
@@ -243,8 +243,11 @@ class PlaybackSignals(QObject):
     # Used to pass processes to a ThreadPool outside.
     start_thread_signal = pyqtSignal(tuple)
 
-    # Signals that playback can be started.
-    first_frame_signal = pyqtSignal()
+    # Signals that playback can be started (cartesian mapping created).
+    mapping_done_signal = pyqtSignal()
+
+    # Signals that all polar frames have been read to memory.
+    polars_loaded_signal = pyqtSignal()
 
     # Used to pass the current frame.
     frame_available_signal = pyqtSignal(tuple)
@@ -298,7 +301,7 @@ class PlaybackThread(QRunnable):
 
     def polarsDone(self, result):
         print("Polar frames loaded")
-        self.signals.first_frame_signal.emit()
+        self.signals.polars_loaded_signal.emit()
         self.polars_loaded = True
 
         #frame = self.polar_transform.remap(self.buffer[0])
@@ -310,6 +313,7 @@ class PlaybackThread(QRunnable):
 
     def mappingDone(self, result):
         self.polar_transform = result
+        self.signals.mapping_done_signal.emit()
         print("Polar mapping done")
         self.displayFrame()
 
@@ -432,6 +436,6 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
     playback_manager.frame_available.append(figure.displayImage)
-    playback_manager.playback_thread.signals.first_frame_signal.connect(lambda: playback_manager.play())
+    playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
     main_window.show()
     sys.exit(app.exec_())

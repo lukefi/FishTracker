@@ -250,15 +250,27 @@ def playbackTest():
 	app = QtWidgets.QApplication(sys.argv)
 	main_window = QtWidgets.QMainWindow()
 	playback_manager = PlaybackManager(app, main_window)
+	playback_manager.fps = 5
 	playback_manager.openTestFile()
 
 	detector = Detector(playback_manager)
-	playback_manager.polars_loaded.append(detector.compute)
+
+	def forwardImage(tuple):
+		ind, frame = tuple
+		detector.compute(frame)
+
+	playback_manager.frame_available.append(forwardImage)
+
+	def startDetector():
+		detector.initMOG()
+		playback_manager.play()
+
+	playback_manager.playback_thread.signals.mapping_done_signal.connect(startDetector)
 
 	main_window.show()
 	sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-	simpleTest()
-	#playbackTest()
+	#simpleTest()
+	playbackTest()

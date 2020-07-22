@@ -16,6 +16,7 @@ class PlaybackManager(QObject):
     def __init__(self, app, main_window):
         super().__init__()
 
+        self.mapping_done = Event()
         # Event that signals that all polar frames are loaded.
         self.polars_loaded = Event()
         # Event that passes the current frame (cartesian) to all connected functions.
@@ -72,6 +73,7 @@ class PlaybackManager(QObject):
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
         self.playback_thread.signals.polars_loaded_signal.connect(self.polars_loaded)
         self.playback_thread.signals.playback_ended_signal.connect(self.stop)
+        self.playback_thread.signals.mapping_done_signal.connect(self.mapping_done)
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
 
@@ -379,6 +381,7 @@ class TestFigure(QLabel):
 
     def displayImage(self, tuple):
         self.frame_ind, image = tuple
+        print(self.frame_ind)
 
         t = time.time()
         self.delta_time = t - self.prev_shown
@@ -414,7 +417,7 @@ class TestFigure(QLabel):
         if self.delta_time != 0:
             self.fps = 0.3 * (1.0 / self.delta_time) + 0.7 * self.fps
         point = QPoint(10,50)
-        painter.drawText(point, str(self.fps))
+        painter.drawText(point, "{:.1f}".format(self.fps))
 
 
 

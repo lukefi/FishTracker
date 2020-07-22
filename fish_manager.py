@@ -110,6 +110,11 @@ class FishManager(QtCore.QAbstractTableModel):
         fish.id = id
         fish.length = length / count
         fish.direction = SwimDirection(np.rint(direction / count))
+        fish.frame_in = frame_in
+
+        for f in self.fishes:
+            if f.id >= id:
+                f.id += 1
 
         self.removeFish(rows)
         self.fishes.append(fish)
@@ -194,6 +199,6 @@ def intTryParse(value):
 
 if __name__ == "__main__":
     fish_manager = FishManager()
-    fish_manager.testPopulate()
+    fish_manager.testPopulate(500)
     for fish in fish_manager.fishes:
         print(fish)

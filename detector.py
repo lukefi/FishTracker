@@ -12,7 +12,7 @@ import os
 import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from playback_manager import PlaybackManager
+from playback_manager import PlaybackManager, TestFigure
 
 def nothing(x):
     pass
@@ -20,8 +20,193 @@ def nothing(x):
 def round_up_to_odd(f):
     return np.ceil(f) // 2 * 2 + 1
 
+class Detector:
+
+	def __init__(self, image_provider):
+		# Test data, a folder with multiple png frames
+		#directory = '/data/ttekoo/data/luke/2_vaihe_kaikki/frames/Teno1_test_6000-6999'
+		#body = '*.png'
+		#path = directory + '/' + body
+
+		self.resetParameters()
+
+		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
+		self.fgbg_mog.setNMixtures(5)
+		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
+		self.fgbg_mog.setShadowValue(0)
+
+		self.ts = 0
+
+		self.image_provider = image_provider
+
+		self.show_detections = False
+		self.dirty = False
+
+	def resetParameters(self):
+		# Some parameters. Should be in UI / read from a config file.
+		self.detection_size = 10
+		self.mog_var_thresh = 11
+		self.min_fg_pixels = 25
+		self.median_size = 3
+		self.nof_bg_frames = 1000
+		self.learning_rate = 0.01
+
+		self.dbscan_eps = 10
+		self.dbscan_min_samples = 10
+
+
+	def initMOG(self):
+		# Get frame count
+		nof_frames = self.image_provider.getFrameCount()
+
+		# Create background model from fixed number of frames.
+		# Count step based on number of frames
+		# NOTE: nof_bg_frames to UI / file
+		bg_counter = 0
+		step = np.ceil(nof_frames/self.nof_bg_frames)	
+		# for file in sorted(glob.glob(path)):
+			#image_o = cv2.imread(file, 0)
+
+		for i in range(nof_frames):
+			image_o = self.image_provider.getFrame(i)
+
+			# NOTE: now all frames are resized to (500,100).
+			# Should be other way. This is now for keping parameter values same.
+			# image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
+
+			# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
+			self.fgbg_mog.apply(image_o, learningRate=self.learning_rate)
+			bg_counter = bg_counter + step
+			if bg_counter == self.nof_bg_frames:
+				break;
+
+	def compute(self, image, get_images=False):
+		# Update timestamp, TODO read from data
+		self.ts += 0.1
+		
+		# NOTE: now all frames are resized to (500,100).
+		# Should be other way. This is now for keping parameter values same.
+		#image_o = cv2.resize(image, (500,1000), interpolation = cv2.INTER_AREA)
+		#image_o_gray = image_o
+
+		image_o = image_o_gray = image
+
+		# Get foreground mask, without updating the  model (learningRate = 0)
+		fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
+
+		msg = str(self.ts) + ' 9999999999 '
+
+		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
+		fg_mask_cpy = fg_mask_mog
+		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.median_size)
+		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
+
+		ind = np.nonzero(np.asarray(fg_mask_filt))
+		data = np.asarray(ind).T
+
+		detections = []
+
+		if data.shape[0] >= self.min_fg_pixels:
+
+			# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
+			clusterer = cluster.DBSCAN(eps=self.dbscan_eps, min_samples=self.dbscan_min_samples)		
+			labels = clusterer.fit_predict(data)
+		
+			data = data[labels != -1]
+			labels = labels[labels != -1]
+
+			if labels.shape[0] > 0:
+				for label in np.unique(labels):
+					foo = data[labels == label]
+					if foo.shape[0] < 2:
+						continue
+			
+					d = Detection(label, foo, self)
+					msg += " " + d.getMessage()
+					detections.append(d)
+
+				if get_images:
+					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
+					for d in detections:
+						image_o_rgb = d.visualize(image_o_rgb, colors)
+
+				
+			
+		# Print message: [timestamp camera_id position_x position_y length]
+		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
+		print(msg)
+
+		if get_images:
+			return detections, (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
+		else:
+			return detections
+
+	def overlayDetections(self, image, detections):
+		# labels = [d.label for d in labels]
+		colors = sns.color_palette('deep', len(detections))
+		for d in detections:
+			image = d.visualize(image, colors)
+
+		return image
+
+	def setDetectionSize(self, value):
+		try:
+			self.detection_size = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setMOGVarThresh(self, value):
+		try:
+			self.mog_var_thresh = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setMinFGPixels(self, value):
+		try:
+			self.min_fg_pixels = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setMedianSize(self, value):
+		try:
+			self.median_size = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setNofBGFrames(self, value):
+		try:
+			self.nof_bg_frames = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setLearningRate(self, value):
+		try:
+			self.learning_rate = float(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setDBScanEps(self, value):
+		try:
+			self.dbscan_eps = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
+	def setDBScanMinSamples(self, value):
+		try:
+			self.dbscan_min_samples = int(value)
+			self.dirty = True
+		except ValueError as e:
+			print(e)
+
 class Detection:
-	def __init__(self, label, data):
+	def __init__(self, label, data, detector):
 		self.label = label
 		self.data = data
 		self.diff = None
@@ -34,7 +219,7 @@ class Detection:
 		ar = np.dot(data, np.linalg.inv(tvect))
 
 		# NOTE a fixed parameter --> to UI / file.
-		if ar.shape[0] > 10:
+		if ar.shape[0] > detector.detection_size: #10:
 
 			mina = np.min(ar, axis=0)
 			maxa = np.max(ar, axis=0)
@@ -57,7 +242,7 @@ class Detection:
 
 	def visualize(self, image, colors):
 		if self.diff is None:
-			return None
+			return image
 
 		# Visualize results	
 		test = 'Size (pix): ' + str(int(self.diff[1]*2))
@@ -79,111 +264,6 @@ class Detection:
 		return str(int(self.center[1]*10)) + ' ' + str(int(self.center[0]*10)) + ' ' + str(int(self.diff[1]*2))
 
 
-class Detector:
-
-	def __init__(self, image_provider):
-		# Test data, a folder with multiple png frames
-		#directory = '/data/ttekoo/data/luke/2_vaihe_kaikki/frames/Teno1_test_6000-6999'
-		#body = '*.png'
-		#path = directory + '/' + body
-
-		# Some parameters. Should be in UI / read from a config file.
-		self.mog_var_thresh = 11
-		self.min_fg_pixels = 25
-		self.median_size = 3
-		self.nof_bg_frames = 1000
-
-		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
-		self.fgbg_mog.setNMixtures(5)
-		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
-		self.fgbg_mog.setShadowValue(0)
-
-		self.ts = 0
-
-		self.image_provider = image_provider
-
-	def initMOG(self):
-		# Get number of files in path
-		nof_frames = self.image_provider.getFrameCount()
-
-		# Create background model from fixed number of frames.
-		# Count step based on number of frames
-		# NOTE: nof_bg_frames to UI / file
-		bg_counter = 0
-		step = np.ceil(nof_frames/self.nof_bg_frames)	
-		# for file in sorted(glob.glob(path)):
-			#image_o = cv2.imread(file, 0)
-
-		for i in range(nof_frames):
-			image_o = self.image_provider.getFrame(i)
-			# NOTE: now all frames are resized to (500,100).
-			# Should be other way. This is now for keping parameter values same.
-			image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
-			# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
-			self.fgbg_mog.apply(image_o, learningRate=0.01)
-			bg_counter = bg_counter + step
-			if bg_counter == self.nof_bg_frames:
-				break;
-
-	def compute(self, image, get_images=False):
-		# Uodate timestamp, TODO read from data
-		self.ts += 0.1
-		
-		# NOTE: now all frames are resized to (500,100).
-		# Should be other way. This is now for keping parameter values same.
-		image_o = cv2.resize(image, (500,1000), interpolation = cv2.INTER_AREA)
-		image_o_gray = image_o
-
-		# Get foreground mask, without updating the  model (learningRate = 0)
-		fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
-
-		msg = str(self.ts) + ' 9999999999 '
-
-		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
-		fg_mask_cpy = fg_mask_mog
-		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.median_size)
-		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
-
-		ind = np.nonzero(np.asarray(fg_mask_filt))
-		data = np.asarray(ind).T
-
-		if data.shape[0] >= self.min_fg_pixels:
-
-			# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
-			clusterer = cluster.DBSCAN(eps=10, min_samples=10)		
-			labels = clusterer.fit_predict(data)
-		
-			data = data[labels != -1]
-			labels = labels[labels != -1]
-
-			detections = []
-
-			if labels.shape[0] > 0:
-				for label in np.unique(labels):
-					foo = data[labels == label]
-					if foo.shape[0] < 2:
-						continue
-			
-					d = Detection(label, foo)
-					msg += " " + d.getMessage()
-					detections.append(d)
-
-				if get_images:
-					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
-					for d in detections:
-						img = d.visualize(image_o_rgb, colors)
-						if img is not None:
-							image_o_rgb = img
-
-				
-			
-		# Print messaage: [timestamp camera_id position_x position_y length]
-		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
-		print(msg)
-
-		if get_images:
-			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
-
 class DetectorDisplay:
 	def __init__(self):
 		self.array = [cv2.imread(file, 0) for file in sorted(glob.glob("out/*.png"))]
@@ -195,7 +275,7 @@ class DetectorDisplay:
 
 		for i in range(self.getFrameCount()):
 			self.readParameters()
-			images = self.detector.compute(self.getFrame(i), True)
+			_, images = self.detector.compute(self.getFrame(i), True)
 			self.updateWindows(*images)
 
 	def showWindow(self):
@@ -247,30 +327,35 @@ def simpleTest():
 	dd.run()
 
 def playbackTest():
-	app = QtWidgets.QApplication(sys.argv)
-	main_window = QtWidgets.QMainWindow()
-	playback_manager = PlaybackManager(app, main_window)
-	playback_manager.fps = 5
-	playback_manager.openTestFile()
-
-	detector = Detector(playback_manager)
 
 	def forwardImage(tuple):
 		ind, frame = tuple
-		detector.compute(frame)
+		detections = detector.compute(frame)
+		image = cv2.applyColorMap(frame, cv2.COLORMAP_OCEAN)
+		image = detector.overlayDetections(image, detections)
 
-	playback_manager.frame_available.append(forwardImage)
+		figure.displayImage((ind, image))
 
 	def startDetector():
 		detector.initMOG()
 		playback_manager.play()
 
-	playback_manager.playback_thread.signals.mapping_done_signal.connect(startDetector)
+	app = QtWidgets.QApplication(sys.argv)
+	main_window = QtWidgets.QMainWindow()
+	playback_manager = PlaybackManager(app, main_window)
+	playback_manager.fps = 1000
+	playback_manager.openTestFile()
+	playback_manager.frame_available.append(forwardImage)
+	detector = Detector(playback_manager)
+	playback_manager.mapping_done.append(startDetector)
+
+	figure = TestFigure()
+	main_window.setCentralWidget(figure)
 
 	main_window.show()
 	sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-	#simpleTest()
-	playbackTest()
+	simpleTest()
+	#playbackTest()

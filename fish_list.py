@@ -108,7 +108,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    playback_manager.openTestFile()
+    # playback_manager.openTestFile()
     fish_manager = FishManager()
     fish_manager.testPopulate(500)
     #info_w = InfoWidget(playback_manager, fish_manager)

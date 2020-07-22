@@ -6,6 +6,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from main import MainWindow
 from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
+from detector import Detector
 
 ## DEBUG :{ following block of libraries for debug only
 import os
@@ -42,7 +43,7 @@ class SonarViewer(QtWidgets.QDialog):
     play = False
     marker = None
 
-    def __init__(self, main_window, playback_manager, resultsView = False, results=False):
+    def __init__(self, main_window, playback_manager, detector, resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
@@ -50,11 +51,15 @@ class SonarViewer(QtWidgets.QDialog):
         self.FDetectedDict = results
         self.main_window = main_window
         self.playback_manager = playback_manager
+        self.detector = detector
+        self.image_processor = ImageProcessor()
+
+        self.show_first_frame = False
+
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.onFileOpen)
-        self.image_processor = ImageProcessor()
-        self.show_first_frame = False
+        self.playback_manager.mapping_done.append(self.detector.initMOG)
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -190,7 +195,11 @@ class SonarViewer(QtWidgets.QDialog):
             ffigure.setUpdatesEnabled(False)
             ffigure.clear()
 
-            frame = self.image_processor.processImage(frame)
+            image = self.image_processor.processImage(tuple)
+
+            if self.detector.show_detections:
+                detections = self.detector.compute(frame)
+                image = self.detector.overlayDetections(image, detections)
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))
@@ -212,7 +221,7 @@ class SonarViewer(QtWidgets.QDialog):
 
             #img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qformat).rgbSwapped()
             #figurePixmap = QtGui.QPixmap.fromImage(img)
-            ffigure.setImage(frame)
+            ffigure.setImage(image)
             #ffigure.setPixmap(figurePixmap.scaled(ffigure.size(), QtCore.Qt.KeepAspectRatio))
             #ffigure.setAlignment(QtCore.Qt.AlignCenter)
             ffigure.setUpdatesEnabled(True)
@@ -658,7 +667,10 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    sonar_viewer = SonarViewer(main_window, playback_manager)
+    detector = Detector(playback_manager)
+    detector.show_detections = True
+    sonar_viewer = SonarViewer(main_window, playback_manager, detector)
+
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()
     playback_manager.openTestFile()

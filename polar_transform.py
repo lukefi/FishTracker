@@ -17,6 +17,7 @@ def linear(x, min_x, max_x, min_y, max_y):
 
 class PolarTransform:
 	def __init__(self, pol_shape, cart_height, radius_limits, beam_angle):
+		print("Init mapping")
 		self.pol_shape = pol_shape
 		self.setCartShape(cart_height, beam_angle)
 		self.radius_limits = radius_limits
@@ -32,6 +33,7 @@ class PolarTransform:
 			for i in range(self.cart_shape[1]):
 				_j = self.cart_shape[0] - j - 1
 				self.map_y[j, i], self.map_x[j, i] = self.cart2polImage(_j, i)
+		print("End mapping")
 
 	def setCartShape(self, height, angle):
 		half_width = height * np.sin(angle/2)

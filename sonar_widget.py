@@ -198,7 +198,7 @@ class SonarViewer(QtWidgets.QDialog):
             image = self.image_processor.processImage(tuple)
 
             if self.detector.show_detections:
-                detections = self.detector.compute(frame)
+                detections = self.detector.compute(ind, frame)
                 image = self.detector.overlayDetections(image, detections)
         
             #if(self.subtractBackground):

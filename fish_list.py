@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
 
-class FishList(QtWidgets.QDialog):
+class FishList(QtWidgets.QWidget):
     def __init__(self, fish_manager, playback_manager):
         super().__init__()
         self.fish_manager = fish_manager

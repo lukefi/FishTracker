@@ -9,6 +9,7 @@ from fish_list import FishList
 from parameter_list import ParameterList
 from detector import Detector
 from detector_parameters import DetectorParameters
+from detection_list import DetectionList, DetectionDataModel
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
 
@@ -30,7 +31,6 @@ class UIManager():
 
         self.main_window.show()
         self.setupWidgets()
-
 
     def openFile(self):
         self.playback.openFile()
@@ -58,6 +58,8 @@ class UIManager():
         self.fish_list = FishList(self.fish_manager, self.playback)
         self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager)
         self.detector_parameters = DetectorParameters(self.playback, self.detector, sonar.image_processor)
+        detection_model = DetectionDataModel(self.detector)
+        self.detection_list = DetectionList(detection_model)
 
         self.ui.info_widget.removeTab(0)
         self.ui.info_widget.addTab(self.fish_list, "")
@@ -66,6 +68,8 @@ class UIManager():
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Parameter List"))
         self.ui.info_widget.addTab(self.detector_parameters, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detector_parameters), _translate("MainWindow", "Detector"))
+        self.ui.info_widget.addTab(self.detection_list, "")
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detection_list), _translate("MainWindow", "Detections"))
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')

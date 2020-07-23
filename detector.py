@@ -29,6 +29,9 @@ class Detector:
 		#path = directory + '/' + body
 
 		self.resetParameters()
+		self.detections = [None]
+		self.current_ind = 0
+		self.current_len = 0
 
 		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
 		self.fgbg_mog.setNMixtures(5)
@@ -58,6 +61,7 @@ class Detector:
 	def initMOG(self):
 		# Get frame count
 		nof_frames = self.image_provider.getFrameCount()
+		self.detections = [None] * nof_frames
 
 		# Create background model from fixed number of frames.
 		# Count step based on number of frames
@@ -80,7 +84,7 @@ class Detector:
 			if bg_counter == self.nof_bg_frames:
 				break;
 
-	def compute(self, image, get_images=False):
+	def compute(self, ind, image, get_images=False):
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 		
@@ -101,8 +105,8 @@ class Detector:
 		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.median_size)
 		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
 
-		ind = np.nonzero(np.asarray(fg_mask_filt))
-		data = np.asarray(ind).T
+		data_tr = np.nonzero(np.asarray(fg_mask_filt))
+		data = np.asarray(data_tr).T
 
 		detections = []
 
@@ -135,6 +139,9 @@ class Detector:
 		# Print message: [timestamp camera_id position_x position_y length]
 		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
 		print(msg)
+		self.detections[ind] = detections
+		self.current_ind = ind
+		self.current_len = len(detections)
 
 		if get_images:
 			return detections, (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
@@ -205,6 +212,13 @@ class Detector:
 		except ValueError as e:
 			print(e)
 
+	def getCurrentDetection(self):
+		dets = self.detections[self.current_ind]
+		if dets is None:
+			return []
+
+		return [d for d in self.detections[self.current_ind] if d.center is not None]
+
 class Detection:
 	def __init__(self, label, data, detector):
 		self.label = label
@@ -247,6 +261,8 @@ class Detection:
 		# Visualize results	
 		test = 'Size (pix): ' + str(int(self.diff[1]*2))
 		image = cv2.putText(image, test, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+		print("Test:", self.data.shape)
+		print("Test2:", len(colors), self.label)
 		for i in range(self.data.shape[0]):
 			cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
 				(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
@@ -275,7 +291,7 @@ class DetectorDisplay:
 
 		for i in range(self.getFrameCount()):
 			self.readParameters()
-			_, images = self.detector.compute(self.getFrame(i), True)
+			_, images = self.detector.compute(i, self.getFrame(i), True)
 			self.updateWindows(*images)
 
 	def showWindow(self):

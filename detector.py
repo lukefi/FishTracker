@@ -33,20 +33,20 @@ class Detector:
 		self.current_ind = 0
 		self.current_len = 0
 
-		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
-		self.fgbg_mog.setNMixtures(5)
-		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
-		self.fgbg_mog.setShadowValue(0)
+		self.fbgb_mog = None
 
 		self.ts = 0
 
 		self.image_provider = image_provider
 
+		self.mog_status_event = Event()
 		self.data_changed_event = Event()
 
 		self._show_detections = False
 		self.mog_ready = False
-		self.dirty = False
+		self.initializing = False;
+		self.frames_dirty = False
+		self.mog_dirty = False
 
 	def resetParameters(self):
 		# Some parameters. Should be in UI / read from a config file.
@@ -62,8 +62,16 @@ class Detector:
 
 
 	def initMOG(self):
-		# Get frame count
+		self.mog_ready = False
+		self.initializing = True;
+		self.mog_status_event(False)
 		print("Init MOG")
+
+		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
+		self.fgbg_mog.setNMixtures(5)
+		self.fgbg_mog.setVarThreshold(self.mog_var_thresh)
+		self.fgbg_mog.setShadowValue(0)
+
 		nof_frames = self.image_provider.getFrameCount()
 		nof_bg_frames = min(nof_frames, self.nof_bg_frames)
 		self.detections = [None] * nof_frames
@@ -91,6 +99,10 @@ class Detector:
 			#	break;
 
 		self.mog_ready = True
+		self.initializing = False;
+		self.mog_dirty = False
+
+		self.mog_status_event(True)
 		print("MOG init done")
 
 	def compute_from_event(self, tuple):
@@ -176,61 +188,67 @@ class Detector:
 	def setDetectionSize(self, value):
 		try:
 			self.detection_size = int(value)
-			self.dirty = True
+			self.frames_dirty = True
 		except ValueError as e:
 			print(e)
 
 	def setMOGVarThresh(self, value):
 		try:
 			self.mog_var_thresh = int(value)
-			self.dirty = True
+			self.mog_dirty = True
+			self.mog_status_event(self.initializing)
 		except ValueError as e:
 			print(e)
 
 	def setMinFGPixels(self, value):
 		try:
 			self.min_fg_pixels = int(value)
-			self.dirty = True
+			self.frames_dirty = True
 		except ValueError as e:
 			print(e)
 
 	def setMedianSize(self, value):
 		try:
 			self.median_size = int(value)
-			self.dirty = True
+			self.frames_dirty = True
 		except ValueError as e:
 			print(e)
 
 	def setNofBGFrames(self, value):
 		try:
 			self.nof_bg_frames = int(value)
-			self.dirty = True
+			self.mog_dirty = True
+			self.mog_status_event(self.initializing)
 		except ValueError as e:
 			print(e)
 
 	def setLearningRate(self, value):
 		try:
 			self.learning_rate = float(value)
-			self.dirty = True
+			self.mog_dirty = True
+			self.mog_status_event(self.initializing)
 		except ValueError as e:
 			print(e)
 
 	def setDBScanEps(self, value):
 		try:
 			self.dbscan_eps = int(value)
-			self.dirty = True
+			self.frames_dirty = True
 		except ValueError as e:
 			print(e)
 
 	def setDBScanMinSamples(self, value):
 		try:
 			self.dbscan_min_samples = int(value)
-			self.dirty = True
+			self.frames_dirty = True
 		except ValueError as e:
 			print(e)
 
 	def setShowDetections(self, value):
 		self._show_detections = self.mog_ready and value
+		print("{} && {}: {}".format(self.mog_ready, value, self._show_detections))
+		if not self._show_detections:
+			self.data_changed_event(0)
 
 	def getCurrentDetection(self):
 		dets = self.detections[self.current_ind]
@@ -389,7 +407,7 @@ def playbackTest():
 	playback_manager.mapping_done.append(startDetector)
 	playback_manager.frame_available.insert(0, detector.compute_from_event)
 
-	figure = TestFigure()
+	figure = TestFigure(playback_manager.togglePlay)
 	main_window.setCentralWidget(figure)
 
 	main_window.show()

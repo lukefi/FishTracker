@@ -244,6 +244,9 @@ class PlaybackManager(QObject):
     def getFrameCount(self):
         return self.sonar.frameCount
 
+    def isMappingDone(self):
+        return self.playback_thread is not None and self.playback_thread.polar_transform is not None
+
 class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread

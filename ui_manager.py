@@ -56,7 +56,7 @@ class UIManager():
 
         self.fish_manager
         self.fish_list = FishList(self.fish_manager, self.playback)
-        self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager)
+        self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager, self.detector)
         self.detector_parameters = DetectorParameters(self.playback, self.detector, sonar.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)

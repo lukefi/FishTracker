@@ -19,6 +19,8 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
         return self.row_count
 
     def columnCount(self, index=None):
+        if not self.detector._show_detections:
+            return 0
         return 2
 
     def data(self, index, role):
@@ -41,11 +43,14 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 return ""
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-            if section == 0:
-                return "X"
-            elif section == 1:
-                return "Y"
+        if role == QtCore.Qt.DisplayRole:
+            if orientation == QtCore.Qt.Horizontal:
+                if section == 0:
+                    return "X"
+                elif section == 1:
+                    return "Y"
+            else:
+                return '{: >4}'.format(section)
 
     def checkLayout(self, count):
         if self.row_count != count:

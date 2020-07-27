@@ -86,36 +86,43 @@ class DetectorParameters(QDialog):
         self.verticalLayout.setSpacing(5)
         self.verticalLayout.setContentsMargins(7,7,7,7)
 
-        self.show_checkbox = QCheckBox()
-        self.show_checkbox.setChecked(False)
-        self.show_checkbox.stateChanged.connect(self.showDetectionChanged)
-        self.show_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
-
         self.verticalLayout.addWidget(self.image_controls_label)
 
         self.form_layout = QFormLayout()
 
-        def addLine(label, initial_value, validator, connected):
+        def addLine(label, initial_value, validator, connected, layout):
             line = QLineEdit()
             line.setAlignment(Qt.AlignRight)
             line.setValidator(validator)
             line.setText(str(initial_value))
             for f in connected:
                 line.textChanged.connect(f)
-            self.form_layout.addRow(label, line)
+            layout.addRow(label, line)
             return line
 
-        self.form_layout.addRow("Show detections", self.show_checkbox)
-        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize])
-        self.mog_var_threshold_line = addLine("MOG var threshold", 11, QIntValidator(0, 20), [detector.setMOGVarThresh])
-        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels])
+        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize], self.form_layout)
+        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels], self.form_layout)
         self.median_size_slider = LabeledSlider("Median size", self.form_layout, [detector.setMedianSize], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
-        self.nof_bg_frames_line = addLine("Number of bg frames", 10, QIntValidator(5, 20), [detector.setNofBGFrames])
-        self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate])
-        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps])
-        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples])
+        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps], self.form_layout)
+        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples], self.form_layout)
 
         self.verticalLayout.addLayout(self.form_layout)
+
+        self.verticalSpacer = QSpacerItem(0, 40, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalLayout.addItem(self.verticalSpacer)
+
+        self.init_label = QLabel(self)
+        self.init_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.init_label.setText("Initialization")
+        self.verticalLayout.addWidget(self.init_label)
+
+        self.form_layout2 = QFormLayout()
+
+        self.mog_var_threshold_line = addLine("MOG var threshold", 11, QIntValidator(0, 20), [detector.setMOGVarThresh], self.form_layout2)
+        self.nof_bg_frames_line = addLine("Number of bg frames", 10, QIntValidator(10, 10000), [detector.setNofBGFrames], self.form_layout2)
+        self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate], self.form_layout2)
+
+        self.verticalLayout.addLayout(self.form_layout2)
 
         #self.detection_size = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Detection size", 10, 0, 20, self)
         #self.mog_var_thresh = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "MOG var threshold", 11, 0, 20, self)
@@ -153,17 +160,32 @@ class DetectorParameters(QDialog):
 
         self.verticalLayout.addLayout(self.button_layout)
 
+        self.recalculate_mog_btn = QPushButton()
+        self.recalculate_mog_btn.setObjectName("recalculateMOGButton")
+        self.recalculate_mog_btn.setText("Apply Values")
+        self.recalculate_mog_btn.clicked.connect(self.recalculateMOG)
+
+        self.calculate_all_btn = QPushButton()
+        self.calculate_all_btn.setObjectName("calculateAllButton")
+        self.calculate_all_btn.setText("Calculate All")
+        self.calculate_all_btn.clicked.connect(self.calculateAll)
+
+        self.second_button_layout = QHBoxLayout()
+        self.second_button_layout.setObjectName("buttonLayout")
+        self.second_button_layout.setSpacing(7)
+        self.second_button_layout.setContentsMargins(0,0,0,0)
+
+        self.second_button_layout.addWidget(self.recalculate_mog_btn)
+        self.second_button_layout.addWidget(self.calculate_all_btn)
+
+        self.verticalLayout.addLayout(self.second_button_layout)
+
         self.setLayout(self.verticalLayout)
 
         self.loadJSON()
 
-
-    def showDetectionChanged(self, value):
-        self.detector.setShowDetections(value)
-        if self.detector._show_detections != value:
-            self.show_checkbox.blockSignals(True)
-            self.show_checkbox.setChecked(self.detector._show_detections)
-            self.show_checkbox.blockSignals(False)
+        self.detector.mog_status_event.append(lambda x: self.setButtonsEnabled())
+        self.setButtonsEnabled()
 
     def saveJSON(self):
         dict = {
@@ -215,6 +237,20 @@ class DetectorParameters(QDialog):
         self.dbscan_eps_line.setText(str(self.detector.dbscan_eps))
         self.dbscan_min_samples_line.setText(str(self.detector.dbscan_min_samples))
 
+    def recalculateMOG(self):
+        if not self.detector.initializing:
+            self.detector.initMOG()
+
+    def calculateAll(self):
+        print("Calculate all frames (not implemented)")
+
+    def setButtonsEnabled(self):
+        #print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
+        mog_value = self.playback_manager.isMappingDone() and not self.detector.initializing and self.detector.mog_dirty
+        self.recalculate_mog_btn.setEnabled(mog_value)
+
+        all_value = self.playback_manager.isMappingDone() and not self.detector.initializing and (self.detector.mog_dirty or self.detector.frames_dirty)
+        self.calculate_all_btn.setEnabled(all_value)
 
 if __name__ == "__main__":
     import sys

@@ -2,11 +2,12 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from image_manipulation import ImageProcessor
 
 class ParameterList(QtWidgets.QDialog):
-    def __init__(self, playback_manager, sonar_processor, fish_manager):
+    def __init__(self, playback_manager, sonar_processor, fish_manager, detector):
         super().__init__()
         self.playback_manager = playback_manager
         self.sonar_processor = sonar_processor
         self.fish_manager = fish_manager
+        self.detector = detector
 
         self.image_controls_label = QtWidgets.QLabel(self)
         self.image_controls_label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
@@ -57,12 +58,20 @@ class ParameterList(QtWidgets.QDialog):
         self.colormap_tick.stateChanged.connect(self.sonar_processor.setColorMap)
         self.colormap_tick.stateChanged.connect(self.playback_manager.refreshFrame)
 
+        self.show_detections_checkbox = QtWidgets.QCheckBox("Show detections")
+        self.show_detections_checkbox.setChecked(False)
+        self.show_detections_checkbox.stateChanged.connect(self.detector.setShowDetections)
+        self.show_detections_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
+        self.show_detections_checkbox.setEnabled(False)
+        self.detector.mog_status_event.append(self.show_detections_checkbox.setEnabled)
+
         self.verticalLayout.addWidget(self.image_controls_label)
         self.verticalLayout.addWidget(self.distance_tick)
         self.verticalLayout.addWidget(self.contrast_tick)
         self.verticalLayout.addWidget(self.gamma_label)
         self.verticalLayout.addLayout(self.gamma_layout)
         self.verticalLayout.addWidget(self.colormap_tick)
+        self.verticalLayout.addWidget(self.show_detections_checkbox)
         self.verticalLayout.addStretch()
         self.setLayout(self.verticalLayout)
 
@@ -75,6 +84,7 @@ if __name__ == "__main__":
     import sys
     from playback_manager import PlaybackManager
     from fish_manager import FishManager
+    from detector import Detector
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
@@ -84,7 +94,9 @@ if __name__ == "__main__":
     fish_manager.testPopulate(100)
     #info_w = InfoWidget(playback_manager, fish_manager)
     sonar_processor = ImageProcessor()
-    parameter_list = ParameterList(playback_manager, sonar_processor, fish_manager)
+    detector = Detector(playback_manager)
+
+    parameter_list = ParameterList(playback_manager, sonar_processor, fish_manager, detector)
     main_window.setCentralWidget(parameter_list)
     main_window.show()
     sys.exit(app.exec_())

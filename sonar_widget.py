@@ -43,12 +43,12 @@ class SonarViewer(QtWidgets.QDialog):
     play = False
     marker = None
 
-    def __init__(self, main_window, playback_manager, detector, resultsView = False, results=False):
+    def __init__(self, main_window, playback_manager, detector): #, resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
-        self._postAnalysisViewer = resultsView
-        self.FDetectedDict = results
+        #self._postAnalysisViewer = resultsView
+        #self.FDetectedDict = results
         self.main_window = main_window
         self.playback_manager = playback_manager
         self.detector = detector
@@ -59,7 +59,6 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.onFileOpen)
-        self.playback_manager.mapping_done.append(self.detector.initMOG)
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -197,8 +196,8 @@ class SonarViewer(QtWidgets.QDialog):
 
             image = self.image_processor.processImage(tuple)
 
-            if self.detector.show_detections:
-                detections = self.detector.compute(ind, frame)
+            if self.detector._show_detections:
+                detections = self.detector.getCurrentDetection() #.detections[ind]
                 image = self.detector.overlayDetections(image, detections)
         
             #if(self.subtractBackground):
@@ -620,6 +619,12 @@ class SonarFigure(ZoomableQLabel):
     #    if isinstance(self.figurePixmap, QtGui.QPixmap):
     #        self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
 
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        print("Key")
+        if event.key() == Qt.Key_Space:
+            print("Space")
+
 class FFishListItem():
     def __init__(self, cls, inputDict, fishNumber):
         self.fishNumber = fishNumber
@@ -664,11 +669,21 @@ if __name__ == "__main__":
     import sys
     from playback_manager import PlaybackManager
 
+    def startDetector():
+        detector.initMOG()
+        detector.setShowDetections(True)
+
+    def test():
+        print("Polars loaded test print")
+
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     detector = Detector(playback_manager)
-    detector.show_detections = True
+    detector.nof_bg_frames = 100
+    playback_manager.mapping_done.append(test)
+    playback_manager.mapping_done.append(startDetector)
+    playback_manager.frame_available.insert(0, detector.compute_from_event)
     sonar_viewer = SonarViewer(main_window, playback_manager, detector)
 
     main_window.setCentralWidget(sonar_viewer)

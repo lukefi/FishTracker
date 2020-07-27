@@ -12,7 +12,7 @@ import os
 import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from playback_manager import PlaybackManager, TestFigure
+from playback_manager import PlaybackManager, Event, TestFigure
 
 def nothing(x):
     pass
@@ -42,7 +42,10 @@ class Detector:
 
 		self.image_provider = image_provider
 
-		self.show_detections = False
+		self.data_changed_event = Event()
+
+		self._show_detections = False
+		self.mog_ready = False
 		self.dirty = False
 
 	def resetParameters(self):
@@ -60,19 +63,22 @@ class Detector:
 
 	def initMOG(self):
 		# Get frame count
+		print("Init MOG")
 		nof_frames = self.image_provider.getFrameCount()
+		nof_bg_frames = min(nof_frames, self.nof_bg_frames)
 		self.detections = [None] * nof_frames
 
 		# Create background model from fixed number of frames.
 		# Count step based on number of frames
 		# NOTE: nof_bg_frames to UI / file
-		bg_counter = 0
-		step = np.ceil(nof_frames/self.nof_bg_frames)	
-		# for file in sorted(glob.glob(path)):
-			#image_o = cv2.imread(file, 0)
+		#bg_counter = 0
+		#step = np.ceil(nof_frames/self.nof_bg_frames)
+		step = nof_frames / nof_bg_frames
 
-		for i in range(nof_frames):
-			image_o = self.image_provider.getFrame(i)
+		for i in range(nof_bg_frames):
+			ind = math.floor(i * step)
+			print("MOG:", (ind+1), "/", nof_frames)
+			image_o = self.image_provider.getFrame(ind)
 
 			# NOTE: now all frames are resized to (500,100).
 			# Should be other way. This is now for keping parameter values same.
@@ -80,11 +86,21 @@ class Detector:
 
 			# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
 			self.fgbg_mog.apply(image_o, learningRate=self.learning_rate)
-			bg_counter = bg_counter + step
-			if bg_counter == self.nof_bg_frames:
-				break;
+			#bg_counter = bg_counter + step
+			#if bg_counter == self.nof_bg_frames:
+			#	break;
+
+		self.mog_ready = True
+		print("MOG init done")
+
+	def compute_from_event(self, tuple):
+		ind, frame = tuple
+		self.compute(ind, frame)
 
 	def compute(self, ind, image, get_images=False):
+		if not self._show_detections:
+			return
+
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 		
@@ -143,14 +159,15 @@ class Detector:
 		self.current_ind = ind
 		self.current_len = len(detections)
 
+		self.data_changed_event(self.current_len)
+
 		if get_images:
-			return detections, (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
-		else:
-			return detections
+			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
 
 	def overlayDetections(self, image, detections):
 		# labels = [d.label for d in labels]
-		colors = sns.color_palette('deep', len(detections))
+
+		colors = sns.color_palette('deep', max([0] + [d.label + 1 for d in detections]))
 		for d in detections:
 			image = d.visualize(image, colors)
 
@@ -212,6 +229,9 @@ class Detector:
 		except ValueError as e:
 			print(e)
 
+	def setShowDetections(self, value):
+		self._show_detections = self.mog_ready and value
+
 	def getCurrentDetection(self):
 		dets = self.detections[self.current_ind]
 		if dets is None:
@@ -261,8 +281,7 @@ class Detection:
 		# Visualize results	
 		test = 'Size (pix): ' + str(int(self.diff[1]*2))
 		image = cv2.putText(image, test, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
-		print("Test:", self.data.shape)
-		print("Test2:", len(colors), self.label)
+
 		for i in range(self.data.shape[0]):
 			cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
 				(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
@@ -291,7 +310,7 @@ class DetectorDisplay:
 
 		for i in range(self.getFrameCount()):
 			self.readParameters()
-			_, images = self.detector.compute(i, self.getFrame(i), True)
+			images = self.detector.compute(i, self.getFrame(i), True)
 			self.updateWindows(*images)
 
 	def showWindow(self):
@@ -346,7 +365,9 @@ def playbackTest():
 
 	def forwardImage(tuple):
 		ind, frame = tuple
-		detections = detector.compute(frame)
+		# detections = detector.compute(ind, frame)
+		detections = detector.getCurrentDetection()
+
 		image = cv2.applyColorMap(frame, cv2.COLORMAP_OCEAN)
 		image = detector.overlayDetections(image, detections)
 
@@ -363,7 +384,10 @@ def playbackTest():
 	playback_manager.openTestFile()
 	playback_manager.frame_available.append(forwardImage)
 	detector = Detector(playback_manager)
+	detector.nof_bg_frames = 100
+	detector._show_detections = True
 	playback_manager.mapping_done.append(startDetector)
+	playback_manager.frame_available.insert(0, detector.compute_from_event)
 
 	figure = TestFigure()
 	main_window.setCentralWidget(figure)
@@ -373,5 +397,5 @@ def playbackTest():
 
 
 if __name__ == "__main__":
-	simpleTest()
-	#playbackTest()
+	#simpleTest()
+	playbackTest()

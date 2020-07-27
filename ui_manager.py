@@ -106,6 +106,8 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     fish_manager = FishManager()
     detector = Detector(playback_manager)
+    playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
+    playback_manager.frame_available.insert(0, detector.compute_from_event)
 
     ui_manager = UIManager(main_window, playback_manager, detector, fish_manager)
     sys.exit(app.exec_())

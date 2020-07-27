@@ -159,7 +159,11 @@ class DetectorParameters(QDialog):
 
 
     def showDetectionChanged(self, value):
-        self.detector.show_detections = value
+        self.detector.setShowDetections(value)
+        if self.detector._show_detections != value:
+            self.show_checkbox.blockSignals(True)
+            self.show_checkbox.setChecked(self.detector._show_detections)
+            self.show_checkbox.blockSignals(False)
 
     def saveJSON(self):
         dict = {

@@ -6,6 +6,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
     def __init__(self, detector):
         super().__init__()
         self.detector = detector
+        self.detector.data_changed_event.append(self.checkLayout)
         self.row_count = 0
 
     def rowCount(self, index=None):
@@ -33,7 +34,6 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 return 0
 
             if col == 0:
-                print(d.center[0])
                 return float(d.center[0])
             elif col == 1:
                 return float(d.center[1])
@@ -99,15 +99,16 @@ if __name__ == "__main__":
     playback_manager.openTestFile()
 
     detector = Detector(playback_manager)
+    detector.nof_bg_frames = 100
 
     def startDetector():
         detector.initMOG()
+        detector.setShowDetections(True)
         playback_manager.play()
 
     def handleFrame(tuple):
         ind, frame = tuple
         detector.compute(ind, frame)
-        data_model.checkLayout(detector.current_len)
 
     playback_manager.mapping_done.append(startDetector)
     playback_manager.frame_available.append(handleFrame)

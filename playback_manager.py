@@ -57,7 +57,7 @@ class PlaybackManager(QObject):
     def loadFile(self, path):
         self.path = path
         if self.playback_thread:
-            raise NotImplementedError()
+            print("Not implemented.")
 
             #print("Stopping existing thread.")
             #self.playback_thread.signals.playback_ended_signal.connect(self.setLoadedFile)
@@ -87,6 +87,10 @@ class PlaybackManager(QObject):
         """
         thread, receiver, signal = tuple
         signal.connect(lambda x: receiver(x)) #signal.connect(receiver) <- why this doesn't work?
+        self.thread_pool.start(thread)
+
+    def runInThread(self, f):
+        thread = Worker(f)
         self.thread_pool.start(thread)
 
     def testSignal(self):
@@ -232,6 +236,9 @@ class PlaybackManager(QObject):
         Non threaded option to get cartesinan frames.
         """
         polar = self.playback_thread.buffer[i]
+        if polar is None:
+            polar = self.sonar.getPolarFrame(i)
+            self.playback_thread.buffer[i] = polar
         return self.playback_thread.polar_transform.remap(polar)
 
     def getFrameCount(self):
@@ -299,7 +306,8 @@ class PlaybackThread(QRunnable):
         for i in range(self.sonar.frameCount):
             if i % 100 == 0:
                 print(i)
-            self.buffer[i] = self.sonar.getPolarFrame(i)
+            if self.buffer[i] is None:
+                self.buffer[i] = self.sonar.getPolarFrame(i)
 
     def polarsDone(self, result):
         print("Polar frames loaded")
@@ -370,7 +378,7 @@ class Worker(QRunnable):
 
 
 class TestFigure(QLabel):
-    def __init__(self):
+    def __init__(self, play_f):
         super().__init__()
         self.figurePixmap = None
         self.frame_ind = 0
@@ -378,10 +386,12 @@ class TestFigure(QLabel):
         self.fps = 1
         self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.prev_shown = 0
+        self.toggle_play = play_f
+        self.setFocusPolicy(Qt.StrongFocus)
 
     def displayImage(self, tuple):
         self.frame_ind, image = tuple
-        print(self.frame_ind)
+        print("TF Frame:", self.frame_ind)
 
         t = time.time()
         self.delta_time = t - self.prev_shown
@@ -419,6 +429,12 @@ class TestFigure(QLabel):
         point = QPoint(10,50)
         painter.drawText(point, "{:.1f}".format(self.fps))
 
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        if event.key() == Qt.Key_Space:
+            self.toggle_play()
+        event.accept()
+
 
 
 
@@ -433,12 +449,14 @@ class Event(list):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = QMainWindow()
-    figure = TestFigure()
-    main_window.setCentralWidget(figure)
 
     playback_manager = PlaybackManager(app, main_window)
+    figure = TestFigure(playback_manager.togglePlay)
+    main_window.setCentralWidget(figure)
+
     playback_manager.openTestFile()
     playback_manager.frame_available.append(figure.displayImage)
     playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+
     main_window.show()
     sys.exit(app.exec_())

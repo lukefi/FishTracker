@@ -12,6 +12,7 @@ class EchoFigure(ZoomableQLabel):
         self.displayed_image = None #cv2.imread('echo_placeholder.png', 0)
         self.resetView()
         self.progress = 0
+        self.margin = 0
 
 
     def frame2xPos(self, value):
@@ -46,9 +47,14 @@ class EchoFigure(ZoomableQLabel):
             painter.drawLine(h_pos, 0, h_pos, height)
 
     def mousePressEvent(self, event):
+        super().mousePressEvent(event)
         if event.button() == QtCore.Qt.LeftButton:
             self.parent.setFrame(self.xPos2Frame(event.x())) #float(event.x()) / self.size().width())
-        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        if event.buttons() == QtCore.Qt.LeftButton:
+            self.parent.setFrame(self.xPos2Frame(event.x()))
 
 class EchogramViewer(QtWidgets.QWidget):
     def __init__(self, playback_manager):
@@ -57,6 +63,7 @@ class EchogramViewer(QtWidgets.QWidget):
         self.playback_manager = playback_manager
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.horizontalLayout.setContentsMargins(0,0,0,0)
 
         self.figure = EchoFigure(self)
         self.horizontalLayout.addWidget(self.figure)

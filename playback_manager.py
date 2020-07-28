@@ -247,6 +247,9 @@ class PlaybackManager(QObject):
     def isMappingDone(self):
         return self.playback_thread is not None and self.playback_thread.polar_transform is not None
 
+    def isPolarsDone(self):
+        return self.playback_thread is not None and self.playback_thread.polars_loaded
+
 class PlaybackSignals(QObject):
     """
     PyQt signals used by PlaybackThread
@@ -314,8 +317,8 @@ class PlaybackThread(QRunnable):
 
     def polarsDone(self, result):
         print("Polar frames loaded")
-        self.signals.polars_loaded_signal.emit()
         self.polars_loaded = True
+        self.signals.polars_loaded_signal.emit()
 
         #frame = self.polar_transform.remap(self.buffer[0])
         #self.signals.frame_available_signal.emit((0, frame))

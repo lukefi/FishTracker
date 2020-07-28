@@ -39,13 +39,33 @@ class Detector:
 
 		self.image_provider = image_provider
 
-		self.mog_status_event = Event()
+		self.state_changed_event = Event()
 		self.data_changed_event = Event()
 
 		self._show_detections = False
+
+		# [flag] Whether MOG is initializing
+		self.initializing = False
+
+		# [trigger] Terminate initializing process.
+		self.stop_initializing = False
+
+		# [flag] Whether MOG has been initialized
 		self.mog_ready = False
-		self.initializing = False;
-		self.frames_dirty = False
+
+		# [flag] Whether detector is computing all the frames.
+		self.computing = False
+
+		# [trigger] Terminate computing process.
+		self.stop_computing = False
+
+		# [flag] Whether detection array can be cleared.
+		self.detections_clearable = True
+
+		# [flag] Whether all frames should be calculated.
+		self.detections_dirty = True
+
+		# ([flag] Whether MOG should be reinitialized.
 		self.mog_dirty = False
 
 	def resetParameters(self):
@@ -63,8 +83,9 @@ class Detector:
 
 	def initMOG(self):
 		self.mog_ready = False
-		self.initializing = True;
-		self.mog_status_event(False)
+		self.initializing = True
+		self.stop_initializing = False
+		self.state_changed_event()
 		print("Init MOG")
 
 		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
@@ -74,7 +95,7 @@ class Detector:
 
 		nof_frames = self.image_provider.getFrameCount()
 		nof_bg_frames = min(nof_frames, self.nof_bg_frames)
-		self.detections = [None] * nof_frames
+		self.clearDetections(True)
 
 		# Create background model from fixed number of frames.
 		# Count step based on number of frames
@@ -86,6 +107,16 @@ class Detector:
 		for i in range(nof_bg_frames):
 			ind = math.floor(i * step)
 			print("MOG:", (ind+1), "/", nof_frames)
+
+			if self.stop_initializing:
+				print("Stopped initializing at", ind)
+				self.stop_initializing = False
+				self.mog_ready = False
+				self.initializing = False
+				self.mog_dirty = True
+				self.state_changed_event()
+				return
+
 			image_o = self.image_provider.getFrame(ind)
 
 			# NOTE: now all frames are resized to (500,100).
@@ -102,7 +133,7 @@ class Detector:
 		self.initializing = False;
 		self.mog_dirty = False
 
-		self.mog_status_event(True)
+		self.state_changed_event()
 		print("MOG init done")
 
 	def compute_from_event(self, tuple):
@@ -113,6 +144,16 @@ class Detector:
 		if not self._show_detections:
 			return
 
+		images = self.computeBase(ind, image, get_images)
+
+		self.current_ind = ind
+		self.current_len = len(self.detections[ind])
+		self.data_changed_event(self.current_len)
+
+		if get_images:
+			return images
+
+	def computeBase(self, ind, image, get_images=False):
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 		
@@ -120,7 +161,6 @@ class Detector:
 		# Should be other way. This is now for keping parameter values same.
 		#image_o = cv2.resize(image, (500,1000), interpolation = cv2.INTER_AREA)
 		#image_o_gray = image_o
-
 		image_o = image_o_gray = image
 
 		# Get foreground mask, without updating the  model (learningRate = 0)
@@ -135,7 +175,6 @@ class Detector:
 
 		data_tr = np.nonzero(np.asarray(fg_mask_filt))
 		data = np.asarray(data_tr).T
-
 		detections = []
 
 		if data.shape[0] >= self.min_fg_pixels:
@@ -166,16 +205,57 @@ class Detector:
 			
 		# Print message: [timestamp camera_id position_x position_y length]
 		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
-		print(msg)
-		self.detections[ind] = detections
-		self.current_ind = ind
-		self.current_len = len(detections)
+		# print(msg)
 
-		self.data_changed_event(self.current_len)
+		self.detections[ind] = detections
+		self.detections_clearable = True
 
 		if get_images:
 			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
 
+	def computeAll(self):
+		print("Computing all")
+		self.computing = True
+		self.stop_computing = False
+		self.state_changed_event()
+
+		if self.mog_dirty:
+			self.initMOG()
+			if self.mog_dirty:
+				self.abortComputing()
+				return
+
+		for ind in range(self.image_provider.getFrameCount()):
+			if ind % 500 == 0:
+				print("Computing:", ind)
+			if self.stop_computing:
+				print("Stopped computing at", ind)
+				self.abortComputing()
+				return
+
+			img = self.image_provider.getFrame(ind)
+			self.computeBase(ind, img)
+
+		print("All computed")
+		self.computing = False
+		self.detections_dirty = False
+		self.detections_clearable = True
+		self.state_changed_event()
+
+	def abortComputing(self):
+		self.stop_computing = False
+		self.computing = False
+		self.detections_dirty = True
+		self.detections_clearable = True
+		self.state_changed_event()
+
+	def clearDetections(self, force=False):
+		if not self.detections_clearable or force:
+			nof_frames = self.image_provider.getFrameCount()
+			self.detections = [None] * nof_frames
+			self.detections_clearable = False
+			self.detections_dirty = True
+		
 	def overlayDetections(self, image, detections):
 		# labels = [d.label for d in labels]
 
@@ -188,7 +268,7 @@ class Detector:
 	def setDetectionSize(self, value):
 		try:
 			self.detection_size = int(value)
-			self.frames_dirty = True
+			self.clearDetections()
 		except ValueError as e:
 			print(e)
 
@@ -196,21 +276,21 @@ class Detector:
 		try:
 			self.mog_var_thresh = int(value)
 			self.mog_dirty = True
-			self.mog_status_event(self.initializing)
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setMinFGPixels(self, value):
 		try:
 			self.min_fg_pixels = int(value)
-			self.frames_dirty = True
+			self.clearDetections()
 		except ValueError as e:
 			print(e)
 
 	def setMedianSize(self, value):
 		try:
 			self.median_size = int(value)
-			self.frames_dirty = True
+			self.clearDetections()
 		except ValueError as e:
 			print(e)
 
@@ -218,7 +298,7 @@ class Detector:
 		try:
 			self.nof_bg_frames = int(value)
 			self.mog_dirty = True
-			self.mog_status_event(self.initializing)
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
@@ -226,21 +306,21 @@ class Detector:
 		try:
 			self.learning_rate = float(value)
 			self.mog_dirty = True
-			self.mog_status_event(self.initializing)
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setDBScanEps(self, value):
 		try:
 			self.dbscan_eps = int(value)
-			self.frames_dirty = True
+			self.clearDetections()
 		except ValueError as e:
 			print(e)
 
 	def setDBScanMinSamples(self, value):
 		try:
 			self.dbscan_min_samples = int(value)
-			self.frames_dirty = True
+			self.clearDetections()
 		except ValueError as e:
 			print(e)
 

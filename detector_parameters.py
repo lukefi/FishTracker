@@ -70,7 +70,7 @@ class LabeledSlider:
         for f in self.connected_functions:
                 f(applied_value)
 
-class DetectorParameters(QDialog):
+class DetectorParameters(QWidget):
     def __init__(self, playback_manager, detector, sonar_processor):
         super().__init__()
         self.playback_manager = playback_manager
@@ -100,11 +100,13 @@ class DetectorParameters(QDialog):
             layout.addRow(label, line)
             return line
 
-        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize], self.form_layout)
-        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels], self.form_layout)
-        self.median_size_slider = LabeledSlider("Median size", self.form_layout, [detector.setMedianSize], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
-        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps], self.form_layout)
-        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples], self.form_layout)
+        refresh_lambda = lambda x: playback_manager.refreshFrame()
+
+        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize, refresh_lambda], self.form_layout)
+        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels, refresh_lambda], self.form_layout)
+        self.median_size_slider = LabeledSlider("Median size", self.form_layout, [detector.setMedianSize, refresh_lambda], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
+        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps, refresh_lambda], self.form_layout)
+        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples, refresh_lambda], self.form_layout)
 
         self.verticalLayout.addLayout(self.form_layout)
 
@@ -184,7 +186,9 @@ class DetectorParameters(QDialog):
 
         self.loadJSON()
 
-        self.detector.mog_status_event.append(lambda x: self.setButtonsEnabled())
+        self.playback_manager.polars_loaded.append(self.setButtonsEnabled)
+        self.detector.state_changed_event.append(self.setButtonsEnabled)
+        self.detector.state_changed_event.append(self.setButtonTexts)
         self.setButtonsEnabled()
 
     def saveJSON(self):
@@ -239,17 +243,33 @@ class DetectorParameters(QDialog):
 
     def recalculateMOG(self):
         if not self.detector.initializing:
-            self.detector.initMOG()
+            self.playback_manager.runInThread(self.detector.initMOG)
+        else:
+            self.detector.stop_initializing = True
 
     def calculateAll(self):
-        print("Calculate all frames (not implemented)")
+        if not self.detector.computing:
+            self.playback_manager.runInThread(self.detector.computeAll)
+        else:
+            self.detector.stop_computing = True
+
+    def setButtonTexts(self):
+        if self.detector.computing:
+            self.calculate_all_btn.setText("Cancel")
+        else:
+            self.calculate_all_btn.setText("Calculate All")
+
+        if self.detector.initializing:
+            self.recalculate_mog_btn.setText("Cancel")
+        else:
+            self.recalculate_mog_btn.setText("Apply Values")
 
     def setButtonsEnabled(self):
         #print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
-        mog_value = self.playback_manager.isMappingDone() and not self.detector.initializing and self.detector.mog_dirty
+        mog_value = self.playback_manager.isMappingDone() and self.detector.mog_dirty
         self.recalculate_mog_btn.setEnabled(mog_value)
 
-        all_value = self.playback_manager.isMappingDone() and not self.detector.initializing and (self.detector.mog_dirty or self.detector.frames_dirty)
+        all_value = self.playback_manager.isPolarsDone() and not self.detector.initializing and (self.detector.detections_dirty or self.detector.mog_dirty)
         self.calculate_all_btn.setEnabled(all_value)
 
 if __name__ == "__main__":

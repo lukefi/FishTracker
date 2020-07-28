@@ -63,7 +63,7 @@ class ParameterList(QtWidgets.QDialog):
         self.show_detections_checkbox.stateChanged.connect(self.detector.setShowDetections)
         self.show_detections_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
         self.show_detections_checkbox.setEnabled(False)
-        self.detector.mog_status_event.append(self.show_detections_checkbox.setEnabled)
+        self.detector.state_changed_event.append(lambda: self.show_detections_checkbox.setEnabled(self.detector.mog_ready))
 
         self.verticalLayout.addWidget(self.image_controls_label)
         self.verticalLayout.addWidget(self.distance_tick)

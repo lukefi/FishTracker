@@ -1,4 +1,5 @@
 import sys, os
+import traceback
 from file_handler import FOpenSonarFile
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -77,6 +78,8 @@ class PlaybackManager(QObject):
         self.thread_pool.start(self.playback_thread)
         self.file_opened(self.sonar)
 
+        self.startFrameTimer()
+
     def unloadFile(self):
         self.sonar = None
         #self.polar_transform = None
@@ -105,7 +108,6 @@ class PlaybackManager(QObject):
             print("Start")
             self.playback_thread.is_playing = True
             self.showNextImage()
-            self.startFrameTimer()
 
     def startFrameTimer(self):
         """
@@ -244,6 +246,14 @@ class PlaybackManager(QObject):
     def getFrameCount(self):
         return self.sonar.frameCount
 
+    def pausePolarLoading(self, value):
+        if self.playback_thread is not None:
+            self.playback_thread.pause_polar_loading = value
+            if value:
+                print("Polar loading paused.")
+            else:
+                print("Polar loading continued.")
+
     def isMappingDone(self):
         return self.playback_thread is not None and self.playback_thread.polar_transform is not None
 
@@ -293,6 +303,8 @@ class PlaybackThread(QRunnable):
         self.display_ind = 0
         self.polars_loaded = False
 
+        self.pause_polar_loading = False
+
     def __del__(self):
         print("Playback thread destroyed")
 
@@ -309,11 +321,18 @@ class PlaybackThread(QRunnable):
 
     def loadPolarFrames(self):
         print("Start: [{}-{}]".format(0, self.sonar.frameCount))
-        for i in range(self.sonar.frameCount):
+        #for i in range(self.sonar.frameCount):
+        i = 0
+        while i < self.sonar.frameCount:
+            if self.pause_polar_loading:
+                time.sleep(0.1)
+                continue
+
             if i % 100 == 0:
                 print(i)
             if self.buffer[i] is None:
                 self.buffer[i] = self.sonar.getPolarFrame(i)
+            i += 1
 
     def polarsDone(self, result):
         print("Polar frames loaded")
@@ -340,7 +359,7 @@ class PlaybackThread(QRunnable):
         if self.last_displayed_ind != self.display_ind:
             try:
                 polar = self.buffer[self.display_ind]
-                if polar is not None:
+                if polar is not None and self.polar_transform is not None:
                     frame = self.polar_transform.remap(polar)
                     self.signals.frame_available_signal.emit((self.display_ind, frame))
                     self.last_displayed_ind = self.display_ind

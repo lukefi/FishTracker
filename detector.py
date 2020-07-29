@@ -82,6 +82,9 @@ class Detector:
 
 
 	def initMOG(self):
+		if hasattr(self.image_provider, "pausePolarLoading"):
+			self.image_provider.pausePolarLoading(True)
+
 		self.mog_ready = False
 		self.initializing = True
 		self.stop_initializing = False
@@ -135,6 +138,9 @@ class Detector:
 
 		self.state_changed_event()
 		print("MOG init done")
+
+		if hasattr(self.image_provider, "pausePolarLoading"):
+			self.image_provider.pausePolarLoading(False)
 
 	def compute_from_event(self, tuple):
 		ind, frame = tuple

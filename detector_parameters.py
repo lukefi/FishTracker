@@ -70,7 +70,7 @@ class LabeledSlider:
         for f in self.connected_functions:
                 f(applied_value)
 
-class DetectorParameters(QWidget):
+class DetectorParametersView(QWidget):
     def __init__(self, playback_manager, detector, sonar_processor):
         super().__init__()
         self.playback_manager = playback_manager
@@ -192,16 +192,7 @@ class DetectorParameters(QWidget):
         self.setButtonsEnabled()
 
     def saveJSON(self):
-        dict = {
-            "detection_size": self.detector.detection_size,
-	        "mog_var_thresh": self.detector.mog_var_thresh,
-	        "min_fg_pixels": self.detector.min_fg_pixels,
-	        "median_size": self.detector.median_size,
-	        "nof_bg_frames": self.detector.nof_bg_frames,
-	        "learning_rate": self.detector.learning_rate,
-	        "dbscan_eps": self.detector.dbscan_eps,
-	        "dbscan_min_samples": self.detector.dbscan_min_samples
-        }
+        dict = detector.getParameterDict()
 
         try:
             with open(PARAMETERS_PATH, "w") as f:
@@ -218,10 +209,12 @@ class DetectorParameters(QWidget):
         except json.JSONDecodeError as e:
             print("Error: Invalid detector parameters file:", e)
 
+
+        params = self.detector.parameters
         for key, value in dict.items():
-            if hasattr(self.detector, key) and key in PARAMETER_TYPES:
+            if hasattr(params, key) and key in PARAMETER_TYPES:
                 try:
-                    setattr(self.detector, key, PARAMETER_TYPES[key](value))
+                    setattr(params, key, PARAMETER_TYPES[key](value))
 
                 except ValueError as e:
                     print("Error: Invalid value in detector parameters file,", e)
@@ -232,14 +225,17 @@ class DetectorParameters(QWidget):
         self.refreshValues()
 
     def refreshValues(self):
-        self.detection_size_line.setText(str(self.detector.detection_size))
-        self.mog_var_threshold_line.setText(str(self.detector.mog_var_thresh))
-        self.min_fg_pixels_line.setText(str(self.detector.min_fg_pixels))
-        self.median_size_slider.setValue(self.detector.median_size)
-        self.nof_bg_frames_line.setText(str(self.detector.nof_bg_frames))
-        self.learning_rate_line.setText(str(self.detector.learning_rate))
-        self.dbscan_eps_line.setText(str(self.detector.dbscan_eps))
-        self.dbscan_min_samples_line.setText(str(self.detector.dbscan_min_samples))
+
+        params = self.detector.parameters
+
+        self.detection_size_line.setText(str(params.detection_size))
+        self.mog_var_threshold_line.setText(str(params.mog_var_thresh))
+        self.min_fg_pixels_line.setText(str(params.min_fg_pixels))
+        self.median_size_slider.setValue(params.median_size)
+        self.nof_bg_frames_line.setText(str(params.nof_bg_frames))
+        self.learning_rate_line.setText(str(params.learning_rate))
+        self.dbscan_eps_line.setText(str(params.dbscan_eps))
+        self.dbscan_min_samples_line.setText(str(params.dbscan_min_samples))
 
     def recalculateMOG(self):
         if not self.detector.initializing:
@@ -285,7 +281,7 @@ if __name__ == "__main__":
     sonar_processor = ImageProcessor()
 
     detector = Detector(playback_manager)
-    detector_parameters = DetectorParameters(playback_manager, detector, sonar_processor)
+    detector_parameters = DetectorParametersView(playback_manager, detector, sonar_processor)
 
     main_window.setCentralWidget(detector_parameters)
     main_window.show()

@@ -11,8 +11,10 @@ class EchoFigure(ZoomableQLabel):
         self.parent = parent
         self.displayed_image = None #cv2.imread('echo_placeholder.png', 0)
         self.resetView()
-        self.progress = 0
+        self.frame_ind = 0
         self.margin = 0
+        self.frame_count = 0
+        self.detection_opacity = 1
 
 
     def frame2xPos(self, value):
@@ -37,14 +39,36 @@ class EchoFigure(ZoomableQLabel):
         width = size.width()
         height = size.height()
 
-        h_pos = self.frame2xPos(self.progress) #self.applied_zoom * self.progress * width
+        try:
+            h_pos = self.frame2xPos((self.frame_ind + 0.5) / self.frame_count)
+        except ZeroDivisionError:
+            h_pos = 0
 
         painter = QtGui.QPainter(self)
         #painter.drawPixmap(self.rect(), self.figurePixmap)
 
+        self.overlayDetections(painter)
+
         if h_pos < width:
-            painter.setPen(QtCore.Qt.red)
+            painter.setPen(QtCore.Qt.darkRed)
+            painter.setOpacity(1.0)
             painter.drawLine(h_pos, 0, h_pos, height)
+
+    def overlayDetections(self, painter):
+        try:
+            squeezed = self.parent.getDetections()
+            painter.setPen(QtCore.Qt.blue)
+            painter.setOpacity(self.detection_opacity)
+            v_mult = self.parent.getDetectionScale()
+            for i in range(len(squeezed)):
+                heights = squeezed[i]
+                h_pos_0 = self.frame2xPos(i / self.frame_count)
+                h_pos_1 = self.frame2xPos((i + 1) / self.frame_count)
+                for h in heights:
+                    v_pos = h * v_mult
+                    painter.drawLine(h_pos_0, v_pos, h_pos_1, v_pos)
+        except ZeroDivisionError:
+            pass
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
@@ -57,10 +81,11 @@ class EchoFigure(ZoomableQLabel):
             self.parent.setFrame(self.xPos2Frame(event.x()))
 
 class EchogramViewer(QtWidgets.QWidget):
-    def __init__(self, playback_manager):
+    def __init__(self, playback_manager, detector):
         super().__init__()
 
         self.playback_manager = playback_manager
+        self.detector = detector
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0,0,0,0)
@@ -77,7 +102,10 @@ class EchogramViewer(QtWidgets.QWidget):
         self.echogram = None
 
     def onImageAvailable(self, frame):
-        self.figure.progress = self.playback_manager.getRelativeIndex()
+        self.figure.frame_ind = self.playback_manager.getFrameInd()
+        self.figure.detection_opacity = 0.5 if self.detector.detections_dirty else 1.0
+        print("Opacity:", self.figure.detection_opacity)
+        print(self.detector.detections_dirty, self.detector.detections_clearable)
         self.figure.update()
 
     #def onPolarAvailable(self, ind, polar):
@@ -88,11 +116,18 @@ class EchogramViewer(QtWidgets.QWidget):
 
     def onFileOpen(self, sonar):
         self.echogram = Echogram(sonar.frameCount)
+        self.figure.frame_count = sonar.frameCount
 
     def imageReady(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
         self.figure.setImage(self.echogram.getDisplayedImage())
         self.figure.resetView()
+
+    def getDetections(self):
+        return self.detector.vertical_detections
+
+    def getDetectionScale(self):
+        return self.figure.window_height / self.detector.image_height
 
 class Echogram():
     """
@@ -141,11 +176,33 @@ if __name__ == "__main__":
     import sys
     from playback_manager import PlaybackManager
 
+    class TestDetection():
+        def __init__(self, x, y):
+            self.center = (y, x)
+
+    class TestDetector():
+        def __init__(self, frameCount, height):
+            self.frameCount = frameCount
+            self.detections = []
+            self.image_height = height
+            self.detections_dirty = True
+            for i in range(frameCount):
+                count = np.random.randint(0, 5)
+                if count > 0:
+                    self.detections.append([TestDetection(0, np.random.randint(0,height)) for j in range(count)])
+                else:
+                    self.detections.append(None)
+
+            self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+
+
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    echogram = EchogramViewer(playback_manager)
     playback_manager.openTestFile()
+    detector = TestDetector(playback_manager.getFrameCount(), playback_manager.sonar.samplesPerBeam)
+    echogram = EchogramViewer(playback_manager, detector)
+    echogram.onFileOpen(playback_manager.sonar)
     main_window.setCentralWidget(echogram)
     main_window.show()
     main_window.resize(900,300)

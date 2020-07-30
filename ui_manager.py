@@ -8,7 +8,7 @@ from fish_manager import FishManager
 from fish_list import FishList
 from parameter_list import ParameterList
 from detector import Detector
-from detector_parameters import DetectorParameters
+from detector_parameters import DetectorParametersView
 from detection_list import DetectionList, DetectionDataModel
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
@@ -45,7 +45,7 @@ class UIManager():
     def setupWidgets(self):
         _translate = QtCore.QCoreApplication.translate
 
-        echo = EchogramViewer(self.playback)
+        echo = EchogramViewer(self.playback, self.detector)
         self.ui.splitter_2.replaceWidget(0, echo)
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(400)
@@ -57,19 +57,19 @@ class UIManager():
         self.fish_manager
         self.fish_list = FishList(self.fish_manager, self.playback)
         self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager, self.detector)
-        self.detector_parameters = DetectorParameters(self.playback, self.detector, sonar.image_processor)
+        self.detector_parameters = DetectorParametersView(self.playback, self.detector, sonar.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 
         self.ui.info_widget.removeTab(0)
-        self.ui.info_widget.addTab(self.fish_list, "")
-        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Fish List"))
         self.ui.info_widget.addTab(self.parameter_list, "")
-        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Parameter List"))
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Display"))
         self.ui.info_widget.addTab(self.detector_parameters, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detector_parameters), _translate("MainWindow", "Detector"))
         self.ui.info_widget.addTab(self.detection_list, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detection_list), _translate("MainWindow", "Detections"))
+        self.ui.info_widget.addTab(self.fish_list, "")
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Fish List"))
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')
@@ -106,6 +106,7 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     fish_manager = FishManager()
     detector = Detector(playback_manager)
+    detector.all_computed_event.append(playback_manager.refreshFrame)
     playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
     playback_manager.frame_available.insert(0, detector.compute_from_event)
 

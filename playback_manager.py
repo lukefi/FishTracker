@@ -51,12 +51,17 @@ class PlaybackManager(QObject):
         if not os.path.exists(path):
             path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
         if os.path.exists(path):
-            self.loadFile(path)
+            # Override test file length
+            self.loadFile(path, 100)
         else:
             self.openFile()
 
-    def loadFile(self, path):
+    def loadFile(self, path, overrideLength=-1):
         self.path = path
+        sonar = FOpenSonarFile(self.path)
+        if overrideLength > 0:
+            sonar.frameCount = min(overrideLength, sonar.frameCount)
+
         if self.playback_thread:
             print("Not implemented.")
 
@@ -64,10 +69,10 @@ class PlaybackManager(QObject):
             #self.playback_thread.signals.playback_ended_signal.connect(self.setLoadedFile)
             #self.stopAll()
         else:
-            self.setLoadedFile()
+            self.setLoadedFile(sonar)
 
-    def setLoadedFile(self):
-        self.sonar = FOpenSonarFile(self.path)
+    def setLoadedFile(self, sonar):
+        self.sonar = sonar
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
         # self.playback_thread.signals.first_frame_signal.connect(self.play)

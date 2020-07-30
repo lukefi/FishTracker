@@ -120,9 +120,9 @@ class DetectorParametersView(QWidget):
 
         self.form_layout2 = QFormLayout()
 
-        self.mog_var_threshold_line = addLine("MOG var threshold", 11, QIntValidator(0, 20), [detector.setMOGVarThresh], self.form_layout2)
-        self.nof_bg_frames_line = addLine("Number of bg frames", 10, QIntValidator(10, 10000), [detector.setNofBGFrames], self.form_layout2)
-        self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate], self.form_layout2)
+        self.mog_var_threshold_line = addLine("MOG var threshold", 11, QIntValidator(0, 20), [detector.setMOGVarThresh, refresh_lambda], self.form_layout2)
+        self.nof_bg_frames_line = addLine("Number of bg frames", 10, QIntValidator(10, 10000), [detector.setNofBGFrames, refresh_lambda], self.form_layout2)
+        self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate, refresh_lambda], self.form_layout2)
 
         self.verticalLayout.addLayout(self.form_layout2)
 
@@ -211,14 +211,18 @@ class DetectorParametersView(QWidget):
 
 
         params = self.detector.parameters
+        mog_params = self.detector.mog_parameters
         for key, value in dict.items():
             if hasattr(params, key) and key in PARAMETER_TYPES:
                 try:
                     setattr(params, key, PARAMETER_TYPES[key](value))
-
                 except ValueError as e:
                     print("Error: Invalid value in detector parameters file,", e)
-
+            elif hasattr(mog_params, key) and key in PARAMETER_TYPES:
+                try:
+                    setattr(mog_params, key, PARAMETER_TYPES[key](value))
+                except ValueError as e:
+                    print("Error: Invalid value in detector parameters file,", e)
             else:
                 print("Error: Invalid parameters: {}: {}".format(key, value))
 
@@ -227,15 +231,17 @@ class DetectorParametersView(QWidget):
     def refreshValues(self):
 
         params = self.detector.parameters
+        mog_params = self.detector.mog_parameters
 
         self.detection_size_line.setText(str(params.detection_size))
-        self.mog_var_threshold_line.setText(str(params.mog_var_thresh))
         self.min_fg_pixels_line.setText(str(params.min_fg_pixels))
         self.median_size_slider.setValue(params.median_size)
-        self.nof_bg_frames_line.setText(str(params.nof_bg_frames))
-        self.learning_rate_line.setText(str(params.learning_rate))
         self.dbscan_eps_line.setText(str(params.dbscan_eps))
         self.dbscan_min_samples_line.setText(str(params.dbscan_min_samples))
+
+        self.nof_bg_frames_line.setText(str(mog_params.nof_bg_frames))
+        self.learning_rate_line.setText(str(mog_params.learning_rate))
+        self.mog_var_threshold_line.setText(str(mog_params.mog_var_thresh))
 
     def recalculateMOG(self):
         if not self.detector.initializing:
@@ -262,10 +268,10 @@ class DetectorParametersView(QWidget):
 
     def setButtonsEnabled(self):
         #print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
-        mog_value = self.playback_manager.isMappingDone() and self.detector.mog_dirty
+        mog_value = self.playback_manager.isMappingDone() and self.detector.mogParametersDirty() #mog_dirty
         self.recalculate_mog_btn.setEnabled(mog_value)
 
-        all_value = self.playback_manager.isPolarsDone() and not self.detector.initializing and (self.detector.detections_dirty or self.detector.mog_dirty)
+        all_value = self.playback_manager.isPolarsDone() and not self.detector.initializing and self.detector.parametersDirty() #(self.detector.detections_dirty or self.detector.mog_dirty)
         self.calculate_all_btn.setEnabled(all_value)
 
 if __name__ == "__main__":

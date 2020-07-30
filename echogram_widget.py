@@ -40,24 +40,28 @@ class EchoFigure(ZoomableQLabel):
         height = size.height()
 
         try:
-            h_pos = self.frame2xPos((self.frame_ind + 0.5) / self.frame_count)
+            h_pos_0 = self.frame2xPos((self.frame_ind) / self.frame_count)
+            h_pos_1 = self.frame2xPos((self.frame_ind + 1) / self.frame_count)
         except ZeroDivisionError:
-            h_pos = 0
+            h_pos_0 = 0
+            h_pos_1 = self.frame2xPos(0.01)
 
         painter = QtGui.QPainter(self)
         #painter.drawPixmap(self.rect(), self.figurePixmap)
 
         self.overlayDetections(painter)
 
-        if h_pos < width:
-            painter.setPen(QtCore.Qt.darkRed)
-            painter.setOpacity(1.0)
-            painter.drawLine(h_pos, 0, h_pos, height)
+        if h_pos_0 < width:
+            painter.setPen(QtCore.Qt.white)
+            painter.setBrush(QtCore.Qt.white)
+            painter.setOpacity(0.3)
+            # painter.drawLine(h_pos_0, 0, h_pos_0, height)
+            painter.drawRect(h_pos_0, 0, h_pos_1-h_pos_0, height)
 
     def overlayDetections(self, painter):
         try:
             squeezed = self.parent.getDetections()
-            painter.setPen(QtCore.Qt.blue)
+            painter.setPen(QtCore.Qt.red)
             painter.setOpacity(self.detection_opacity)
             v_mult = self.parent.getDetectionScale()
             for i in range(len(squeezed)):
@@ -103,9 +107,9 @@ class EchogramViewer(QtWidgets.QWidget):
 
     def onImageAvailable(self, frame):
         self.figure.frame_ind = self.playback_manager.getFrameInd()
-        self.figure.detection_opacity = 0.5 if self.detector.detections_dirty else 1.0
+        self.figure.detection_opacity = 0.5 if self.detector.parametersDirty() else 1.0
         print("Opacity:", self.figure.detection_opacity)
-        print(self.detector.detections_dirty, self.detector.detections_clearable)
+        print(self.detector.parametersDirty(), self.detector.detections_clearable)
         self.figure.update()
 
     #def onPolarAvailable(self, ind, polar):
@@ -185,7 +189,7 @@ if __name__ == "__main__":
             self.frameCount = frameCount
             self.detections = []
             self.image_height = height
-            self.detections_dirty = True
+            self.detections_clearable = True
             for i in range(frameCount):
                 count = np.random.randint(0, 5)
                 if count > 0:
@@ -194,6 +198,9 @@ if __name__ == "__main__":
                     self.detections.append(None)
 
             self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+
+        def parametersDirty(self):
+            return False
 
 
     app = QtWidgets.QApplication(sys.argv)

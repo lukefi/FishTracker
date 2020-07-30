@@ -66,17 +66,18 @@ class Detector:
 		# [flag] Whether detection array can be cleared.
 		self.detections_clearable = True
 
-		# [flag] Whether all frames should be calculated.
-		self.detections_dirty = True
+		## [flag] Whether all frames should be calculated.
+		#self.detections_dirty = True
 
-		# ([flag] Whether MOG should be reinitialized.
-		self.mog_dirty = False
+		## ([flag] Whether MOG should be reinitialized.
+		#self.mog_dirty = False
 
-		self.appliedParameters = None
+		self.applied_parameters = None
+		self.applied_mog_parameters = None
 
 	def resetParameters(self):
-		self.parameters = DetectorParameters()
-		## Some parameters. Should be in UI / read from a config file.
+		self.mog_parameters = MOGParameters()
+		self.parameters = DetectorParameters(mog_parameters=self.mog_parameters)
 		#self.detection_size = 10
 		#self.mog_var_thresh = 11
 		#self.min_fg_pixels = 25
@@ -100,11 +101,11 @@ class Detector:
 
 		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
 		self.fgbg_mog.setNMixtures(5)
-		self.fgbg_mog.setVarThreshold(self.parameters.mog_var_thresh)
+		self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		self.fgbg_mog.setShadowValue(0)
 
 		nof_frames = self.image_provider.getFrameCount()
-		nof_bg_frames = min(nof_frames, self.parameters.nof_bg_frames)
+		nof_bg_frames = min(nof_frames, self.mog_parameters.nof_bg_frames)
 		self.clearDetections(True)
 
 		# Create background model from fixed number of frames.
@@ -123,7 +124,8 @@ class Detector:
 				self.stop_initializing = False
 				self.mog_ready = False
 				self.initializing = False
-				self.mog_dirty = True
+				self.mog_parameters = None
+				self.parameters.mog_parameters = None
 				self.state_changed_event()
 				return
 
@@ -134,7 +136,7 @@ class Detector:
 			# image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
 
 			# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
-			self.fgbg_mog.apply(image_o, learningRate=self.parameters.learning_rate)
+			self.fgbg_mog.apply(image_o, learningRate=self.mog_parameters.learning_rate)
 			#bg_counter = bg_counter + step
 			#if bg_counter == self.nof_bg_frames:
 			#	break;
@@ -142,13 +144,16 @@ class Detector:
 		self.image_height = image_o.shape[0]
 		self.mog_ready = True
 		self.initializing = False;
-		self.mog_dirty = False
+		self.applied_mog_parameters = self.mog_parameters.copy()
 
 		self.state_changed_event()
 		print("MOG init done")
 
 		if hasattr(self.image_provider, "pausePolarLoading"):
 			self.image_provider.pausePolarLoading(False)
+
+		if hasattr(self.image_provider, "refreshFrame"):
+			self.image_provider.refreshFrame()
 
 	def compute_from_event(self, tuple):
 		ind, frame = tuple
@@ -182,7 +187,7 @@ class Detector:
 
 		msg = str(self.ts) + ' 9999999999 '
 
-		self.fgbg_mog.setVarThreshold(self.parameters.mog_var_thresh)
+		# self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		fg_mask_cpy = fg_mask_mog
 		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
 		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
@@ -233,10 +238,16 @@ class Detector:
 		self.stop_computing = False
 		self.state_changed_event()
 
-		if self.mog_dirty:
+		#if self.mog_dirty:
+		#	self.initMOG()
+		#	if self.mog_dirty:
+		#		self.abortComputing(True)
+		#		return
+
+		if self.mogParametersDirty():
 			self.initMOG()
-			if self.mog_dirty:
-				self.abortComputing()
+			if self.mogParametersDirty():
+				self.abortComputing(True)
 				return
 
 		for ind in range(self.image_provider.getFrameCount()):
@@ -244,7 +255,7 @@ class Detector:
 				print("Computing:", ind)
 			if self.stop_computing:
 				print("Stopped computing at", ind)
-				self.abortComputing()
+				self.abortComputing(False)
 				return
 
 			img = self.image_provider.getFrame(ind)
@@ -252,29 +263,32 @@ class Detector:
 
 		print("All computed")
 		self.computing = False
-		self.detections_dirty = False
+		#self.detections_dirty = False
 		self.detections_clearable = True
-		self.appliedParameters = self.parameters.copy()
+		self.applied_parameters = self.parameters.copy()
 
 		self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
 
 		self.state_changed_event()
 		self.all_computed_event()
 
-	def abortComputing(self):
+	def abortComputing(self, mog_aborted):
 		self.stop_computing = False
 		self.computing = False
-		self.detections_dirty = True
+		#self.detections_dirty = True
 		self.detections_clearable = True
 		self.state_changed_event()
-		self.appliedParameters = None
+		self.applied_parameters = None
+		if mog_aborted:
+			self.applied_mog_parameters = None
 
 	def clearDetections(self, force=False):
 		#if not self.detections_clearable or force:
 		nof_frames = self.image_provider.getFrameCount()
 		self.detections = [None] * nof_frames
 		self.detections_clearable = False
-		self.detections_dirty = True
+		#self.detections_dirty = True
+		self.applied_parameters = None
 		
 	def overlayDetections(self, image, detections):
 		# labels = [d.label for d in labels]
@@ -287,15 +301,16 @@ class Detector:
 
 	def setDetectionSize(self, value):
 		try:
-			self.detection_size = int(value)
-			self.clearDetections()
+			self.parameters.detection_size = int(value)
+			# self.clearDetections()
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setMOGVarThresh(self, value):
 		try:
-			self.parameters.mog_var_thresh = int(value)
-			self.mog_dirty = True
+			self.mog_parameters.mog_var_thresh = int(value)
+			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -303,29 +318,31 @@ class Detector:
 	def setMinFGPixels(self, value):
 		try:
 			self.parameters.min_fg_pixels = int(value)
-			self.clearDetections()
+			# self.clearDetections()
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setMedianSize(self, value):
 		try:
 			self.parameters.median_size = int(value)
-			self.clearDetections()
+			# self.clearDetections()
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setNofBGFrames(self, value):
 		try:
-			self.parameters.nof_bg_frames = int(value)
-			self.mog_dirty = True
+			self.mog_parameters.nof_bg_frames = int(value)
+			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setLearningRate(self, value):
 		try:
-			self.parameters.learning_rate = float(value)
-			self.mog_dirty = True
+			self.mog_parameters.learning_rate = float(value)
+			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -333,14 +350,16 @@ class Detector:
 	def setDBScanEps(self, value):
 		try:
 			self.parameters.dbscan_eps = int(value)
-			self.clearDetections()
+			# self.clearDetections()
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setDBScanMinSamples(self, value):
 		try:
 			self.parameters.dbscan_min_samples = int(value)
-			self.clearDetections()
+			# self.clearDetections()
+			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
@@ -358,22 +377,42 @@ class Detector:
 		return [d for d in self.detections[self.current_ind] if d.center is not None]
 
 	def parametersDirty(self):
-		return self.parameters != self.appliedParameters
+		return self.parameters != self.applied_parameters or self.mogParametersDirty()
 
-	def mogParamersDirty(self):
-		return not self.parameters.mogParametersEq(self.appliedParameters)
+	def mogParametersDirty(self):
+		return self.mog_parameters != self.applied_mog_parameters
 
-class DetectorParameters:
-	def __init__(self, detection_size=10, mog_var_thresh=11, min_fg_pixels=25, median_size=3, nof_bg_frames=1000, \
-	   learning_rate=0.01, dbscan_eps=10, dbscan_min_samples=10):
-
-		self.detection_size = detection_size
+class MOGParameters:
+	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01,):
 		self.mog_var_thresh = mog_var_thresh
-		self.min_fg_pixels = min_fg_pixels
-		self.median_size = median_size
 		self.nof_bg_frames = nof_bg_frames
 		self.learning_rate = learning_rate
 
+	def __eq__(self, other):
+		if not isinstance(other, MOGParameters):
+			return False
+
+		return self.mog_var_thresh == other.mog_var_thresh \
+			and self.nof_bg_frames == other.nof_bg_frames \
+			and self.learning_rate == other.learning_rate
+
+	def __repr__(self):
+		return "MOG Parameters: {} {} {}".format(self.mog_var_thresh, self.nof_bg_frames, self.learning_rate)
+
+	def copy(self):
+		return MOGParameters( self.mog_var_thresh, self.nof_bg_frames, self.learning_rate )
+
+class DetectorParameters:
+	def __init__(self, mog_parameters=None, detection_size=10, min_fg_pixels=25, median_size=3, dbscan_eps=10, dbscan_min_samples=10):
+
+		if mog_parameters is None:
+			self.mog_parameters = MOGParameters()
+		else:
+			self.mog_parameters = mog_parameters
+
+		self.detection_size = detection_size
+		self.min_fg_pixels = min_fg_pixels
+		self.median_size = median_size
 		self.dbscan_eps = dbscan_eps
 		self.dbscan_min_samples = dbscan_min_samples
 
@@ -381,40 +420,31 @@ class DetectorParameters:
 		if not isinstance(other, DetectorParameters):
 			return False
 
-		return self.detection_size == other.detection_size \
-			and self.mog_var_thresh == other.mog_var_thresh \
+		value = self.mog_parameters == other.mog_parameters \
+			and self.detection_size == other.detection_size \
 			and self.min_fg_pixels == other.min_fg_pixels \
 			and self.median_size == other.median_size \
-			and self.nof_bg_frames == other.nof_bg_frames \
-			and self.learning_rate == other.learning_rate \
 			and self.dbscan_eps == other.dbscan_eps \
 			and self.dbscan_min_samples == other.dbscan_min_samples
 
-	def updateMogValues(self, mog_var_thresh, nof_bg_frames, learning_rate):
-		self.mog_var_thresh = mog_var_thresh
-		self.nof_bg_frames = nof_bg_frames
-		self.learning_rate = learning_rate
+		print(self, other, value)
+		return value
 
-	def mogParametersEq(self, other):
-		if not isinstance(other, DetectorParameters):
-			return False
-
-		return self.mog_var_thresh == other.mog_var_thresh \
-			and self.nof_bg_frames == other.nof_bg_frames \
-			and self.learning_rate == other.learning_rate
+	def __repr__(self):
+		return "Parameters: {} {} {} {} {}".format(self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples)
 
 	def copy(self):
-		return DetectorParameters( self.detection_size, self.mog_var_thresh, self.min_fg_pixels, self.median_size, \
-			self.nof_bg_frames, self.learning_rate, self.dbscan_eps, self.dbscan_min_samples )
+		mog_parameters = self.mog_parameters.copy()
+		return DetectorParameters( mog_parameters, self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples )
 
 	def getParameterDict(self):
 		return {
             "detection_size": self.detection_size,
-	        "mog_var_thresh": self.mog_var_thresh,
+	        "mog_var_thresh": self.mog_parameters.mog_var_thresh,
 	        "min_fg_pixels": self.min_fg_pixels,
 	        "median_size": self.median_size,
-	        "nof_bg_frames": self.nof_bg_frames,
-	        "learning_rate": self.learning_rate,
+	        "nof_bg_frames": self.mog_parameters.nof_bg_frames,
+	        "learning_rate": self.mog_parameters.learning_rate,
 	        "dbscan_eps": self.dbscan_eps,
 	        "dbscan_min_samples": self.dbscan_min_samples
         }

@@ -53,6 +53,11 @@ class ParameterList(QtWidgets.QDialog):
         self.gamma_layout.addWidget(self.gamma_slider)
         self.gamma_layout.addWidget(self.gamma_value)
 
+        self.bgsub_tick = QtWidgets.QCheckBox("BG Subtraction")
+        self.bgsub_tick.setChecked(False)
+        self.bgsub_tick.stateChanged.connect(self.detector.setShowBGSubtraction)
+        self.bgsub_tick.stateChanged.connect(self.playback_manager.refreshFrame)
+
         self.colormap_tick = QtWidgets.QCheckBox("Use colormap")
         self.colormap_tick.setChecked(False)
         self.colormap_tick.stateChanged.connect(self.sonar_processor.setColorMap)
@@ -70,6 +75,7 @@ class ParameterList(QtWidgets.QDialog):
         self.verticalLayout.addWidget(self.contrast_tick)
         self.verticalLayout.addWidget(self.gamma_label)
         self.verticalLayout.addLayout(self.gamma_layout)
+        self.verticalLayout.addWidget(self.bgsub_tick)
         self.verticalLayout.addWidget(self.colormap_tick)
         self.verticalLayout.addWidget(self.show_detections_checkbox)
         self.verticalLayout.addStretch()

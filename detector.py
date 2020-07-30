@@ -47,6 +47,7 @@ class Detector:
 		self.all_computed_event = Event()
 
 		self._show_detections = False
+		self.show_bgsub = False
 
 		# [flag] Whether MOG is initializing
 		self.initializing = False
@@ -290,8 +291,10 @@ class Detector:
 		#self.detections_dirty = True
 		self.applied_parameters = None
 		
-	def overlayDetections(self, image, detections):
+	def overlayDetections(self, image, detections=None):
 		# labels = [d.label for d in labels]
+		if detections is None:
+			detections = self.getCurrentDetection()
 
 		colors = sns.color_palette('deep', max([0] + [d.label + 1 for d in detections]))
 		for d in detections:
@@ -365,9 +368,12 @@ class Detector:
 
 	def setShowDetections(self, value):
 		self._show_detections = self.mog_ready and value
-		print("{} && {}: {}".format(self.mog_ready, value, self._show_detections))
+		#print("{} && {}: {}".format(self.mog_ready, value, self._show_detections))
 		if not self._show_detections:
 			self.data_changed_event(0)
+
+	def setShowBGSubtraction(self, value):
+		self.show_bgsub = value
 
 	def getCurrentDetection(self):
 		dets = self.detections[self.current_ind]
@@ -375,6 +381,12 @@ class Detector:
 			return []
 
 		return [d for d in self.detections[self.current_ind] if d.center is not None]
+
+	def bgSubtraction(self, image):
+		fg_mask_mog = self.fgbg_mog.apply(image, learningRate=0)
+		fg_mask_cpy = fg_mask_mog
+		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
+		return fg_mask_filt
 
 	def parametersDirty(self):
 		return self.parameters != self.applied_parameters or self.mogParametersDirty()
@@ -515,6 +527,7 @@ class DetectorDisplay:
 	def __init__(self):
 		self.array = [cv2.imread(file, 0) for file in sorted(glob.glob("out/*.png"))]
 		self.detector = Detector(self)
+		self.detector._show_detections = True
 
 	def run(self):
 		self.showWindow()
@@ -523,6 +536,7 @@ class DetectorDisplay:
 		for i in range(self.getFrameCount()):
 			self.readParameters()
 			images = self.detector.compute(i, self.getFrame(i), True)
+			print(images)
 			self.updateWindows(*images)
 
 	def showWindow(self):
@@ -535,9 +549,9 @@ class DetectorDisplay:
 		cv2.createTrackbar('median_size', 'image_o_rgb', 1, 21, nothing)
 		cv2.createTrackbar('min_fg_pixels', 'image_o_rgb', 10, 100, nothing)
 
-		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.mog_var_thresh)
-		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.detector.min_fg_pixels)
-		cv2.setTrackbarPos('median_size','image_o_rgb', self.detector.median_size)
+		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.mog_parameters.mog_var_thresh)
+		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.detector.parameters.min_fg_pixels)
+		cv2.setTrackbarPos('median_size','image_o_rgb', self.detector.parameters.median_size)
 
 	def updateWindows(self, fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt):
 		pos_step = 600
@@ -559,9 +573,9 @@ class DetectorDisplay:
 
 	def readParameters(self):
 		# Read parameter values from trackbars
-		self.detector.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
-		self.detector.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
-		self.detector.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
+		self.detector.mog_parameters.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
+		self.detector.parameters.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
+		self.detector.parameters.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
 
 	def getFrameCount(self):
 		return len(self.array)
@@ -596,7 +610,7 @@ def playbackTest():
 	playback_manager.openTestFile()
 	playback_manager.frame_available.append(forwardImage)
 	detector = Detector(playback_manager)
-	detector.nof_bg_frames = 100
+	detector.mog_parameters.nof_bg_frames = 100
 	detector._show_detections = True
 	playback_manager.mapping_done.append(startDetector)
 	playback_manager.frame_available.insert(0, detector.compute_from_event)
@@ -609,5 +623,5 @@ def playbackTest():
 
 
 if __name__ == "__main__":
-	#simpleTest()
-	playbackTest()
+	simpleTest()
+	#playbackTest()

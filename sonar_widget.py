@@ -194,11 +194,15 @@ class SonarViewer(QtWidgets.QDialog):
             ffigure.setUpdatesEnabled(False)
             ffigure.clear()
 
-            image = self.image_processor.processImage(tuple)
-
+            if self.detector.show_bgsub:
+                image = self.detector.bgSubtraction(frame)
+            else:
+                image = self.image_processor.processImage(tuple)
+            
             if self.detector._show_detections:
-                detections = self.detector.getCurrentDetection() #.detections[ind]
-                image = self.detector.overlayDetections(image, detections)
+                image = self.detector.overlayDetections(image)
+
+            print(image.dtype)
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))

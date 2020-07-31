@@ -47,6 +47,11 @@ class PolarTransform:
 		_x = linear(x, 0, self.cart_shape[1] - 1, 0, self.metric_cart_shape[1])
 		_y = linear(y, 0, self.cart_shape[0] - 1, 0, self.metric_cart_shape[0])
 		return (_y, _x)
+
+	def getMetricDistance(self, y1, x1, y2, x2):
+		y_met, x_met = self.pix2metC(y2-y1, x2-x1)
+		rho_met, phi_met = cart2pol(x_met, y_met)
+		return rho_met, phi_met
 		
 	def met2pixC(self, y, x):
 		""" Transforms from cartesian metric coordinates to cartesian pixel coordinates

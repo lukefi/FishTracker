@@ -92,6 +92,12 @@ class SonarViewer(QtWidgets.QDialog):
         #self.FAutoAnalizerBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('analyze')))
         #self.FAutoAnalizerBTN.clicked.connect(self.FAutoAnalizer)
 
+        self.measure_btn = QtWidgets.QPushButton("Measure Distance", self)
+        self.measure_btn.setFlat(True)
+        self.measure_btn.setCheckable(True)
+        #self.measure_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("background_subtraction")))
+        self.measure_btn.clicked.connect(self.measureDistance)
+
         self.F_BGS_BTN = QtWidgets.QPushButton(self)
         self.F_BGS_BTN.setObjectName("Subtract Background")
         self.F_BGS_BTN.setFlat(True)
@@ -120,6 +126,7 @@ class SonarViewer(QtWidgets.QDialog):
 
         self.FToolbar = QtWidgets.QToolBar(self)
         #self.FToolbar.addWidget(self.FAutoAnalizerBTN)
+        self.FToolbar.addWidget(self.measure_btn)
         self.FToolbar.addWidget(self.F_BGS_BTN)
         self.FToolbar.addWidget(self.F_BGS_ValueLabel)
         # self.FToolbar.add
@@ -267,6 +274,9 @@ class SonarViewer(QtWidgets.QDialog):
     def onFileOpen(self, sonar):
         self.updateSliderLimits(0, sonar.frameCount, 1)
         self.show_first_frame = True
+
+    def measureDistance(self, value):
+        print(value)
 
     #def FLoadSONARFile(self, filePath):
     #    self.FFilePath = filePath
@@ -578,16 +588,46 @@ class SonarViewer(QtWidgets.QDialog):
     def resizeEvent(self, event):
         self.MyFigureWidget.resizeEvent(event)
 
-class SonarFigure(ZoomableQLabel):
-    __parent = None
+    def setStatusBarMousePos(self, x, y):
+        output = self.playback_manager.getBeamDistance(x, y)
+        if output is not None:
+            dist, angle = output
+            angle = abs(angle / np.pi * 180 + 90)
+            txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(dist, angle)
+            self.main_window.FStatusBarMousePos.setText(txt)
 
+
+class SonarFigure(ZoomableQLabel):
     def __init__(self, parent):
         super().__init__(True, True, True)
         self.__parent = parent
+        self.measure_origin = None
+        self.measure_point = None
         self.setStyleSheet("background-color: black;")
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+
+        if not isinstance(self.__parent, SonarViewer):
+            return
+
+        sonar_viewer = self.__parent
+        xs = self.view2imageX(event.x())
+        ys = self.view2imageY(event.y())
+
+        if self.measure_origin is None:
+            self.measure_origin = (xs, ys)
+        else:
+            dist = sonar_viewer.playback_manager.playback_thread.polar_transform.getMetricDistance(self.measure_origin[1], self.measure_origin[0], ys, xs)
+            print(dist)
+            self.measure_origin = None
     
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
+
+        if self.measure_origin is not None:
+            self.measure_point = (self.view2imageX(event.x()), self.view2imageY(event.y()))
+            self.update()
 
         if not isinstance(self.__parent, SonarViewer):
             return
@@ -596,47 +636,11 @@ class SonarFigure(ZoomableQLabel):
         if not isinstance(sonar_viewer.main_window, MainWindow):
             return
 
-        #print(self.pixmap().width(), self.pixmap().height())
         if self.pixmap():
-            margin_x = (self.width() - self.pixmap().width()) / 2
-
-            #if not sonar_viewer.subtractBackground:
-            #    xs = (event.x() - marginx) / self.pixmap().width()
-            #else:
-            #    xs = event.x() - marginx
-
-            #    real_width = self.pixmap().width() / 2
-            #    if xs > real_width:
-            #        xs = (xs - real_width) / real_width
-            #    else:
-            #        xs = xs / real_width
-
-            #xs = event.x() - margin_x
-
-            #real_width = self.pixmap().width() / 2
-            #if xs > real_width:
-            #    xs = (xs - real_width) / real_width
-            #else:
-            #    xs = xs / real_width
-
-            #margin_y = (self.height() - self.pixmap().height()) / 2
-            #ys = (event.y() - marginy) / self.pixmap().height()
-            #ys = event.y() - margin_y
-            #print(xs, self.width(), self.pixmap().width(), "|", ys, self.height(), self.pixmap().height())
-
             xs = self.view2imageX(event.x())
             ys = self.view2imageY(event.y())
+            sonar_viewer.setStatusBarMousePos(xs,ys)
 
-            output = sonar_viewer.playback_manager.getBeamDistance(xs, ys)
-            if output is not None:
-                dist, angle = output
-                angle = abs(angle / np.pi * 180 + 90)
-                txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(dist, angle)
-                sonar_viewer.main_window.FStatusBarMousePos.setText(txt)
-
-                # self.mousePosDist = output[0]
-                # self.mousePosAng = output[1]
-    
     #def resizeEvent(self, event):
     #    super().resizeEvent(event)
     #    if isinstance(self.figurePixmap, QtGui.QPixmap):
@@ -647,6 +651,20 @@ class SonarFigure(ZoomableQLabel):
         print("Key")
         if event.key() == Qt.Key_Space:
             print("Space")
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.measure_origin is None or self.measure_point is None:
+            return
+
+        painter = QtGui.QPainter(self)
+        painter.setPen(QtCore.Qt.darkRed)
+        x1 = self.image2viewX(self.measure_origin[0])
+        y1 = self.image2viewY(self.measure_origin[1])
+        x2 = self.image2viewX(self.measure_point[0])
+        y2 = self.image2viewY(self.measure_point[1])
+        painter.drawLine(x1,y1,x2,y2)
+
 
 class FFishListItem():
     def __init__(self, cls, inputDict, fishNumber):

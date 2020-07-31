@@ -211,8 +211,12 @@ class PlaybackManager(QObject):
             return "No File Loaded"
 
     def getBeamDistance(self, x, y):
-        if self.sonar:
-            return (0, 0)
+        #if self.sonar:
+        #    return (0, 0)
+        #else:
+        #    return None
+        if self.playback_thread and self.playback_thread.polar_transform:
+            return self.playback_thread.polar_transform.cart2polMetric(y, x, True)
         else:
             return None
 

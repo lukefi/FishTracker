@@ -575,6 +575,9 @@ class SonarViewer(QtWidgets.QDialog):
     def setAutomaticContrast(self, value):
         self.automatic_contrast = value
 
+    def resizeEvent(self, event):
+        self.MyFigureWidget.resizeEvent(event)
+
 class SonarFigure(ZoomableQLabel):
     __parent = None
 
@@ -595,24 +598,40 @@ class SonarFigure(ZoomableQLabel):
 
         #print(self.pixmap().width(), self.pixmap().height())
         if self.pixmap():
-            marginx = (self.width() - self.pixmap().width()) / 2
+            margin_x = (self.width() - self.pixmap().width()) / 2
 
-            if not sonar_viewer.subtractBackground:
-                xs = (event.x() - marginx) / self.pixmap().width()
-            else:
-                xs = event.x() - marginx
+            #if not sonar_viewer.subtractBackground:
+            #    xs = (event.x() - marginx) / self.pixmap().width()
+            #else:
+            #    xs = event.x() - marginx
 
-                real_width = self.pixmap().width() / 2
-                if xs > real_width:
-                    xs = (xs - real_width) / real_width
-                else:
-                    xs = xs / real_width
+            #    real_width = self.pixmap().width() / 2
+            #    if xs > real_width:
+            #        xs = (xs - real_width) / real_width
+            #    else:
+            #        xs = xs / real_width
 
-            marginy = (self.height() - self.pixmap().height()) / 2
-            ys = (event.y() - marginy) / self.pixmap().height()
+            #xs = event.x() - margin_x
+
+            #real_width = self.pixmap().width() / 2
+            #if xs > real_width:
+            #    xs = (xs - real_width) / real_width
+            #else:
+            #    xs = xs / real_width
+
+            #margin_y = (self.height() - self.pixmap().height()) / 2
+            #ys = (event.y() - marginy) / self.pixmap().height()
+            #ys = event.y() - margin_y
+            #print(xs, self.width(), self.pixmap().width(), "|", ys, self.height(), self.pixmap().height())
+
+            xs = self.view2imageX(event.x())
+            ys = self.view2imageY(event.y())
+
             output = sonar_viewer.playback_manager.getBeamDistance(xs, ys)
             if output is not None:
-                txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(output[0], output[1])
+                dist, angle = output
+                angle = abs(angle / np.pi * 180 + 90)
+                txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(dist, angle)
                 sonar_viewer.main_window.FStatusBarMousePos.setText(txt)
 
                 # self.mousePosDist = output[0]

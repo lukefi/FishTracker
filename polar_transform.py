@@ -72,6 +72,19 @@ class PolarTransform:
 		_rho = linear(rho, self.radius_limits[0], self.radius_limits[1], -0.5, self.pol_shape[0] - 0.5)
 		_phi = linear(phi, *self.angle_limits, -0.5, self.pol_shape[1] - 0.5)
 		return (_rho, _phi)
+
+	def cart2polMetric(self, y, x, invert_y=False):
+		""" Transforms cartesian pixel coordinates to polar metric coordinates
+			by first transforming the pixel coordinates to cartesian metric coordinates
+			and then to polar metric coordinates.
+		"""
+		if invert_y:
+			y_met, x_met = self.pix2metC(y-self.cart_shape[0]-self.center[0], self.center[1]-x)
+		else:
+			y_met, x_met = self.pix2metC(y-self.center[0], self.center[1]-x)
+		rho_met, phi_met = cart2pol(x_met, y_met)
+		#print("{:.2f} {:.2f}\n{:.2f} {:.2f}\n{:.2f} {:.2f}\n".format(x,y,x_met,y_met,rho_met,phi_met))
+		return rho_met, phi_met
 		
 	def cart2polImage(self, y, x):
 		""" Transforms cartesian pixel coordinates to polar pixel coordinates

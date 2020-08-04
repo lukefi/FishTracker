@@ -234,11 +234,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
     """
     def view2imageX(self, value):
         if self.pixmap() is not None:
-            #print("Compare 1:", self.pixmap().width(), self.image_width)
-            #print("Compare 2:", self.width(), self.window_width)
             pixmap_width = self.pixmap().width()
             margin_x = (self.window_width - pixmap_width) / 2
-            #print("Margin:", margin_x)
             return ((value - margin_x) /pixmap_width) * (self.x_max_limit - self.x_min_limit) + self.x_min_limit
         return (value / self.window_width) * (self.x_max_limit - self.x_min_limit) + self.x_min_limit
 
@@ -247,11 +244,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     def view2imageY(self, value):
         if self.pixmap() is not None:
-            #print("Compare 1:", self.pixmap().height(), self.image_height)
-            #print("Compare 2:", self.height(), self.window_height)
             pixmap_height = self.pixmap().height()
             margin_y = (self.window_height - pixmap_height) / 2
-            #print("Margin:", margin_y)
             return ((value - margin_y) / pixmap_height) * (self.y_max_limit - self.y_min_limit) + self.y_min_limit
         return (value / self.window_height) * (self.y_max_limit - self.y_min_limit) + self.y_min_limit
 
@@ -259,13 +253,17 @@ class ZoomableQLabel(QtWidgets.QLabel):
         return (value / self.window_height) * (self.y_max_limit - self.y_min_limit)
 
     def image2viewX(self, value):
-        return (value - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * self.window_width
+        pixmap_width = self.pixmap().width()
+        margin_x = (self.window_width - pixmap_width) / 2
+        return (value - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * pixmap_width + margin_x
 
     def image2viewDirectionX(self, value):
         return value / (self.x_max_limit - self.x_min_limit) * self.window_width
 
     def image2viewY(self, value):
-        return (value - self.y_min_limit) / (self.y_max_limit - self.y_min_limit) * self.window_height
+        pixmap_height = self.pixmap().height()
+        margin_y = (self.window_height - pixmap_height) / 2
+        return (value - self.y_min_limit) / (self.y_max_limit - self.y_min_limit) * pixmap_height + margin_y
 
     def image2viewDirectionY(self, value):
         return value / (self.y_max_limit - self.y_min_limit) * self.window_height

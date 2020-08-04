@@ -2,10 +2,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
 
 class FishList(QtWidgets.QWidget):
-    def __init__(self, fish_manager, playback_manager):
+    def __init__(self, fish_manager, playback_manager, sonar_viewer=None):
         super().__init__()
         self.fish_manager = fish_manager
         self.playback_manager = playback_manager
+        self.sonar_viewer = sonar_viewer
+        self.measure_fish = None
+        self.initialized_rows = 0
 
         #self.scroll = QtWidgets.QScrollArea(self)
         #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -26,10 +29,7 @@ class FishList(QtWidgets.QWidget):
         ### Can be disabled if turns out to break things.
 
         for row in range(fish_manager.rowCount()):
-            for column in range(fish_manager.columnCount()):
-                index=fish_manager.index(row, column)
-                if fish_manager.isDropdown(index):
-                    self.table.openPersistentEditor(index)
+            self.setPersistentDropdown(row)
 
         ###
 
@@ -41,15 +41,20 @@ class FishList(QtWidgets.QWidget):
 
         self.display_btn = QtWidgets.QPushButton()
         self.display_btn.setObjectName("displayFish")
-        self.display_btn.setText("Display fish")
+        self.display_btn.setText("Go to frame")
         self.display_btn.clicked.connect(self.displayFish)
+
+        self.measure_btn = QtWidgets.QPushButton()
+        self.measure_btn.setObjectName("measureFish")
+        self.measure_btn.setText("Measure")
+        self.measure_btn.clicked.connect(self.measureFish)
 
         self.btn_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
 
         self.add_btn = QtWidgets.QPushButton()
         self.add_btn.setObjectName("addButton")
         self.add_btn.setText("Add")
-        self.add_btn.clicked.connect(self.fish_manager.addFish)
+        self.add_btn.clicked.connect(self.addFishItem)
 
         self.remove_btn = QtWidgets.QPushButton()
         self.remove_btn.setObjectName("removeButton")
@@ -61,21 +66,32 @@ class FishList(QtWidgets.QWidget):
         self.merge_btn.setText("Merge")
         self.merge_btn.clicked.connect(self.mergeFishItems)
 
+        self.split_btn = QtWidgets.QPushButton()
+        self.split_btn.setObjectName("splitButton")
+        self.split_btn.setText("Split")
+        self.split_btn.clicked.connect(self.splitFishItem)
+
         self.horizontal_layout = QtWidgets.QHBoxLayout()
         self.horizontal_layout.setObjectName("horizontalLayout")
         self.horizontal_layout.setSpacing(7)
         self.horizontal_layout.setContentsMargins(0,0,0,0)
 
         self.horizontal_layout.addWidget(self.display_btn)
+        self.horizontal_layout.addWidget(self.measure_btn)
         self.horizontal_layout.addItem(self.btn_spacer)
         self.horizontal_layout.addWidget(self.add_btn)
         self.horizontal_layout.addWidget(self.remove_btn)
         self.horizontal_layout.addWidget(self.merge_btn)
+        self.horizontal_layout.addWidget(self.split_btn)
         self.horizontal_layout.addStretch()
 
         self.vertical_layout.addLayout(self.horizontal_layout)
 
         self.setLayout(self.vertical_layout)
+
+    def addFishItem(self):
+        self.fish_manager.addFish()
+        self.checkDropdowns()
 
     def removeFishItems(self):
         selection = self.table.selectionModel().selection().indexes();
@@ -89,6 +105,13 @@ class FishList(QtWidgets.QWidget):
         self.fish_manager.mergeFish(rows)
         self.fish_manager.refreshLayout()
 
+    def splitFishItem(self):
+        selection = self.table.selectionModel().selection().indexes();
+        rows = list(set([s.row() for s in selection]))
+        self.fish_manager.splitFish(rows, self.playback_manager.getFrameInd())
+        self.fish_manager.refreshLayout()
+        self.checkDropdowns()
+
     def displayFish(self):
         try:
             selection = self.table.selectionModel().selection().indexes();
@@ -96,6 +119,46 @@ class FishList(QtWidgets.QWidget):
             self.playback_manager.setFrameInd(ind)
         except IndexError:
             return
+
+    def measureFish(self):
+        if self.measure_fish:
+            self.measurementDone()
+        else:
+            self.measure_btn.setText("Cancel")
+            try:
+                selection = self.table.selectionModel().selection().indexes();
+                self.measure_fish = self.fish_manager.fishes[selection[0].row()]
+            except IndexError:
+                self.measurementDone()
+
+        if self.sonar_viewer:
+            self.sonar_viewer.measureDistance(self.measure_fish is not None)
+
+    def setMeasurementResult(self, value):
+        if self.measure_fish:
+            if value is not None:
+                self.measure_fish.length = float(round(value, 3))
+                self.fish_manager.refreshLayout()
+
+        self.measurementDone()
+
+    def measurementDone(self):
+        self.measure_fish = None
+        self.measure_btn.setText("Measure")
+
+    def checkDropdowns(self):
+        count = self.fish_manager.rowCount()
+        if count > self.initialized_rows:
+            for row in range(self.initialized_rows, count):
+                self.setPersistentDropdown(row)
+        self.initialized_rows = count
+
+    def setPersistentDropdown(self, row):
+        self.initialized_rows = max(self.initialized_rows, row)
+        for column in range(self.fish_manager.columnCount()):
+            index=self.fish_manager.index(row, column)
+            if self.fish_manager.isDropdown(index):
+                self.table.openPersistentEditor(index)
             
 
 

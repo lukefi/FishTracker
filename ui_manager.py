@@ -21,7 +21,7 @@ class UIManager():
         self.playback = playback_manager
         self.detector = detector
         self.fish_manager = fish_manager
-        self.fish_manager.testPopulate(frame_count=7000)
+        self.fish_manager.testPopulate(frame_count=100)
         #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
@@ -50,14 +50,16 @@ class UIManager():
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(400)
 
-        sonar = SonarViewer(self.main_window, self.playback, self.detector)
-        self.ui.splitter.replaceWidget(0, sonar)
-        self.ui.sonar_widget = sonar
+        self.sonar_viewer = SonarViewer(self.main_window, self.playback, self.detector)
+        self.ui.splitter.replaceWidget(0, self.sonar_viewer)
+        self.ui.sonar_widget = self.sonar_viewer
 
         self.fish_manager
-        self.fish_list = FishList(self.fish_manager, self.playback)
-        self.parameter_list = ParameterList(self.playback, sonar.image_processor, self.fish_manager, self.detector)
-        self.detector_parameters = DetectorParametersView(self.playback, self.detector, sonar.image_processor)
+        self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
+        self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
+
+        self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector)
+        self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 

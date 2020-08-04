@@ -7,6 +7,7 @@ from main import MainWindow
 from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
 from detector import Detector
+from playback_manager import Event
 
 ## DEBUG :{ following block of libraries for debug only
 import os
@@ -49,16 +50,21 @@ class SonarViewer(QtWidgets.QDialog):
         """
         #self._postAnalysisViewer = resultsView
         #self.FDetectedDict = results
+
+        self.measure_event = Event()
+
         self.main_window = main_window
         self.playback_manager = playback_manager
         self.detector = detector
         self.image_processor = ImageProcessor()
+        self.polar_transform = None
 
         self.show_first_frame = False
 
         self.playback_manager.frame_available.append(self.displayImage)
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.onFileOpen)
+        self.playback_manager.mapping_done.append(self.onMappingDone)
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -92,10 +98,11 @@ class SonarViewer(QtWidgets.QDialog):
         #self.FAutoAnalizerBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('analyze')))
         #self.FAutoAnalizerBTN.clicked.connect(self.FAutoAnalizer)
 
-        self.measure_btn = QtWidgets.QPushButton("Measure Distance", self)
+        self.measure_btn = QtWidgets.QPushButton(self)
+        self.measure_btn.setObjectName("Measure Distance")
         self.measure_btn.setFlat(True)
         self.measure_btn.setCheckable(True)
-        #self.measure_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("background_subtraction")))
+        self.measure_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("measure")))
         self.measure_btn.clicked.connect(self.measureDistance)
 
         self.F_BGS_BTN = QtWidgets.QPushButton(self)
@@ -208,8 +215,6 @@ class SonarViewer(QtWidgets.QDialog):
             
             if self.detector._show_detections:
                 image = self.detector.overlayDetections(image)
-
-            print(image.dtype)
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))
@@ -274,9 +279,13 @@ class SonarViewer(QtWidgets.QDialog):
     def onFileOpen(self, sonar):
         self.updateSliderLimits(0, sonar.frameCount, 1)
         self.show_first_frame = True
+        self.polar_transform = None
+
+    def onMappingDone(self):
+        self.polar_transform = self.playback_manager.playback_thread.polar_transform
 
     def measureDistance(self, value):
-        print(value)
+        self.MyFigureWidget.setMeasuring(value)
 
     #def FLoadSONARFile(self, filePath):
     #    self.FFilePath = filePath
@@ -589,18 +598,44 @@ class SonarViewer(QtWidgets.QDialog):
         self.MyFigureWidget.resizeEvent(event)
 
     def setStatusBarMousePos(self, x, y):
+        if not isinstance(self.main_window, MainWindow):
+            return
+
         output = self.playback_manager.getBeamDistance(x, y)
         if output is not None:
             dist, angle = output
             angle = abs(angle / np.pi * 180 + 90)
-            txt = "Distance: {:.2f} m,\t Angle: {:.2f} deg\t".format(dist, angle)
+            txt = "Distance: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
             self.main_window.FStatusBarMousePos.setText(txt)
 
+    def setStatusBarDistance(self, points):
+        if not isinstance(self.main_window, MainWindow):
+            return
+
+        if points is None:
+            self.main_window.FStatusBarDistance.setText("")
+        else:
+            x1, y1, x2, y2 = points
+            dist, angle = self.polar_transform.getMetricDistance(y1, x1, y2, x2)
+            angle = 180 - abs(angle / np.pi * 180)
+            txt = "Measure: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
+            self.main_window.FStatusBarDistance.setText(txt)
+
+    def measurementDone(self, points):
+        if points is not None:
+            x1, y1, x2, y2 = points
+            dist, _ = self.polar_transform.getMetricDistance(y1, x1, y2, x2)
+            self.measure_event(dist)
+        else:
+            self.measure_event(None)
+
+        self.setStatusBarDistance(None)
 
 class SonarFigure(ZoomableQLabel):
-    def __init__(self, parent):
+    def __init__(self, sonar_viewer):
         super().__init__(True, True, True)
-        self.__parent = parent
+        self.sonar_viewer = sonar_viewer
+        self.init_measuring = False
         self.measure_origin = None
         self.measure_point = None
         self.setStyleSheet("background-color: black;")
@@ -608,38 +643,51 @@ class SonarFigure(ZoomableQLabel):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
-        if not isinstance(self.__parent, SonarViewer):
-            return
+        if event.button() == QtCore.Qt.LeftButton:
+            xs = self.view2imageX(event.x())
+            ys = self.view2imageY(event.y())
 
-        sonar_viewer = self.__parent
-        xs = self.view2imageX(event.x())
-        ys = self.view2imageY(event.y())
+            if self.init_measuring and self.pixmap(): # self.measure_origin is None
+                self.measure_origin = (xs, ys)
+                self.init_measuring = False
 
-        if self.measure_origin is None:
-            self.measure_origin = (xs, ys)
+            elif self.measure_origin is not None:
+                if(self.sonar_viewer.measure_btn.isChecked()):
+                    self.sonar_viewer.measure_btn.toggle()
+
+                self.sonar_viewer.measurementDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
+                self.measure_origin = None
+                self.update()
+
+    def setMeasuring(self, value):
+        self.init_measuring = value
+        if value:
+            if not self.sonar_viewer.measure_btn.isChecked():
+                self.sonar_viewer.measure_btn.toggle()
         else:
-            dist = sonar_viewer.playback_manager.playback_thread.polar_transform.getMetricDistance(self.measure_origin[1], self.measure_origin[0], ys, xs)
-            print(dist)
+            self.sonar_viewer.measurementDone(None)
+            if self.sonar_viewer.measure_btn.isChecked():
+                self.sonar_viewer.measure_btn.toggle()
+
             self.measure_origin = None
+            self.measure_point = None
+            self.update()
     
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
 
-        if self.measure_origin is not None:
-            self.measure_point = (self.view2imageX(event.x()), self.view2imageY(event.y()))
-            self.update()
+        xs = self.view2imageX(event.x())
+        ys = self.view2imageY(event.y())
+        self.measure_point = (self.view2imageX(event.x()), self.view2imageY(event.y()))
 
-        if not isinstance(self.__parent, SonarViewer):
-            return
+        if self.sonar_viewer:
+            if self.measure_origin is not None:
+                self.update()
+                if self.sonar_viewer.polar_transform is not None:
+                    self.sonar_viewer.setStatusBarDistance((self.measure_origin[1], self.measure_origin[0], ys, xs))
 
-        sonar_viewer = self.__parent
-        if not isinstance(sonar_viewer.main_window, MainWindow):
-            return
-
-        if self.pixmap():
-            xs = self.view2imageX(event.x())
-            ys = self.view2imageY(event.y())
-            sonar_viewer.setStatusBarMousePos(xs,ys)
+            if self.pixmap():
+                self.sonar_viewer.setStatusBarMousePos(xs,ys)
 
     #def resizeEvent(self, event):
     #    super().resizeEvent(event)

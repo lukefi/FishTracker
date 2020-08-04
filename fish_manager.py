@@ -4,8 +4,8 @@ from PyQt5.QtCore import Qt
 import numpy as np
 from enum import IntEnum
 
-fish_headers = ["ID", "Length", "Direction", "Frame in"]
-fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in]
+fish_headers = ["ID", "Length", "Direction", "Frame in", "Frame out"]
+fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out]
 
 class FishManager(QtCore.QAbstractTableModel):
     def __init__(self):
@@ -19,9 +19,10 @@ class FishManager(QtCore.QAbstractTableModel):
         fishes = []
         for i in range(10):
             fish = FishEntry(i + 1)
-            fish.length = np.random.normal(120, 10)
+            fish.length = round(np.random.normal(1.2, 0.1), 3)
             fish.direction = SwimDirection(np.random.randint(low=0, high=2))
             fish.frame_in = np.random.randint(frame_count)
+            fish.frame_out = min(fish.frame_in + np.random.randint(100), frame_count)
             fishes.append(fish)
 
         self.fishes = sorted(fishes, key=fish_sort_keys[3])
@@ -41,6 +42,8 @@ class FishManager(QtCore.QAbstractTableModel):
                 return self.fishes[row].direction.name
             elif col == 3:
                 return self.fishes[row].frame_in
+            elif col == 4:
+                return self.fishes[row].frame_out
             else:
                 return ""
     
@@ -48,7 +51,7 @@ class FishManager(QtCore.QAbstractTableModel):
         return len(self.fishes)
 
     def columnCount(self, index=None):
-        return 4;
+        return 5;
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
@@ -92,6 +95,7 @@ class FishManager(QtCore.QAbstractTableModel):
         length = 0
         direction = 0
         frame_in = None
+        frame_out = None
         count = len(rows)
 
         for row in sorted(rows):
@@ -100,9 +104,11 @@ class FishManager(QtCore.QAbstractTableModel):
             if id is None:
                 id = fish.id
                 frame_in = fish.frame_in
+                frame_out = fish.frame_out
             else:
                 id = min(id, fish.id)
                 frame_in = min(frame_in, fish.frame_in)
+                frame_out = max(frame_out, fish.frame_out)
             length += fish.length
             direction += int(fish.direction)
 
@@ -111,6 +117,7 @@ class FishManager(QtCore.QAbstractTableModel):
         fish.length = length / count
         fish.direction = SwimDirection(np.rint(direction / count))
         fish.frame_in = frame_in
+        fish.frame_out = frame_out
 
         for f in self.fishes:
             if f.id >= id:
@@ -119,6 +126,36 @@ class FishManager(QtCore.QAbstractTableModel):
         self.removeFish(rows)
         self.fishes.append(fish)
         self.sort(self.sort_ind, self.sort_order)
+
+    def splitFish(self, rows, frame):
+        if rows == None or len(rows) == 0:
+            return
+
+        for row in sorted(rows):
+            fish = self.fishes[row]
+            if fish.frame_in < frame and fish.frame_out > frame:
+                id = len(self.fishes) + 1
+
+                # Make room for the new fish
+                for f in self.fishes:
+                    if f.frame_in > frame:
+                        id = min(f.id, id)
+                        f.id += 1
+
+
+                new_fish = FishEntry(id)
+                new_fish.length = fish.length
+                new_fish.direction = fish.direction
+                new_fish.frame_in = frame
+                new_fish.frame_out = fish.frame_out
+
+                fish.frame_out = frame-1
+
+                self.fishes.append(new_fish)
+
+        self.sort(self.sort_ind, self.sort_order)
+
+
 
     def refreshLayout(self):
         self.layoutChanged.emit()
@@ -178,12 +215,16 @@ class FishEntry():
         self.length = 0
         self.direction = SwimDirection.NONE
         self.frame_in = 0
+        self.frame_out = 0
 
     def __repr__(self):
         return "Fish {}: {:.1f} {}".format(self.id, self.length, self.direction.name)
 
     def dirSortValue(self):
         return self.direction.value * 10**8 + self.id
+
+    def setLength(self, value):
+        self.length = value
 
 def floatTryParse(value):
     try:

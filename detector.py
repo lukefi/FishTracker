@@ -157,6 +157,8 @@ class Detector:
 			self.image_provider.refreshFrame()
 
 	def compute_from_event(self, tuple):
+		if tuple is None:
+			return
 		ind, frame = tuple
 		self.compute(ind, frame)
 

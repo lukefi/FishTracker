@@ -76,13 +76,17 @@ class EchoFigure(ZoomableQLabel):
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
-        if event.button() == QtCore.Qt.LeftButton:
+        if self.displayed_image is not None and event.button() == QtCore.Qt.LeftButton:
             self.parent.setFrame(self.xPos2Frame(event.x())) #float(event.x()) / self.size().width())
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
-        if event.buttons() == QtCore.Qt.LeftButton:
+        if self.displayed_image is not None and event.buttons() == QtCore.Qt.LeftButton:
             self.parent.setFrame(self.xPos2Frame(event.x()))
+
+    def clear(self):
+        super().clear()
+        self.displayed_image = None
 
 class EchogramViewer(QtWidgets.QWidget):
     def __init__(self, playback_manager, detector):
@@ -99,17 +103,20 @@ class EchogramViewer(QtWidgets.QWidget):
         self.playback_manager.file_opened.append(self.onFileOpen)
         self.playback_manager.frame_available.append(self.onImageAvailable)
         self.playback_manager.polars_loaded.append(self.imageReady)
+        self.playback_manager.file_closed.append(self.onFileClose)
         # self.playback_manager.polar_available.append(self.onPolarAvailable)
         # self.playback_manager.polar_ended.append(self.imageReady)
 
         self.setLayout(self.horizontalLayout)
         self.echogram = None
 
-    def onImageAvailable(self, frame):
+    def onImageAvailable(self, tuple):
+        if tuple is None:
+            self.figure.clear
+            return
+
         self.figure.frame_ind = self.playback_manager.getFrameInd()
         self.figure.detection_opacity = 0.5 if self.detector.parametersDirty() else 1.0
-        print("Opacity:", self.figure.detection_opacity)
-        print(self.detector.parametersDirty(), self.detector.detections_clearable)
         self.figure.update()
 
     #def onPolarAvailable(self, ind, polar):
@@ -121,6 +128,11 @@ class EchogramViewer(QtWidgets.QWidget):
     def onFileOpen(self, sonar):
         self.echogram = Echogram(sonar.frameCount)
         self.figure.frame_count = sonar.frameCount
+
+    def onFileClose(self):
+        self.figure.clear()
+        self.echogram.clear()
+        self.echogram = None
 
     def imageReady(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())

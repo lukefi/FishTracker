@@ -7,6 +7,7 @@ from PyQt5.QtGui import *
 import cv2, time
 import numpy as np
 from queue import Queue
+import gc
 
 from debug import Debug
 from polar_transform import PolarTransform
@@ -26,6 +27,8 @@ class PlaybackManager(QObject):
         self.file_opened = Event()
         # Event that signals that playback has been terminated.
         self.playback_ended = Event()
+
+        self.file_closed = Event()
 
         self.main_window = main_window
         self.thread_pool = QThreadPool()
@@ -52,7 +55,7 @@ class PlaybackManager(QObject):
             path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
         if os.path.exists(path):
             # Override test file length
-            self.loadFile(path, 100)
+            self.loadFile(path, 1000)
         else:
             self.openFile()
 
@@ -63,17 +66,17 @@ class PlaybackManager(QObject):
             sonar.frameCount = min(overrideLength, sonar.frameCount)
 
         if self.playback_thread:
-            print("Not implemented.")
-
-            #print("Stopping existing thread.")
+            print("Stopping existing thread.")
             #self.playback_thread.signals.playback_ended_signal.connect(self.setLoadedFile)
-            #self.stopAll()
+            self.closeFile()
+            self.setLoadedFile(sonar)
         else:
             self.setLoadedFile(sonar)
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
+        #print("A:", sys.getrefcount(self.playback_thread))
         self.playback_thread.signals.start_thread_signal.connect(self.startThread)
         # self.playback_thread.signals.first_frame_signal.connect(self.play)
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available)
@@ -84,9 +87,19 @@ class PlaybackManager(QObject):
         self.file_opened(self.sonar)
 
         self.startFrameTimer()
+        #print("B:", sys.getrefcount(self.playback_thread))
 
-    def unloadFile(self):
+    def closeFile(self):
+        self.stopAll()
         self.sonar = None
+
+        if self.playback_thread is not None:
+            self.playback_thread.clear()
+            del self.playback_thread
+            self.playback_thread = None
+
+        self.file_closed()
+
         #self.polar_transform = None
 
     def startThread(self, tuple):
@@ -111,6 +124,7 @@ class PlaybackManager(QObject):
         """
         if self.playback_thread and self.playback_thread.polar_transform:
             print("Start")
+            #print("F:", sys.getrefcount(self.playback_thread))
             self.playback_thread.is_playing = True
             self.showNextImage()
 
@@ -202,7 +216,11 @@ class PlaybackManager(QObject):
         self.playback_ended()
 
     def stopAll(self):
-        pass
+        self.stop()
+        if self.frame_timer is not None:
+            self.frame_timer.timeout.disconnect(self.displayFrame)
+            self.frame_timer.stop()
+            self.frame_timer = None
 
     def getFrameNumberText(self):
         if self.playback_thread:
@@ -211,10 +229,6 @@ class PlaybackManager(QObject):
             return "No File Loaded"
 
     def getBeamDistance(self, x, y):
-        #if self.sonar:
-        #    return (0, 0)
-        #else:
-        #    return None
         if self.playback_thread and self.playback_thread.polar_transform:
             return self.playback_thread.polar_transform.cart2polMetric(y, x, True)
         else:
@@ -300,7 +314,6 @@ class PlaybackThread(QRunnable):
     def __init__(self, path, sonar, thread_pool):
         super().__init__()
         self.signals = PlaybackSignals()
-        self.alive = True
         self.is_playing = False
         self.path = path
         self.thread_pool = thread_pool
@@ -318,10 +331,13 @@ class PlaybackThread(QRunnable):
         print("Playback thread destroyed")
 
     def run(self):
+        #print("C:", sys.getrefcount(self))
         map_worker = Worker(self.createMapping)
         self.signals.start_thread_signal.emit((map_worker, self.mappingDone, map_worker.signals.result))
+        #print("D:", sys.getrefcount(self))
         polar_worker = Worker(self.loadPolarFrames)
         self.signals.start_thread_signal.emit((polar_worker, self.polarsDone, polar_worker.signals.result))
+        #print("E:", sys.getrefcount(self))
 
         #while self.alive:
         #    if not self.is_playing and self.last_displayed_ind != self.display_ind and self.polar_transform:
@@ -380,6 +396,10 @@ class PlaybackThread(QRunnable):
                 print(e, self.display_ind, "/", len(self.buffer)-1)
                 self.signals.playback_ended_signal.emit()
 
+    def clear(self):
+        self.buffer = None
+        self.polar_transform = None
+
 
 class WorkerSignals(QObject):
     finished = pyqtSignal()
@@ -394,7 +414,7 @@ class Worker(QRunnable):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-        self.signals = WorkerSignals()     
+        self.signals = WorkerSignals()
 
     @pyqtSlot()
     def run(self):
@@ -412,7 +432,7 @@ class Worker(QRunnable):
 
 
 class TestFigure(QLabel):
-    def __init__(self, play_f):
+    def __init__(self, play_f, reload_f=None):
         super().__init__()
         self.figurePixmap = None
         self.frame_ind = 0
@@ -421,9 +441,14 @@ class TestFigure(QLabel):
         self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.prev_shown = 0
         self.toggle_play = play_f
+        self.reload_file = reload_f
         self.setFocusPolicy(Qt.StrongFocus)
 
     def displayImage(self, tuple):
+        if tuple is None:
+            self.clear()
+            return
+
         self.frame_ind, image = tuple
         print("TF Frame:", self.frame_ind)
 
@@ -467,10 +492,9 @@ class TestFigure(QLabel):
         super().keyPressEvent(event)
         if event.key() == Qt.Key_Space:
             self.toggle_play()
+        elif event.key() == Qt.Key_T and self.reload_file is not None:
+            self.reload_file()
         event.accept()
-
-
-
 
 class Event(list):
     def __call__(self, *args, **kwargs):
@@ -480,17 +504,22 @@ class Event(list):
     def __repr__(self):
         return "Event(%s)" % list.__repr__(self)
 
+
+
 if __name__ == "__main__":
+    def loadFile():
+        playback_manager.openTestFile()
+        playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+
     app = QApplication(sys.argv)
     main_window = QMainWindow()
 
     playback_manager = PlaybackManager(app, main_window)
-    figure = TestFigure(playback_manager.togglePlay)
+    figure = TestFigure(playback_manager.togglePlay, loadFile)
+    playback_manager.frame_available.append(figure.displayImage)
     main_window.setCentralWidget(figure)
 
-    playback_manager.openTestFile()
-    playback_manager.frame_available.append(figure.displayImage)
-    playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+    loadFile()
 
     main_window.show()
     sys.exit(app.exec_())

@@ -108,7 +108,7 @@ class FishList(QtWidgets.QWidget):
     def splitFishItem(self):
         selection = self.table.selectionModel().selection().indexes();
         rows = list(set([s.row() for s in selection]))
-        self.fish_manager.splitFish(rows, self.playback_manager.getFrameInd())
+        self.fish_manager.splitFish(rows, self.playback_manager.getFrameInd() + 1)
         self.fish_manager.refreshLayout()
         self.checkDropdowns()
 

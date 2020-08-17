@@ -12,6 +12,7 @@ from detector_parameters import DetectorParametersView
 from detection_list import DetectionList, DetectionDataModel
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
+from output_widget import OutputViewer
 
 class UIManager():
     def __init__(self, main_window, playback_manager, detector, fish_manager):
@@ -39,7 +40,6 @@ class UIManager():
         self.playback.openTestFile()
 
     def closeFile(self):
-        self.main_window.FStatusBarMousePos.setText("")
         self.playback.closeFile()
 
     def setupWidgets(self):
@@ -63,6 +63,9 @@ class UIManager():
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 
+        self.output = OutputViewer()
+        self.output.redirectStdOut()
+
         self.ui.info_widget.removeTab(0)
         self.ui.info_widget.addTab(self.parameter_list, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Display"))
@@ -72,6 +75,8 @@ class UIManager():
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detection_list), _translate("MainWindow", "Detections"))
         self.ui.info_widget.addTab(self.fish_list, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Fish List"))
+        self.ui.info_widget.addTab(self.output, "")
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.output), _translate("MainWindow", "Log"))
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')

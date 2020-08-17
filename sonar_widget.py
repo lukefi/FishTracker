@@ -65,6 +65,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager.playback_ended.append(self.choosePlayIcon)
         self.playback_manager.file_opened.append(self.onFileOpen)
         self.playback_manager.mapping_done.append(self.onMappingDone)
+        self.playback_manager.file_closed.append(self.onFileClose)
 
         #self.FParent = parent
         #self._MAIN_CONTAINER = parent._MAIN_CONTAINER
@@ -280,6 +281,9 @@ class SonarViewer(QtWidgets.QDialog):
         self.updateSliderLimits(0, sonar.frameCount, 1)
         self.show_first_frame = True
         self.polar_transform = None
+
+    def onFileClose(self):
+        self.MyFigureWidget.clear()
 
     def onMappingDone(self):
         self.polar_transform = self.playback_manager.playback_thread.polar_transform

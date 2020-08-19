@@ -33,15 +33,6 @@ class UIManager():
         self.main_window.show()
         self.setupWidgets()
 
-    def openFile(self):
-        self.playback.openFile()
-
-    def openTestFile(self):
-        self.playback.openTestFile()
-
-    def closeFile(self):
-        self.playback.closeFile()
-
     def setupWidgets(self):
         _translate = QtCore.QCoreApplication.translate
 
@@ -89,6 +80,13 @@ class UIManager():
         self.ui.action_OpenTest.triggered.connect(self.openTestFile)
         self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
 
+        self.ui.action_save_detections = QtWidgets.QAction(self.main_window)
+        self.ui.action_save_detections.setObjectName("action_save_detections")
+        self.ui.menu_File.addAction(self.ui.action_save_detections)
+        # self.ui.action_save_detections.setShortcut('Ctrl+Q')
+        self.ui.action_save_detections.triggered.connect(self.saveDetections)
+        self.ui.action_save_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save detections"))
+
         self.ui.action_close_file = QtWidgets.QAction(self.main_window)
         self.ui.action_close_file.setObjectName("action_close_file")
         self.ui.menu_File.addAction(self.ui.action_close_file)
@@ -104,6 +102,25 @@ class UIManager():
         #figurePixmap = QtGui.QPixmap.fromImage(image)
         #self.ui.sonar_frame.setPixmap(figurePixmap.scaled(ffigure.size(), pyqtCore.Qt.KeepAspectRatio))
         #ffigure.setAlignment(pyqtCore.Qt.AlignCenter)
+
+    def getSavePath(self):
+        homeDirectory = str(os.path.expanduser("~"))
+        filePathTuple = QtWidgets.QFileDialog.getSaveFileName(self.main_window, "Open File", homeDirectory)
+        return filePathTuple[0]
+
+    def openFile(self):
+        self.playback.openFile()
+
+    def openTestFile(self):
+        self.playback.openTestFile()
+
+    def closeFile(self):
+        self.playback.closeFile()
+
+    def saveDetections(self):
+        path = self.getSavePath()
+        if path != "" :
+            self.detector.saveDetectionsToFile(path)
 
 
 if __name__ == "__main__":

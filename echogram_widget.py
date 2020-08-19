@@ -49,7 +49,8 @@ class EchoFigure(ZoomableQLabel):
         painter = QtGui.QPainter(self)
         #painter.drawPixmap(self.rect(), self.figurePixmap)
 
-        self.overlayDetections(painter)
+        if self.parent.detector._show_detections:
+            self.overlayDetections(painter)
 
         if h_pos_0 < width:
             painter.setPen(QtCore.Qt.white)

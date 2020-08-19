@@ -21,7 +21,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
     def columnCount(self, index=None):
         if not self.detector._show_detections:
             return 0
-        return 2
+        return 3
 
     def data(self, index, role):
         if role == QtCore.Qt.DisplayRole:
@@ -36,9 +36,11 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 return 0
 
             if col == 0:
-                return float(d.center[0])
+                return round(float(d.distance), 1)
             elif col == 1:
-                return float(d.center[1])
+                return round(float(d.angle), 1)
+            elif col == 2:
+                return int(100 * d.length)
             else:
                 return ""
 
@@ -46,9 +48,11 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if orientation == QtCore.Qt.Horizontal:
                 if section == 0:
-                    return "X"
+                    return "Distance (m)"
                 elif section == 1:
-                    return "Y"
+                    return "Angle (deg)"
+                elif section == 2:
+                    return "Length (cm)"
             else:
                 return '{: >4}'.format(section)
 
@@ -104,7 +108,7 @@ if __name__ == "__main__":
     playback_manager.openTestFile()
 
     detector = Detector(playback_manager)
-    detector.nof_bg_frames = 100
+    detector.mog_parameters.nof_bg_frames = 100
 
     def startDetector():
         detector.initMOG()

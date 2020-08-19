@@ -209,12 +209,18 @@ class Detector:
 			labels = labels[labels != -1]
 
 			if labels.shape[0] > 0:
+
+				if hasattr(self.image_provider, "playback_thread"):
+					polar_transform = self.image_provider.playback_thread.polar_transform
+				else:
+					polar_transform = None
+
 				for label in np.unique(labels):
 					foo = data[labels == label]
 					if foo.shape[0] < 2:
 						continue
 			
-					d = Detection(label, foo, self)
+					d = Detection(label, foo, self.parameters.detection_size, polar_transform)
 					msg += " " + d.getMessage()
 					detections.append(d)
 
@@ -396,6 +402,17 @@ class Detector:
 	def mogParametersDirty(self):
 		return self.mog_parameters != self.applied_mog_parameters
 
+	def saveDetectionsToFile(self, path):
+		with open(path, "w") as file:
+			file.write("frame distance(m) angle(deg) [corner_0] [corner_1] [corner_2] [corner_3]")
+			for frame, dets in enumerate(self.detections):
+				if dets is not None:
+					for d in dets:
+						if d.center is not None:
+							file.write("{} {} {} {} {} {} {}\n".format(frame, d.distance, d.angle, d.corners[0], d.corners[1], d.corners[2], d.corners[3]))
+		print("Detections saved to path:", path)
+			
+
 class MOGParameters:
 	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01,):
 		self.mog_var_thresh = mog_var_thresh
@@ -466,12 +483,17 @@ class DetectorParameters:
 
 
 class Detection:
-	def __init__(self, label, data, detector):
+	def __init__(self, label, data, detection_size, polar_transform):
 		self.label = label
 		self.data = data
 		self.diff = None
 		self.center = None
 		self.corners = None
+
+		self.length = 0
+		self.distance = 0
+		self.angle = 0
+		#self.metric_corners = None
 
 		ca = np.cov(data, y=None, rowvar=0, bias=1)
 		v, vect = np.linalg.eig(ca)
@@ -479,7 +501,7 @@ class Detection:
 		ar = np.dot(data, np.linalg.inv(tvect))
 
 		# NOTE a fixed parameter --> to UI / file.
-		if ar.shape[0] > detector.parameters.detection_size: #10:
+		if ar.shape[0] > detection_size: #10:
 
 			mina = np.min(ar, axis=0)
 			maxa = np.max(ar, axis=0)
@@ -500,13 +522,24 @@ class Detection:
 			self.corners = np.dot(corners, tvect)
 			self.center = np.dot(center, tvect)
 
+			if polar_transform is not None:
+				metric_diff = polar_transform.pix2metCI(diff[0], diff[1])
+				self.length = 2 * metric_diff[1]
+				self.distance, self.angle = polar_transform.cart2polMetric(self.center[0], self.center[1], True)
+				self.angle = self.angle / np.pi * 180 + 90
+				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
+					
+
 	def visualize(self, image, colors):
 		if self.diff is None:
 			return image
 
 		# Visualize results	
-		test = 'Size (pix): ' + str(int(self.diff[1]*2))
-		image = cv2.putText(image, test, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+		if self.length > 0:
+			size_txt = 'Size (cm): ' + str(int(100*self.length))
+		else:
+			size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
+		image = cv2.putText(image, size_txt, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
 		for i in range(self.data.shape[0]):
 			cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \

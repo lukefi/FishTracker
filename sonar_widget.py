@@ -280,10 +280,10 @@ class SonarViewer(QtWidgets.QDialog):
     def onFileOpen(self, sonar):
         self.updateSliderLimits(0, sonar.frameCount, 1)
         self.show_first_frame = True
-        self.polar_transform = None
 
     def onFileClose(self):
         self.MyFigureWidget.clear()
+        self.polar_transform = None
 
     def onMappingDone(self):
         self.polar_transform = self.playback_manager.playback_thread.polar_transform
@@ -608,7 +608,7 @@ class SonarViewer(QtWidgets.QDialog):
         output = self.playback_manager.getBeamDistance(x, y)
         if output is not None:
             dist, angle = output
-            angle = abs(angle / np.pi * 180 + 90)
+            angle = angle / np.pi * 180 + 90
             txt = "Distance: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
             self.main_window.FStatusBarMousePos.setText(txt)
 
@@ -616,12 +616,12 @@ class SonarViewer(QtWidgets.QDialog):
         if not isinstance(self.main_window, MainWindow):
             return
 
-        if points is None:
+        if points is None or self.polar_transform is None:
             self.main_window.FStatusBarDistance.setText("")
         else:
             x1, y1, x2, y2 = points
-            dist, angle = self.polar_transform.getMetricDistance(y1, x1, y2, x2)
-            angle = 180 - abs(angle / np.pi * 180)
+            dist, angle = self.polar_transform.getMetricDistance(y2, x2, y1, x1)
+            angle = angle / np.pi * 180
             txt = "Measure: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
             self.main_window.FStatusBarDistance.setText(txt)
 
@@ -687,8 +687,7 @@ class SonarFigure(ZoomableQLabel):
         if self.sonar_viewer:
             if self.measure_origin is not None:
                 self.update()
-                if self.sonar_viewer.polar_transform is not None:
-                    self.sonar_viewer.setStatusBarDistance((self.measure_origin[1], self.measure_origin[0], ys, xs))
+                self.sonar_viewer.setStatusBarDistance((self.measure_origin[1], self.measure_origin[0], ys, xs))
 
             if self.pixmap():
                 self.sonar_viewer.setStatusBarMousePos(xs,ys)

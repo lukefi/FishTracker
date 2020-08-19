@@ -27,7 +27,7 @@ class PlaybackManager(QObject):
         self.file_opened = Event()
         # Event that signals that playback has been terminated.
         self.playback_ended = Event()
-
+        # Event that signals that the current session has been terminated.
         self.file_closed = Event()
 
         self.main_window = main_window

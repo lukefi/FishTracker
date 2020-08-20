@@ -41,8 +41,11 @@ class LabeledSlider:
 
         self.connected_functions = connected_functions
         self.slider.valueChanged.connect(self.valueChanged)
-        self.value.setText(self.formatting.format(self.mapping(self.slider.value())))
-                     
+        if self.mapping is not None:
+            self.value.setText(self.formatting.format(self.mapping(self.slider.value())))
+        else:
+            self.value.setText(self.formatting.format(self.slider.value()))
+
         self.layout.addWidget(self.slider)
         self.layout.addWidget(self.value)
 
@@ -121,7 +124,7 @@ class DetectorParametersView(QWidget):
         self.form_layout2 = QFormLayout()
 
         self.mog_var_threshold_line = addLine("MOG var threshold", 11, QIntValidator(0, 20), [detector.setMOGVarThresh, refresh_lambda], self.form_layout2)
-        self.nof_bg_frames_line = addLine("Number of bg frames", 10, QIntValidator(10, 10000), [detector.setNofBGFrames, refresh_lambda], self.form_layout2)
+        self.nof_bg_frames_line = addLine("Background frames", 10, QIntValidator(10, 10000), [detector.setNofBGFrames, refresh_lambda], self.form_layout2)
         self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate, refresh_lambda], self.form_layout2)
 
         self.verticalLayout.addLayout(self.form_layout2)
@@ -271,7 +274,7 @@ class DetectorParametersView(QWidget):
         mog_value = self.playback_manager.isMappingDone() and self.detector.mogParametersDirty() #mog_dirty
         self.recalculate_mog_btn.setEnabled(mog_value)
 
-        all_value = self.playback_manager.isPolarsDone() and not self.detector.initializing and self.detector.parametersDirty() #(self.detector.detections_dirty or self.detector.mog_dirty)
+        all_value = self.playback_manager.isPolarsDone() and self.detector.allCalculationAvailable() #(self.detector.detections_dirty or self.detector.mog_dirty)
         self.calculate_all_btn.setEnabled(all_value)
 
 if __name__ == "__main__":

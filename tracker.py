@@ -1,13 +1,38 @@
 ﻿import numpy as np
 from sort import Sort
+from playback_manager import Event
 
 class Tracker:
-    def __init__(self):
+    def __init__(self, detector):
+        self.detector = detector
         self.parameters = TrackerParameters()
+        self.applied_parameters = None
+        self.applied_detector_parameters = None
         self.tracks = []
         self.mot_tracker = None
+        self.tracking = False
+        self.stop_tracking = False
+
+        self.state_changed_event = Event()
+        self.data_changed_event = Event()
+        self.all_computed_event = Event()
+
+    def trackAllDetectorFrames(self):
+        self.trackAll(self.detector.detections)
 
     def trackAll(self, detection_frames):
+        self.tracking = True
+        self.stop_tracking = False
+        self.state_changed_event()
+
+        if self.detector.allCalculationAvailable():
+            self.detector.computeAll()
+            if self.detector.allCalculationAvailable():
+                print("Stopped before tracking.")
+                self.abortComputing(True)
+                return
+
+
         count = len(detection_frames)
         self.tracks = [[] for i in range(count)]
         self.mot_tracker = Sort(max_age=self.parameters.max_age,
@@ -20,24 +45,44 @@ class Tracker:
             if i > print_limit:
                 print("Tracking:", int(float(i) / count * 100), "%")
                 print_limit += ten_perc
+            if self.stop_tracking:
+                print("Stopped tracking at", i)
+                self.abortComputing(False)
+                return
 
             tracks = self.trackBase(frame)
 
             self.tracks[i] = tracks
 
-            if len(tracks) > 0:
-                print("Frame", i)
-                print(tracks)
+            #if len(tracks) > 0:
+            #    print("Frame", i)
+            #    print(tracks)
 
         print("Tracking: 100 %")
+        self.tracking = False
+        self.applied_parameters = self.parameters.copy()
+        self.applied_detector_parameters = self.detector.parameters.copy()
+        self.state_changed_event()
 
     def trackBase(self, frame):
+        if frame is None:
+            print("Invalid detector results encountered. Consider running the detector again.")
+            return self.mot_tracker.update()
+
         detections = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in frame if d.corners is not None]) #[d.corners for d in f]
         #print(detections)
         if len(detections) > 0:
             return self.mot_tracker.update(detections)
         else:
             return self.mot_tracker.update()
+
+    def abortComputing(self, detector_aborted):
+        self.tracking = False
+        self.applied_parameters = None
+        self.stop_tracking = False
+        if detector_aborted:
+            self.applied_detector_parameters = None
+        self.state_changed_event()
 
     def visualize(self, image, ind):
         if len(self.tracks) == 0 or len(self.tracks[ind]) == 0:
@@ -63,12 +108,37 @@ class Tracker:
 
         return image
 
+    def parametersDirty(self):
+        return self.parameters != self.applied_parameters or self.applied_detector_parameters != self.detector.parameters \
+            or self.applied_detector_parameters != self.detector.applied_parameters
+
+    def setMaxAge(self, value):
+        try:
+            self.parameters.max_age = int(value)
+            self.state_changed_event()
+        except ValueError as e:
+            print(e)
+
+    def setMinHits(self, value):
+        try:
+            self.parameters.min_hits = int(value)
+            self.state_changed_event()
+        except ValueError as e:
+            print(e)
+
+    def setIoUThreshold(self, value):
+        try:
+            self.parameters.iou_threshold = float(value)
+            self.state_changed_event()
+        except ValueError as e:
+            print(e)
+
 
 class TrackerParameters:
-    def __init__(self):
-        self.max_age = 20
-        self.min_hits = 3
-        self.iou_threshold = 0.1
+    def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
+        self.max_age = max_age
+        self.min_hits = min_hits
+        self.iou_threshold = iou_threshold
 
     def __eq__(self, other):
         if not isinstance(other, TrackerParameters):
@@ -77,6 +147,9 @@ class TrackerParameters:
         return self.max_age == other.max_age \
             and self.min_hits == other.min_hits \
             and self.iou_threshold == other.iou_threshold
+
+    def copy(self):
+        return TrackerParameters(self.max_age, self.min_hits, self.iou_threshold)
 
 
 if __name__ == "__main__":
@@ -128,7 +201,7 @@ if __name__ == "__main__":
         main_window = QtWidgets.QMainWindow()
         playback_manager = PlaybackManager(app, main_window)
         detector = Detector(playback_manager)
-        tracker = Tracker()
+        tracker = Tracker(detector)
 
         playback_manager.fps = 5
         playback_manager.openTestFile()

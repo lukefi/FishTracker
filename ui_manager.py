@@ -8,19 +8,22 @@ from fish_manager import FishManager
 from fish_list import FishList
 from parameter_list import ParameterList
 from detector import Detector
+from tracker import Tracker
 from detector_parameters import DetectorParametersView
 from detection_list import DetectionList, DetectionDataModel
+from tracker_parameters import TrackerParametersView
 from playback_manager import PlaybackManager
 from sonar_view2 import Ui_MainWindow
 from output_widget import OutputViewer
 
 class UIManager():
-    def __init__(self, main_window, playback_manager, detector, fish_manager):
+    def __init__(self, main_window, playback_manager, detector, tracker, fish_manager):
         self.widgets_initialized = False
         self.main_window = main_window
 
         self.playback = playback_manager
         self.detector = detector
+        self.tracker = tracker
         self.fish_manager = fish_manager
         self.fish_manager.testPopulate(frame_count=100)
         #self.playback.frame_available.append(self.showSonarFrame)
@@ -54,6 +57,8 @@ class UIManager():
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 
+        self.tracker_parameters = TrackerParametersView(self.playback, self.tracker, self.detector)
+
         self.output = OutputViewer()
         self.output.redirectStdOut()
 
@@ -64,6 +69,8 @@ class UIManager():
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detector_parameters), _translate("MainWindow", "Detector"))
         self.ui.info_widget.addTab(self.detection_list, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detection_list), _translate("MainWindow", "Detections"))
+        self.ui.info_widget.addTab(self.tracker_parameters, "")
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.tracker_parameters), _translate("MainWindow", "Tracker"))
         self.ui.info_widget.addTab(self.fish_list, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Fish List"))
         self.ui.info_widget.addTab(self.output, "")
@@ -131,8 +138,9 @@ if __name__ == "__main__":
     fish_manager = FishManager()
     detector = Detector(playback_manager)
     detector.all_computed_event.append(playback_manager.refreshFrame)
+    tracker = Tracker(detector)
     playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
     playback_manager.frame_available.insert(0, detector.compute_from_event)
 
-    ui_manager = UIManager(main_window, playback_manager, detector, fish_manager)
+    ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager)
     sys.exit(app.exec_())

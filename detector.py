@@ -125,8 +125,8 @@ class Detector:
 				self.stop_initializing = False
 				self.mog_ready = False
 				self.initializing = False
-				self.mog_parameters = None
-				self.parameters.mog_parameters = None
+				self.applied_mog_parameters = None
+				#self.parameters.mog_parameters = None
 				self.state_changed_event()
 				return
 
@@ -242,7 +242,6 @@ class Detector:
 			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
 
 	def computeAll(self):
-		print("Computing all")
 		self.computing = True
 		self.stop_computing = False
 		self.state_changed_event()
@@ -256,6 +255,7 @@ class Detector:
 		if self.mogParametersDirty():
 			self.initMOG()
 			if self.mogParametersDirty():
+				print("Stopped before detecting.")
 				self.abortComputing(True)
 				return
 
@@ -268,7 +268,7 @@ class Detector:
 				print_limit += ten_perc
 
 			if self.stop_computing:
-				print("Stopped computing at", ind)
+				print("Stopped detecting at", ind)
 				self.abortComputing(False)
 				return
 
@@ -412,6 +412,9 @@ class Detector:
 
 	def mogParametersDirty(self):
 		return self.mog_parameters != self.applied_mog_parameters
+
+	def allCalculationAvailable(self):
+		return self.parametersDirty() and not self.initializing
 
 	def saveDetectionsToFile(self, path):
 		with open(path, "w") as file:

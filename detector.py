@@ -259,9 +259,14 @@ class Detector:
 				self.abortComputing(True)
 				return
 
-		for ind in range(self.image_provider.getFrameCount()):
-			if ind % 500 == 0:
-				print("Computing:", ind)
+		count = self.image_provider.getFrameCount()
+		ten_perc = 0.1 * count
+		print_limit = 0
+		for ind in range(count):
+			if ind > print_limit:
+				print("Detecting:", int(float(ind) / count * 100), "%")
+				print_limit += ten_perc
+
 			if self.stop_computing:
 				print("Stopped computing at", ind)
 				self.abortComputing(False)
@@ -270,7 +275,7 @@ class Detector:
 			img = self.image_provider.getFrame(ind)
 			self.computeBase(ind, img)
 
-		print("All computed")
+		print("Detecting: 100 %")
 		self.computing = False
 		#self.detections_dirty = False
 		self.detections_clearable = True
@@ -383,12 +388,18 @@ class Detector:
 	def setShowBGSubtraction(self, value):
 		self.show_bgsub = value
 
-	def getCurrentDetection(self):
-		dets = self.detections[self.current_ind]
+	def getDetection(self, ind):
+		dets = self.detections[ind]
 		if dets is None:
 			return []
 
-		return [d for d in self.detections[self.current_ind] if d.center is not None]
+		return [d for d in dets if d.center is not None]
+
+	def getDetections(self):
+		return [[d for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+
+	def getCurrentDetection(self):
+		return self.getDetection(self.current_ind)
 
 	def bgSubtraction(self, image):
 		fg_mask_mog = self.fgbg_mog.apply(image, learningRate=0)
@@ -458,7 +469,7 @@ class DetectorParameters:
 			and self.dbscan_eps == other.dbscan_eps \
 			and self.dbscan_min_samples == other.dbscan_min_samples
 
-		print(self, other, value)
+		#print(self, other, value)
 		return value
 
 	def __repr__(self):
@@ -658,5 +669,5 @@ def playbackTest():
 
 
 if __name__ == "__main__":
-	simpleTest()
-	#playbackTest()
+	#simpleTest()
+	playbackTest()

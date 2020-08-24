@@ -42,11 +42,17 @@ class Detector:
 
 		self.image_provider = image_provider
 
+		# When detector parameters change.
 		self.state_changed_event = Event()
+
+		# When results change (e.g. when a new frame is displayed).
 		self.data_changed_event = Event()
+
+		# When detector has computed all available frames.
 		self.all_computed_event = Event()
 
 		self._show_detections = False
+		self._show_detection_size = True
 		self.show_bgsub = False
 
 		# [flag] Whether MOG is initializing
@@ -311,7 +317,7 @@ class Detector:
 
 		colors = sns.color_palette('deep', max([0] + [d.label + 1 for d in detections]))
 		for d in detections:
-			image = d.visualize(image, colors)
+			image = d.visualize(image, colors, self._show_detection_size)
 
 		return image
 
@@ -380,10 +386,13 @@ class Detector:
 			print(e)
 
 	def setShowDetections(self, value):
-		self._show_detections = self.mog_ready and value
+		self._show_detections = value # and self.mog_ready
 		#print("{} && {}: {}".format(self.mog_ready, value, self._show_detections))
 		if not self._show_detections:
 			self.data_changed_event(0)
+
+	def setShowSize(self, value):
+		self._show_detection_size = value
 
 	def setShowBGSubtraction(self, value):
 		self.show_bgsub = value
@@ -544,16 +553,17 @@ class Detection:
 				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
 					
 
-	def visualize(self, image, colors):
+	def visualize(self, image, colors, show_text):
 		if self.diff is None:
 			return image
 
 		# Visualize results	
-		if self.length > 0:
-			size_txt = 'Size (cm): ' + str(int(100*self.length))
-		else:
-			size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
-		image = cv2.putText(image, size_txt, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+		if show_text:
+			if self.length > 0:
+				size_txt = 'Size (cm): ' + str(int(100*self.length))
+			else:
+				size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
+			image = cv2.putText(image, size_txt, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
 		for i in range(self.data.shape[0]):
 			cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \

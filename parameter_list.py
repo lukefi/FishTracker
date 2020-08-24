@@ -2,12 +2,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from image_manipulation import ImageProcessor
 
 class ParameterList(QtWidgets.QDialog):
-    def __init__(self, playback_manager, sonar_processor, fish_manager, detector):
+    def __init__(self, playback_manager, sonar_processor, fish_manager, detector, tracker):
         super().__init__()
         self.playback_manager = playback_manager
         self.sonar_processor = sonar_processor
         self.fish_manager = fish_manager
         self.detector = detector
+        self.tracker = tracker
 
         self.image_controls_label = QtWidgets.QLabel(self)
         self.image_controls_label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
@@ -65,10 +66,29 @@ class ParameterList(QtWidgets.QDialog):
 
         self.show_detections_checkbox = QtWidgets.QCheckBox("Show detections")
         self.show_detections_checkbox.setChecked(False)
-        self.show_detections_checkbox.stateChanged.connect(self.detector.setShowDetections)
-        self.show_detections_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
-        self.show_detections_checkbox.setEnabled(False)
-        self.detector.state_changed_event.append(lambda: self.show_detections_checkbox.setEnabled(self.detector.mog_ready))
+        self.show_detections_checkbox.stateChanged.connect(self.showDetectionsChanged)
+        #self.show_detections_checkbox.setEnabled(False)
+        #self.detector.state_changed_event.append(lambda: self.show_detections_checkbox.setEnabled(self.detector.mog_ready))
+
+        self.show_detection_size_checkbox = QtWidgets.QCheckBox("Show detection size")
+        self.show_detection_size_checkbox.setChecked(True)
+        self.show_detection_size_checkbox.stateChanged.connect(self.detector.setShowSize)
+        self.show_detection_size_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
+        self.show_detection_size_checkbox.setEnabled(False)
+
+        self.show_tracks_checkbox = QtWidgets.QCheckBox("Show tracks")
+        self.show_tracks_checkbox.setChecked(False)
+        self.show_tracks_checkbox.stateChanged.connect(self.showTracksChanged)
+        #self.show_tracks_checkbox.setToolTip('This is a tooltip for the QPushButton widget') 
+
+        #self.show_tracks_checkbox.setEnabled(False)
+        #self.tracker.state_changed_event.append(lambda: self.show_tracks_checkbox.setEnabled(self.detector.mog_ready))
+
+        self.show_trackingIDs_checkbox = QtWidgets.QCheckBox("Show tracking IDs")
+        self.show_trackingIDs_checkbox.setChecked(True)
+        self.show_trackingIDs_checkbox.stateChanged.connect(self.tracker.setShowTrackingIDs)
+        self.show_trackingIDs_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
+        self.show_trackingIDs_checkbox.setEnabled(False)
 
         self.verticalLayout.addWidget(self.image_controls_label)
         self.verticalLayout.addWidget(self.distance_tick)
@@ -78,6 +98,9 @@ class ParameterList(QtWidgets.QDialog):
         self.verticalLayout.addWidget(self.bgsub_tick)
         self.verticalLayout.addWidget(self.colormap_tick)
         self.verticalLayout.addWidget(self.show_detections_checkbox)
+        self.verticalLayout.addWidget(self.show_detection_size_checkbox)
+        self.verticalLayout.addWidget(self.show_tracks_checkbox)
+        self.verticalLayout.addWidget(self.show_trackingIDs_checkbox)
         self.verticalLayout.addStretch()
         self.setLayout(self.verticalLayout)
 
@@ -86,11 +109,22 @@ class ParameterList(QtWidgets.QDialog):
         self.sonar_processor.setGamma(applied_value)
         self.gamma_value.setText(str(applied_value))
 
+    def showDetectionsChanged(self, value):
+        self.detector.setShowDetections(value)
+        self.show_detection_size_checkbox.setEnabled(value)
+        self.playback_manager.refreshFrame()
+
+    def showTracksChanged(self, value):
+        self.tracker.setShowTracks(value)
+        self.show_trackingIDs_checkbox.setEnabled(value)
+        self.playback_manager.refreshFrame()
+
 if __name__ == "__main__":
     import sys
     from playback_manager import PlaybackManager
     from fish_manager import FishManager
     from detector import Detector
+    from tracker import Tracker
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
@@ -101,8 +135,9 @@ if __name__ == "__main__":
     #info_w = InfoWidget(playback_manager, fish_manager)
     sonar_processor = ImageProcessor()
     detector = Detector(playback_manager)
+    tracker = Tracker(detector)
 
-    parameter_list = ParameterList(playback_manager, sonar_processor, fish_manager, detector)
+    parameter_list = ParameterList(playback_manager, sonar_processor, fish_manager, detector, tracker)
     main_window.setCentralWidget(parameter_list)
     main_window.show()
     sys.exit(app.exec_())

@@ -44,7 +44,7 @@ class UIManager():
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(400)
 
-        self.sonar_viewer = SonarViewer(self.main_window, self.playback, self.detector)
+        self.sonar_viewer = SonarViewer(self.main_window, self.playback, self.detector, self.tracker)
         self.ui.splitter.replaceWidget(0, self.sonar_viewer)
         self.ui.sonar_widget = self.sonar_viewer
 
@@ -52,7 +52,7 @@ class UIManager():
         self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 
-        self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector)
+        self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector, self.tracker)
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
@@ -139,6 +139,7 @@ if __name__ == "__main__":
     detector = Detector(playback_manager)
     detector.all_computed_event.append(playback_manager.refreshFrame)
     tracker = Tracker(detector)
+    tracker.all_computed_event.append(playback_manager.refreshFrame)
     playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
     playback_manager.frame_available.insert(0, detector.compute_from_event)
 

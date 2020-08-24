@@ -1,5 +1,6 @@
 ﻿import numpy as np
-from sort import Sort
+import cv2
+from sort import Sort, KalmanBoxTracker
 from playback_manager import Event
 
 class Tracker:
@@ -8,13 +9,20 @@ class Tracker:
         self.parameters = TrackerParameters()
         self.applied_parameters = None
         self.applied_detector_parameters = None
-        self.tracks = []
         self.mot_tracker = None
+        self.tracks_by_frame = {}
         self.tracking = False
         self.stop_tracking = False
+        self._show_tracks = False
+        self._show_id = True
 
+		# When tracker parameters change.
         self.state_changed_event = Event()
+
+		### When the results change
         self.data_changed_event = Event()
+
+		# When tracker has computed all available frames.
         self.all_computed_event = Event()
 
     def trackAllDetectorFrames(self):
@@ -34,10 +42,11 @@ class Tracker:
 
 
         count = len(detection_frames)
-        self.tracks = [[] for i in range(count)]
+        self.tracks_by_frame = {}
         self.mot_tracker = Sort(max_age=self.parameters.max_age,
                                 min_hits=self.parameters.min_hits,
                                 iou_threshold=self.parameters.iou_threshold)
+        KalmanBoxTracker.count = 0
 
         ten_perc = 0.1 * count
         print_limit = 0
@@ -50,23 +59,21 @@ class Tracker:
                 self.abortComputing(False)
                 return
 
-            tracks = self.trackBase(frame)
-
-            self.tracks[i] = tracks
-
-            #if len(tracks) > 0:
-            #    print("Frame", i)
-            #    print(tracks)
+            tracks = self.trackBase(frame, i)
+            if len(tracks) > 0:
+                self.tracks_by_frame[i] = tracks
 
         print("Tracking: 100 %")
         self.tracking = False
         self.applied_parameters = self.parameters.copy()
         self.applied_detector_parameters = self.detector.parameters.copy()
+        
         self.state_changed_event()
+        self.all_computed_event()
 
-    def trackBase(self, frame):
+    def trackBase(self, frame, ind):
         if frame is None:
-            print("Invalid detector results encountered. Consider running the detector again.")
+            print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
             return self.mot_tracker.update()
 
         detections = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in frame if d.corners is not None]) #[d.corners for d in f]
@@ -85,22 +92,16 @@ class Tracker:
         self.state_changed_event()
 
     def visualize(self, image, ind):
-        if len(self.tracks) == 0 or len(self.tracks[ind]) == 0:
+        if ind not in self.tracks_by_frame:
             return image
-
-		## Visualize results	
-  #      if self.length > 0:
-  #          size_txt = 'Size (cm): ' + str(int(100*self.length))
-  #      else:
-  #          size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
-  #      image = cv2.putText(image, size_txt, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
-
-        #for i in range(self.data.shape[0]):
-        #    cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
-        #        (int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)
         
-        for tr in self.tracks[ind]:
-            corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]], [tr[0], tr[1]]])
+        for tr in self.tracks_by_frame[ind]:
+            if self._show_id:
+                center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
+                image = cv2.putText(image, "ID: " + str(int(tr[4])), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+
+
+            corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
 
             for i in range(0,3):
                 cv2.line(image, (int(corners[i,1]),int(corners[i,0])), (int(corners[i+1,1]),int(corners[i+1,0])),  (255,255,255), 1)
@@ -133,6 +134,14 @@ class Tracker:
         except ValueError as e:
             print(e)
 
+    def setShowTracks(self, value):
+        self._show_tracks = value
+        if not self._show_tracks:
+            self.data_changed_event(0)
+
+    def setShowTrackingIDs(self, value):
+        self._show_id = value
+
 
 class TrackerParameters:
     def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
@@ -154,7 +163,6 @@ class TrackerParameters:
 
 if __name__ == "__main__":
     import sys
-    import cv2
     from PyQt5 import QtCore, QtGui, QtWidgets
     from playback_manager import PlaybackManager, Event, TestFigure
     from detector import Detector
@@ -203,7 +211,7 @@ if __name__ == "__main__":
         detector = Detector(playback_manager)
         tracker = Tracker(detector)
 
-        playback_manager.fps = 5
+        playback_manager.fps = 10
         playback_manager.openTestFile()
         playback_manager.frame_available.append(forwardImage)
         detector.mog_parameters.nof_bg_frames = 500

@@ -1,5 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
+from tracker import Tracker
+from detector_parameters import LabeledSlider
 
 class FishList(QtWidgets.QWidget):
     def __init__(self, fish_manager, playback_manager, sonar_viewer=None):
@@ -38,6 +40,11 @@ class FishList(QtWidgets.QWidget):
         self.vertical_layout.addWidget(self.table)
         self.vertical_layout.setSpacing(0)
         self.vertical_layout.setContentsMargins(0,0,0,0)
+
+        self.form_layout = QtWidgets.QFormLayout()
+        self.form_layout.setContentsMargins(7,7,7,7)
+        self.min_detections = LabeledSlider("Min detections", self.form_layout, [self.fish_manager.setMinDetections], 1, 0, 50, self)
+        self.vertical_layout.addLayout(self.form_layout)
 
         self.display_btn = QtWidgets.QPushButton()
         self.display_btn.setObjectName("displayFish")
@@ -167,17 +174,45 @@ if __name__ == "__main__":
     import sys
     from playback_manager import PlaybackManager
     from fish_manager import FishManager
+    from detector import Detector
 
-    app = QtWidgets.QApplication(sys.argv)
-    main_window = QtWidgets.QMainWindow()
-    playback_manager = PlaybackManager(app, main_window)
-    # playback_manager.openTestFile()
-    fish_manager = FishManager()
-    fish_manager.testPopulate(500)
-    #info_w = InfoWidget(playback_manager, fish_manager)
-    fish_list = FishList(fish_manager, playback_manager)
-    main_window.setCentralWidget(fish_list)
-    main_window.show()
-    sys.exit(app.exec_())
+    def uiTest():
+        app = QtWidgets.QApplication(sys.argv)
+        main_window = QtWidgets.QMainWindow()
+        playback_manager = PlaybackManager(app, main_window)
+        # playback_manager.openTestFile()
+        fish_manager = FishManager(None)
+        fish_manager.testPopulate(500)
+        #info_w = InfoWidget(playback_manager, fish_manager)
+        fish_list = FishList(fish_manager, playback_manager)
+        main_window.setCentralWidget(fish_list)
+        main_window.show()
+        sys.exit(app.exec_())
+
+    def dataTest():
+        def startDetector():
+            detector.initMOG()
+            detector.computeAll()
+            tracker.trackAll(detector.detections)
+
+        app = QtWidgets.QApplication(sys.argv)
+        main_window = QtWidgets.QMainWindow()
+        playback_manager = PlaybackManager(app, main_window)
+        detector = Detector(playback_manager)
+        tracker = Tracker(detector)
+        fish_manager = FishManager(tracker)
+        fish_list = FishList(fish_manager, playback_manager)
+
+        playback_manager.openTestFile()
+        detector.mog_parameters.nof_bg_frames = 500
+        detector._show_detections = True
+        playback_manager.mapping_done.append(startDetector)
+
+        main_window.setCentralWidget(fish_list)
+        main_window.show()
+        sys.exit(app.exec_())
+
+    uiTest()
+    #dataTest()
 
 

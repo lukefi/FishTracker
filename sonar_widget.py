@@ -7,6 +7,7 @@ from main import MainWindow
 from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
 from detector import Detector
+from tracker import Tracker
 from playback_manager import Event
 
 ## DEBUG :{ following block of libraries for debug only
@@ -44,7 +45,7 @@ class SonarViewer(QtWidgets.QDialog):
     play = False
     marker = None
 
-    def __init__(self, main_window, playback_manager, detector): #, resultsView = False, results=False):
+    def __init__(self, main_window, playback_manager, detector, tracker): #, resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
@@ -56,6 +57,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.main_window = main_window
         self.playback_manager = playback_manager
         self.detector = detector
+        self.tracker = tracker
         self.image_processor = ImageProcessor()
         self.polar_transform = None
 
@@ -195,7 +197,8 @@ class SonarViewer(QtWidgets.QDialog):
     def displayImage(self, tuple):
         if tuple is not None:
             ind, frame = tuple
-            print("Frame:", ind)
+            #print("Frame:", ind)
+
             #self.MyFigureWidget.clear()
 
             #image = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
@@ -216,6 +219,9 @@ class SonarViewer(QtWidgets.QDialog):
             
             if self.detector._show_detections:
                 image = self.detector.overlayDetections(image)
+
+            if self.tracker._show_tracks:
+                image = self.tracker.visualize(image, ind)
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))
@@ -773,10 +779,11 @@ if __name__ == "__main__":
     playback_manager = PlaybackManager(app, main_window)
     detector = Detector(playback_manager)
     detector.nof_bg_frames = 100
+    tracker = Tracker(detector)
     playback_manager.mapping_done.append(test)
     playback_manager.mapping_done.append(startDetector)
     playback_manager.frame_available.insert(0, detector.compute_from_event)
-    sonar_viewer = SonarViewer(main_window, playback_manager, detector)
+    sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker)
 
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()

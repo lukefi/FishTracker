@@ -3,6 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from tracker import Tracker
 from detector_parameters import LabeledSlider
+from fish_manager import FishManager
 
 class TrackerParametersView(QWidget):
     def __init__(self, playback_manager, tracker, detector):
@@ -56,6 +57,7 @@ class TrackerParametersView(QWidget):
         self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], 20, 1, 100, self)
         self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], 3, 1, 10, self)
         self.iou_threshold_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
+        self.min_detections_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
         self.vertical_layout.addLayout(self.form_layout)
 
         self.vertical_layout.addStretch()

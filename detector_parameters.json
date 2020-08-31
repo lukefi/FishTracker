@@ -1,0 +1,10 @@
+{
+   "detection_size": 10,
+   "mog_var_thresh": 11,
+   "min_fg_pixels": 25,
+   "median_size": 3,
+   "nof_bg_frames": 100,
+   "learning_rate": 0.01,
+   "dbscan_eps": 10,
+   "dbscan_min_samples": 10
+}

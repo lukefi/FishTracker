@@ -13,6 +13,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.FStatusBar = QtWidgets.QStatusBar()
         self.FStatusBarFrameNumber = QtWidgets.QLabel()
         self.FStatusBarMousePos = QtWidgets.QLabel()
+        self.FStatusBarDistance = QtWidgets.QLabel()
+        self.FStatusBar.addPermanentWidget(self.FStatusBarDistance)
         self.FStatusBar.addPermanentWidget(self.FStatusBarMousePos)
         self.FStatusBar.addPermanentWidget(self.FStatusBarFrameNumber)
         self.setStatusBar(self.FStatusBar)

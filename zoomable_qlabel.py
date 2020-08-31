@@ -49,6 +49,7 @@ class ZoomableQLabel(QtWidgets.QLabel):
         self.applyPixmap()
 
     def resizeEvent(self, event):
+        self.updateWindowZoom()
         self.applyPixmap()
 
     def wheelEvent(self, event):
@@ -133,16 +134,19 @@ class ZoomableQLabel(QtWidgets.QLabel):
             sz = (img.shape[1], img.shape[0])
             if sz[0] > self.window_width:
                 mult = self.window_width / sz[0]
-                sz = (int(mult * sz[0]), int(mult * sz[1]))
+                sz = (max(1, int(mult * sz[0])), max(1, int(mult * sz[1])))
             if sz[1] > self.window_height:
                 mult = self.window_height / sz[1]
-                sz = (int(mult * sz[0]), int(mult * sz[1]))
+                sz = (max(1, int(mult * sz[0])), max(1, int(mult * sz[1])))
 
             return cv2.resize(img, sz)
         else:
             return cv2.resize(img, (self.window_width, self.window_height))
 
-    def applyWindowZoom(self, x, y):
+    def updateWindowZoom(self):
+        if self.displayed_image is None:
+            return
+
         if self.maintain_aspect_ratio:
             applied_min_zoom = min(self.window_width / self.image_width, self.window_height / self.image_height, 1)
             applied_zoom = (self.zoom_01 * (self.max_zoom - applied_min_zoom) + applied_min_zoom)
@@ -170,6 +174,9 @@ class ZoomableQLabel(QtWidgets.QLabel):
         y_max = self.y_max_limit + half_delta_height
 
         self.applyLimits(x_min, x_max, y_min, y_max)
+
+    def applyWindowZoom(self, x, y):
+        self.updateWindowZoom()
 
         correct_towards_mouse_x = self.x_pos - self.view2imageX(x)
         correct_towards_mouse_y = self.y_pos - self.view2imageY(y)
@@ -226,28 +233,45 @@ class ZoomableQLabel(QtWidgets.QLabel):
     Implemented transform are for positon and direction between image and viewport coordinates.
     """
     def view2imageX(self, value):
+        if self.pixmap() is not None:
+            pixmap_width = self.pixmap().width()
+            margin_x = (self.window_width - pixmap_width) / 2
+            return ((value - margin_x) /pixmap_width) * (self.x_max_limit - self.x_min_limit) + self.x_min_limit
         return (value / self.window_width) * (self.x_max_limit - self.x_min_limit) + self.x_min_limit
 
     def view2imageDirectionX(self, value):
         return (value / self.window_width) * (self.x_max_limit - self.x_min_limit)
 
     def view2imageY(self, value):
+        if self.pixmap() is not None:
+            pixmap_height = self.pixmap().height()
+            margin_y = (self.window_height - pixmap_height) / 2
+            return ((value - margin_y) / pixmap_height) * (self.y_max_limit - self.y_min_limit) + self.y_min_limit
         return (value / self.window_height) * (self.y_max_limit - self.y_min_limit) + self.y_min_limit
 
     def view2imageDirectionY(self, value):
         return (value / self.window_height) * (self.y_max_limit - self.y_min_limit)
 
     def image2viewX(self, value):
-        return (value - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * self.window_width
+        pixmap_width = self.pixmap().width()
+        margin_x = (self.window_width - pixmap_width) / 2
+        return (value - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * pixmap_width + margin_x
 
     def image2viewDirectionX(self, value):
         return value / (self.x_max_limit - self.x_min_limit) * self.window_width
 
     def image2viewY(self, value):
-        return (value - self.y_min_limit) / (self.y_max_limit - self.y_min_limit) * self.window_height
+        pixmap_height = self.pixmap().height()
+        margin_y = (self.window_height - pixmap_height) / 2
+        return (value - self.y_min_limit) / (self.y_max_limit - self.y_min_limit) * pixmap_height + margin_y
 
     def image2viewDirectionY(self, value):
         return value / (self.y_max_limit - self.y_min_limit) * self.window_height
+
+        #margin_x = (self.width() - self.pixmap().width()) / 2
+        #xs = event.x() - margin_x
+        #margin_y = (self.height() - self.pixmap().height()) / 2
+        #ys = event.y() - margin_y
 
 class WindowDragData:
     def __init__(self, mouse_x, mouse_y, x_min, x_max, y_min, y_max):

@@ -49,16 +49,21 @@ class ImageManipulation:
 
 class ImageProcessor:
     def __init__(self):
-        self.use_any = False
+        self.use_any = True
         self.use_clahe = False
-        self.use_colormap = False
+        self.use_colormap = True
+
+        self.additional = []
+
         self.gamma = 1
         self.fig = plt.figure()
         x1 = np.linspace(0, 47, 48)
         y1 = np.cos(2 * np.pi * x1) * np.exp(-x1)
         self.line, = plt.plot(x1, y1, 'ko-')
 
-    def processImage(self, img):
+    def processImage(self, tuple):
+        ind, img = tuple
+
         if not self.use_any:
             return img
 
@@ -73,6 +78,10 @@ class ImageProcessor:
         if self.use_colormap:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
+
+        if len(self.additional) > 0:
+            for f in self.additional:
+                img = f((ind, img))
 
         return img
 
@@ -89,7 +98,17 @@ class ImageProcessor:
 
 
     def setAny(self):
-        self.use_any = self.use_clahe or self.use_colormap or self.gamma != 1
+        self.use_any = self.use_clahe or self.use_colormap or self.gamma != 1 or len(self.additional) > 0
+
+    def addAdditional(self, f):
+        if not f in self.additional:
+            self.additional.append(f)
+        self.setAny()
+
+    def removeAdditional(self, f):
+        if f in self.additional:
+            self.additional.remove(f)
+        self.setAny()
 
     def setAutomaticContrast(self, value):
         self.use_clahe = value

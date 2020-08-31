@@ -1,19 +1,26 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+class MyComboBox(QtWidgets.QComboBox):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+    def wheelEvent(self, event):
+        event.ignore()
+
 class DropdownDelegate(QtWidgets.QItemDelegate):
     def __init__(self):
         QtWidgets.QItemDelegate.__init__(self)
 
     def createEditor(self, parent, option, index):
         if index.model().isDropdown(index):
-            combo=QtWidgets.QComboBox(parent)
+            combo=MyComboBox(parent)
             return combo
         else:
             lineedit=QtWidgets.QLineEdit(parent)
             return lineedit
 
     def setEditorData(self, editor, index):
-        if isinstance(editor, QtWidgets.QComboBox):
+        if isinstance(editor, MyComboBox):
             editor.clear()
             editor.addItems(index.model().dropdown_options())
             editor.setCurrentIndex(index.model().getDropdownIndex(index))

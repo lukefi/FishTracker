@@ -258,7 +258,7 @@ class PlaybackManager(QObject):
 
     def getFrame(self, i):
         """
-        Non threaded option to get cartesinan frames.
+        Non-threaded option to get cartesinan frames.
         """
         polar = self.playback_thread.buffer[i]
         if polar is None:
@@ -267,7 +267,10 @@ class PlaybackManager(QObject):
         return self.playback_thread.polar_transform.remap(polar)
 
     def getFrameCount(self):
-        return self.sonar.frameCount
+        if self.sonar:
+            return self.sonar.frameCount
+        else:
+            return 0
 
     def pausePolarLoading(self, value):
         if self.playback_thread is not None:
@@ -345,22 +348,24 @@ class PlaybackThread(QRunnable):
         #        time.sleep(0.05)
 
     def loadPolarFrames(self):
-        print("Start: [{}-{}]".format(0, self.sonar.frameCount))
-        #for i in range(self.sonar.frameCount):
+        count = self.sonar.frameCount
+        ten_perc = 0.1 * count
+        print_limit = 0
         i = 0
-        while i < self.sonar.frameCount:
+        while i < count:
             if self.pause_polar_loading:
                 time.sleep(0.1)
                 continue
 
-            if i % 100 == 0:
-                print(i)
+            if i > print_limit:
+                print("Loading:", int(float(print_limit) / count * 100), "%")
+                print_limit += ten_perc
             if self.buffer[i] is None:
                 self.buffer[i] = self.sonar.getPolarFrame(i)
             i += 1
 
     def polarsDone(self, result):
-        print("Polar frames loaded")
+        print("Loading: 100 %")
         self.polars_loaded = True
         self.signals.polars_loaded_signal.emit()
 

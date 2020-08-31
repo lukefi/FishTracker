@@ -16,8 +16,10 @@ class TrackerParametersView(QWidget):
 
         self.playback_manager.polars_loaded.append(self.setButtonsEnabled)
         self.detector.state_changed_event.append(self.setButtonsEnabled)
-        self.tracker.state_changed_event.append(self.setButtonsEnabled)
-        self.tracker.state_changed_event.append(self.setButtonTexts)
+        #self.tracker.state_changed_event.append(self.setButtonsEnabled)
+        self.tracker.state_changed_signal.connect(self.setButtonsEnabled)
+        #self.tracker.state_changed_event.append(self.setButtonTexts)
+        self.tracker.state_changed_signal.connect(self.setButtonTexts)
         #self.tracker.state_changed_event.append(self.setButtonTexts)
         self.setButtonsEnabled()
 
@@ -57,7 +59,6 @@ class TrackerParametersView(QWidget):
         self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], 20, 1, 100, self)
         self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], 3, 1, 10, self)
         self.iou_threshold_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
-        self.min_detections_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
         self.vertical_layout.addLayout(self.form_layout)
 
         self.vertical_layout.addStretch()

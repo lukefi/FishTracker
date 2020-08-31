@@ -104,7 +104,6 @@ class Detector:
 		self.initializing = True
 		self.stop_initializing = False
 		self.state_changed_event()
-		print("Init MOG")
 
 		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
 		self.fgbg_mog.setNMixtures(5)
@@ -122,9 +121,14 @@ class Detector:
 		#step = np.ceil(nof_frames/self.nof_bg_frames)
 		step = nof_frames / nof_bg_frames
 
+		ten_perc = 0.1 * nof_bg_frames
+		print_limit = 0
 		for i in range(nof_bg_frames):
+			if i > print_limit:
+				print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")
+				print_limit += ten_perc
+
 			ind = math.floor(i * step)
-			print("MOG:", (ind+1), "/", nof_frames)
 
 			if self.stop_initializing:
 				print("Stopped initializing at", ind)
@@ -154,7 +158,7 @@ class Detector:
 		self.applied_mog_parameters = self.mog_parameters.copy()
 
 		self.state_changed_event()
-		print("MOG init done")
+		print("Initializing: 100 %")
 
 		if hasattr(self.image_provider, "pausePolarLoading"):
 			self.image_provider.pausePolarLoading(False)
@@ -303,12 +307,12 @@ class Detector:
 			self.applied_mog_parameters = None
 
 	def clearDetections(self, force=False):
-		#if not self.detections_clearable or force:
 		nof_frames = self.image_provider.getFrameCount()
 		self.detections = [None] * nof_frames
+		self.vertical_detections = []
 		self.detections_clearable = False
-		#self.detections_dirty = True
 		self.applied_parameters = None
+		self.state_changed_event()
 		
 	def overlayDetections(self, image, detections=None):
 		# labels = [d.label for d in labels]
@@ -393,6 +397,9 @@ class Detector:
 
 	def setShowSize(self, value):
 		self._show_detection_size = value
+
+	def toggleShowBGSubtraction(self):
+		self.show_bgsub = not self.show_bgsub
 
 	def setShowBGSubtraction(self, value):
 		self.show_bgsub = value
@@ -547,9 +554,10 @@ class Detection:
 
 			if polar_transform is not None:
 				metric_diff = polar_transform.pix2metCI(diff[0], diff[1])
-				self.length = 2 * metric_diff[1]
+				self.length = float(2 * metric_diff[1])
 				self.distance, self.angle = polar_transform.cart2polMetric(self.center[0], self.center[1], True)
-				self.angle = self.angle / np.pi * 180 + 90
+				self.distance = float(self.distance)
+				self.angle = float(self.angle / np.pi * 180 + 90)
 				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
 					
 

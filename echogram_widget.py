@@ -50,7 +50,10 @@ class EchoFigure(ZoomableQLabel):
         #painter.drawPixmap(self.rect(), self.figurePixmap)
 
         if self.parent.detector._show_detections:
-            self.overlayDetections(painter)
+            self.overlayDetections(painter, self.parent.getDetections(), QtCore.Qt.red)
+
+        if self.parent.fish_manager.show_fish:
+            self.overlayDetections(painter, self.parent.squeezed_fish, QtCore.Qt.green)
 
         if h_pos_0 < width:
             painter.setPen(QtCore.Qt.white)
@@ -59,10 +62,9 @@ class EchoFigure(ZoomableQLabel):
             # painter.drawLine(h_pos_0, 0, h_pos_0, height)
             painter.drawRect(h_pos_0, 0, h_pos_1-h_pos_0, height)
 
-    def overlayDetections(self, painter):
+    def overlayDetections(self, painter, squeezed, color):
         try:
-            squeezed = self.parent.getDetections()
-            painter.setPen(QtCore.Qt.red)
+            painter.setPen(color)
             painter.setOpacity(self.detection_opacity)
             v_mult = self.parent.getDetectionScale()
             for i in range(len(squeezed)):
@@ -90,14 +92,18 @@ class EchoFigure(ZoomableQLabel):
         self.displayed_image = None
 
 class EchogramViewer(QtWidgets.QWidget):
-    def __init__(self, playback_manager, detector):
+    def __init__(self, playback_manager, detector, fish_manager):
         super().__init__()
 
         self.playback_manager = playback_manager
         self.detector = detector
+        self.fish_manager = fish_manager
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0,0,0,0)
+
+        self.squeezed_fish = []
+        self.fish_manager.updateContentsSignal.connect(self.squeezeFish)
 
         self.figure = EchoFigure(self)
         self.horizontalLayout.addWidget(self.figure)
@@ -146,6 +152,14 @@ class EchogramViewer(QtWidgets.QWidget):
     def getDetectionScale(self):
         return self.figure.window_height / self.detector.image_height
 
+    @QtCore.pyqtSlot()
+    def squeezeFish(self):
+        self.squeezed_fish = [[] for fr in range(self.playback_manager.getFrameCount())]
+        for fish in self.fish_manager.fish_list:
+            for key, (_, det) in fish.tracks.items():
+                self.squeezed_fish[key].append(det.center[0])
+        self.figure.update()
+
 class Echogram():
     """
     Contains raw echogram data which can be edited on the go if needed.
@@ -156,10 +170,16 @@ class Echogram():
         self.length = length
 
     def processBuffer(self, buffer):
-        buf = [b for b in buffer if b is not None]
-        buf = np.asarray(buf, dtype=np.uint8)
-        print(buf.shape)
-        self.data = np.max(buf, axis=2).T
+        try:
+            buf = [b for b in buffer if b is not None]
+            buf = np.asarray(buf, dtype=np.uint8)
+            self.data = np.max(buf, axis=2).T
+            min_v = np.min(self.data)
+            max_v = np.max(self.data)
+            self.data = (255 / (max_v - min_v) * (self.data - min_v)).astype(np.uint8)
+        except np.AxisError as e:
+            print("Echogram process buffer error:", e)
+            self.data = None
 
     #def insert(self, frame, ind):
     #    if self.data is None:
@@ -177,13 +197,12 @@ class Echogram():
     #    #    cv2.imshow("echogram", img)
 
     def clear(self):
-        if self.data is not None:
-            self.data = np.zeros(self.data.shape, np.uint8)
+        self.data = None
+        #if self.data is not None:
+        #    self.data = np.zeros(self.data.shape, np.uint8)
 
     def getDisplayedImage(self):
-        min_v = np.min(self.data)
-        max_v = np.max(self.data)
-        return (255 / (max_v - min_v) * (self.data - min_v)).astype(np.uint8)
+        return self.data
 
 
 
@@ -215,13 +234,18 @@ if __name__ == "__main__":
         def parametersDirty(self):
             return False
 
+    class TestFishManager():
+        def __init__(self):
+            self.show_fish = True
+
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
     detector = TestDetector(playback_manager.getFrameCount(), playback_manager.sonar.samplesPerBeam)
-    echogram = EchogramViewer(playback_manager, detector)
+    fish_manager = TestFishManager()
+    echogram = EchogramViewer(playback_manager, detector, fish_manager)
     echogram.onFileOpen(playback_manager.sonar)
     main_window.setCentralWidget(echogram)
     main_window.show()

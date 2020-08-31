@@ -13,7 +13,7 @@ from detector_parameters import DetectorParametersView
 from detection_list import DetectionList, DetectionDataModel
 from tracker_parameters import TrackerParametersView
 from playback_manager import PlaybackManager
-from sonar_view2 import Ui_MainWindow
+from sonar_view3 import Ui_MainWindow
 from output_widget import OutputViewer
 
 class UIManager():
@@ -25,7 +25,7 @@ class UIManager():
         self.detector = detector
         self.tracker = tracker
         self.fish_manager = fish_manager
-        self.fish_manager.testPopulate(frame_count=100)
+        #self.fish_manager.testPopulate(frame_count=100)
         #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
@@ -35,11 +35,12 @@ class UIManager():
 
         self.main_window.show()
         self.setupWidgets()
+        self.playback.openTestFile()
 
     def setupWidgets(self):
         _translate = QtCore.QCoreApplication.translate
 
-        echo = EchogramViewer(self.playback, self.detector)
+        echo = EchogramViewer(self.playback, self.detector, self.fish_manager)
         self.ui.splitter_2.replaceWidget(0, echo)
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(400)
@@ -48,11 +49,16 @@ class UIManager():
         self.ui.splitter.replaceWidget(0, self.sonar_viewer)
         self.ui.sonar_widget = self.sonar_viewer
 
+        self.tool_bar = ParameterList(self.playback, self.sonar_viewer.image_processor, self.sonar_viewer, self.fish_manager, self.detector, self.tracker)
+        self.ui.horizontalLayout_2.replaceWidget(self.ui.tool_bar, self.tool_bar)
+        self.tool_bar.setMaximumWidth(40)
+        self.ui.tool_bar = self.tool_bar
+
         self.fish_manager
         self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 
-        self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector, self.tracker)
+        #self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector, self.tracker)
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
@@ -63,8 +69,8 @@ class UIManager():
         self.output.redirectStdOut()
 
         self.ui.info_widget.removeTab(0)
-        self.ui.info_widget.addTab(self.parameter_list, "")
-        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Display"))
+        #self.ui.info_widget.addTab(self.parameter_list, "")
+        #self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Display"))
         self.ui.info_widget.addTab(self.detector_parameters, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detector_parameters), _translate("MainWindow", "Detector"))
         self.ui.info_widget.addTab(self.detection_list, "")
@@ -135,13 +141,16 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow() #QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    fish_manager = FishManager()
     detector = Detector(playback_manager)
-    detector.all_computed_event.append(playback_manager.refreshFrame)
     tracker = Tracker(detector)
-    tracker.all_computed_event.append(playback_manager.refreshFrame)
+    fish_manager = FishManager(tracker)
+
+    detector.all_computed_event.append(playback_manager.refreshFrame)
+    tracker.all_computed_signal.connect(playback_manager.refreshFrame)
     playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
     playback_manager.frame_available.insert(0, detector.compute_from_event)
+    playback_manager.file_opened.append(lambda x: fish_manager.clear())
+    playback_manager.file_opened.append(lambda x: detector.clearDetections())
 
     ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager)
     sys.exit(app.exec_())

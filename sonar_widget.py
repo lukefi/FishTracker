@@ -101,12 +101,12 @@ class SonarViewer(QtWidgets.QDialog):
         #self.FAutoAnalizerBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('analyze')))
         #self.FAutoAnalizerBTN.clicked.connect(self.FAutoAnalizer)
 
-        self.measure_btn = QtWidgets.QPushButton(self)
-        self.measure_btn.setObjectName("Measure Distance")
-        self.measure_btn.setFlat(True)
-        self.measure_btn.setCheckable(True)
-        self.measure_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("measure")))
-        self.measure_btn.clicked.connect(self.measureDistance)
+        #self.measure_btn = QtWidgets.QPushButton(self)
+        #self.measure_btn.setObjectName("Measure Distance")
+        #self.measure_btn.setFlat(True)
+        #self.measure_btn.setCheckable(True)
+        #self.measure_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("measure")))
+        #self.measure_btn.clicked.connect(self.measureDistance)
 
         self.F_BGS_BTN = QtWidgets.QPushButton(self)
         self.F_BGS_BTN.setObjectName("Subtract Background")
@@ -134,15 +134,15 @@ class SonarViewer(QtWidgets.QDialog):
         self.MyFigureWidget.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.MyFigureWidget.setMouseTracking(True)
 
-        self.FToolbar = QtWidgets.QToolBar(self)
-        #self.FToolbar.addWidget(self.FAutoAnalizerBTN)
-        self.FToolbar.addWidget(self.measure_btn)
-        self.FToolbar.addWidget(self.F_BGS_BTN)
-        self.FToolbar.addWidget(self.F_BGS_ValueLabel)
-        # self.FToolbar.add
-        self.FToolbar.addWidget(self.F_BGS_Slider)
-        self.FToolbar.setOrientation(QtCore.Qt.Vertical)
-        self.FToolbar.setFixedWidth(self.FToolbar.minimumSizeHint().width())
+        #self.FToolbar = QtWidgets.QToolBar(self)
+        ##self.FToolbar.addWidget(self.FAutoAnalizerBTN)
+        ##self.FToolbar.addWidget(self.measure_btn)
+        #self.FToolbar.addWidget(self.F_BGS_BTN)
+        #self.FToolbar.addWidget(self.F_BGS_ValueLabel)
+        ## self.FToolbar.add
+        #self.FToolbar.addWidget(self.F_BGS_Slider)
+        #self.FToolbar.setOrientation(QtCore.Qt.Vertical)
+        #self.FToolbar.setFixedWidth(self.FToolbar.minimumSizeHint().width())
         
 
         self.FSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -150,7 +150,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.FSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
         self.FSlider.valueChanged.connect(self.playback_manager.setFrameInd)
 
-        self.FLayout.addWidget(self.FToolbar,0,0,3,1)
+        #self.FLayout.addWidget(self.FToolbar,0,0,3,1)
         self.FLayout.addWidget(self.MyFigureWidget,0,1,1,3)
         self.FLayout.addWidget(self.FSlider,1,1,1,3)
         #self.FLayout.addLayout(self.LowerToolbar, 2,1, Qt.AlignBottom)
@@ -650,6 +650,8 @@ class SonarFigure(ZoomableQLabel):
         self.measure_point = None
         self.setStyleSheet("background-color: black;")
 
+        self.measure_toggle = Event()
+
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
@@ -662,8 +664,9 @@ class SonarFigure(ZoomableQLabel):
                 self.init_measuring = False
 
             elif self.measure_origin is not None:
-                if(self.sonar_viewer.measure_btn.isChecked()):
-                    self.sonar_viewer.measure_btn.toggle()
+                #if(self.sonar_viewer.measure_btn.isChecked()):
+                #    self.sonar_viewer.measure_btn.toggle()
+                self.measure_toggle(True)
 
                 self.sonar_viewer.measurementDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
                 self.measure_origin = None
@@ -672,12 +675,14 @@ class SonarFigure(ZoomableQLabel):
     def setMeasuring(self, value):
         self.init_measuring = value
         if value:
-            if not self.sonar_viewer.measure_btn.isChecked():
-                self.sonar_viewer.measure_btn.toggle()
+            #if not self.sonar_viewer.measure_btn.isChecked():
+            #    self.sonar_viewer.measure_btn.toggle()
+            self.measure_toggle(False)
         else:
             self.sonar_viewer.measurementDone(None)
-            if self.sonar_viewer.measure_btn.isChecked():
-                self.sonar_viewer.measure_btn.toggle()
+            #if self.sonar_viewer.measure_btn.isChecked():
+            #    self.sonar_viewer.measure_btn.toggle()
+            self.measure_toggle(True)
 
             self.measure_origin = None
             self.measure_point = None

@@ -19,8 +19,6 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
         return self.row_count
 
     def columnCount(self, index=None):
-        if not self.detector._show_detections:
-            return 0
         return 3
 
     def data(self, index, role):
@@ -36,11 +34,11 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 return 0
 
             if col == 0:
-                return round(float(d.distance), 1)
+                return round(d.distance, 1)
             elif col == 1:
-                return round(float(d.angle), 1)
+                return round(d.angle, 1)
             elif col == 2:
-                return int(100 * d.length)
+                return round(d.length, 3)
             else:
                 return ""
 
@@ -52,7 +50,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 elif section == 1:
                     return "Angle (deg)"
                 elif section == 2:
-                    return "Length (cm)"
+                    return "Length (m)"
             else:
                 return '{: >4}'.format(section)
 

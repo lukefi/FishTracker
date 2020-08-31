@@ -49,9 +49,9 @@ class ImageManipulation:
 
 class ImageProcessor:
     def __init__(self):
-        self.use_any = False
+        self.use_any = True
         self.use_clahe = False
-        self.use_colormap = False
+        self.use_colormap = True
 
         self.additional = []
 

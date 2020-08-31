@@ -8,6 +8,7 @@ from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
 from detector import Detector
 from tracker import Tracker
+from fish_manager import FishManager
 from playback_manager import Event
 
 ## DEBUG :{ following block of libraries for debug only
@@ -45,7 +46,7 @@ class SonarViewer(QtWidgets.QDialog):
     play = False
     marker = None
 
-    def __init__(self, main_window, playback_manager, detector, tracker): #, resultsView = False, results=False):
+    def __init__(self, main_window, playback_manager, detector, tracker, fish_manager): #, resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
@@ -58,6 +59,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager = playback_manager
         self.detector = detector
         self.tracker = tracker
+        self.fish_manager = fish_manager
         self.image_processor = ImageProcessor()
         self.polar_transform = None
 
@@ -641,6 +643,9 @@ class SonarViewer(QtWidgets.QDialog):
 
         self.setStatusBarDistance(None)
 
+    def getSwimDirection(self):
+        return self.fish_manager.up_down_inverted
+
 class SonarFigure(ZoomableQLabel):
     def __init__(self, sonar_viewer):
         super().__init__(True, True, True)
@@ -716,10 +721,19 @@ class SonarFigure(ZoomableQLabel):
 
     def paintEvent(self, event):
         super().paintEvent(event)
+
+        painter = QtGui.QPainter(self)
+        painter.setPen(QtCore.Qt.white)
+        if self.sonar_viewer.getSwimDirection():
+            painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "UP")
+            painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 30, 0.95 * self.window_height, "DOWN")
+        else:
+            painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "DOWN")
+            painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 10, 0.95 * self.window_height, "UP")
+
         if self.measure_origin is None or self.measure_point is None:
             return
 
-        painter = QtGui.QPainter(self)
         painter.setPen(QtCore.Qt.darkRed)
         x1 = self.image2viewX(self.measure_origin[0])
         y1 = self.image2viewY(self.measure_origin[1])
@@ -785,10 +799,11 @@ if __name__ == "__main__":
     detector = Detector(playback_manager)
     detector.nof_bg_frames = 100
     tracker = Tracker(detector)
+    fish_manager = FishManager(tracker)
     playback_manager.mapping_done.append(test)
     playback_manager.mapping_done.append(startDetector)
     playback_manager.frame_available.insert(0, detector.compute_from_event)
-    sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker)
+    sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker, fish_manager)
 
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()

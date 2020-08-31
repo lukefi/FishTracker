@@ -45,7 +45,7 @@ class UIManager():
         self.ui.echogram_widget = echo
         echo.setMaximumHeight(400)
 
-        self.sonar_viewer = SonarViewer(self.main_window, self.playback, self.detector, self.tracker)
+        self.sonar_viewer = SonarViewer(self.main_window, self.playback, self.detector, self.tracker, self.fish_manager)
         self.ui.splitter.replaceWidget(0, self.sonar_viewer)
         self.ui.sonar_widget = self.sonar_viewer
 
@@ -54,7 +54,6 @@ class UIManager():
         self.tool_bar.setMaximumWidth(40)
         self.ui.tool_bar = self.tool_bar
 
-        self.fish_manager
         self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 

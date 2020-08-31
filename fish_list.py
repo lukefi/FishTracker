@@ -98,6 +98,13 @@ class FishList(QtWidgets.QWidget):
         self.split_btn.clicked.connect(self.splitFishItem)
         self.split_btn.setToolTip("Split all selected fish in two at the current frame.")
 
+        self.invert_direction_btn = QtWidgets.QPushButton()
+        self.invert_direction_btn.setObjectName("invertDirectionButton")
+        self.invert_direction_btn.setText("Invert Up/Down")
+        self.invert_direction_btn.clicked.connect(self.fish_manager.toggleUpDownInversion)
+        self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
+        self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
+
         self.button_layout.addWidget(self.display_btn, 0, 0)
         self.button_layout.addWidget(self.measure_btn, 0, 1)
         self.button_layout.addWidget(self.clear_measure_btn, 1, 1)
@@ -106,6 +113,7 @@ class FishList(QtWidgets.QWidget):
         self.button_layout.addWidget(self.remove_btn, 1, 3)
         self.button_layout.addWidget(self.merge_btn, 0, 4)
         self.button_layout.addWidget(self.split_btn, 1, 4)
+        self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
         #self.button_layout.addStretch()
 
         self.vertical_layout.addLayout(self.button_layout)

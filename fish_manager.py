@@ -27,6 +27,7 @@ class FishManager(QtCore.QAbstractTableModel):
         self.length_percentile = 50
 
         self.show_fish = False
+        self.up_down_inverted = False
 
     def testPopulate(self, frame_count):
         self.all_fish = {}
@@ -250,6 +251,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)
+            fish.setDirection(self.up_down_inverted)
         self.trimFishList()
 
 
@@ -277,6 +279,12 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def setShowFish(self, value):
         self.show_fish = value
+
+    def toggleUpDownInversion(self):
+        self.up_down_inverted = not self.up_down_inverted
+        for fish in self.all_fish.values():
+            fish.setDirection(self.up_down_inverted)
+        self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
 class SwimDirection(IntEnum):
     UP = 0
@@ -369,7 +377,14 @@ class FishEntry():
             self.frame_out = max(inds)
             self.duration = self.frame_out - self.frame_in + 1
 
-
+    def setDirection(self, inverted):
+        centers = [d.center for _, d in self.tracks.values()]
+        if len(centers) == 1:
+            self.direction = SwimDirection.NONE
+        elif inverted:
+            self.direction = SwimDirection.UP if centers[0][1] >= centers[-1][1] else SwimDirection.DOWN
+        else:
+            self.direction = SwimDirection.UP if centers[0][1] < centers[-1][1] else SwimDirection.DOWN
 
 def floatTryParse(value):
     try:

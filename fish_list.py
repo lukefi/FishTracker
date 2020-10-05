@@ -9,7 +9,10 @@ class FishList(QtWidgets.QWidget):
         self.fish_manager = fish_manager
         self.playback_manager = playback_manager
         self.sonar_viewer = sonar_viewer
+
         self.measure_fish = None
+        self.add_detection_fish = None
+
         self.initialized_rows = 0
         self.show_fish = False
 
@@ -105,6 +108,12 @@ class FishList(QtWidgets.QWidget):
         self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
         self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
 
+        self.add_detection_btn = QtWidgets.QPushButton()
+        self.add_detection_btn.setObjectName("addDetectionButton")
+        self.add_detection_btn.setText("Add detection")
+        self.add_detection_btn.clicked.connect(self.addDetection)
+        self.add_detection_btn.setToolTip("Draw a new detection for the selected fish at the current frame.")
+
         self.button_layout.addWidget(self.display_btn, 0, 0)
         self.button_layout.addWidget(self.measure_btn, 0, 1)
         self.button_layout.addWidget(self.clear_measure_btn, 1, 1)
@@ -114,6 +123,7 @@ class FishList(QtWidgets.QWidget):
         self.button_layout.addWidget(self.merge_btn, 0, 4)
         self.button_layout.addWidget(self.split_btn, 1, 4)
         self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
+        self.button_layout.addWidget(self.add_detection_btn, 1, 5)
         #self.button_layout.addStretch()
 
         self.vertical_layout.addLayout(self.button_layout)
@@ -151,6 +161,11 @@ class FishList(QtWidgets.QWidget):
         if self.measure_fish:
             self.measurementDone()
         else:
+            if self.add_detection_fish:
+                self.addDetectionDone()
+            if self.sonar_viewer:
+                self.sonar_viewer.createDetection(False)
+
             self.measure_btn.setText("Cancel")
             try:
                 selection = self.table.selectionModel().selection().indexes();
@@ -176,6 +191,37 @@ class FishList(QtWidgets.QWidget):
     def clearMeasurements(self):
         rows = self.getSelectionRows()
         self.fish_manager.clearMeasurements(rows)
+
+    def addDetection(self):
+        if self.add_detection_fish:
+            self.addDetectionDone()
+        else:
+            if self.measure_fish:
+                self.measurementDone()
+            if self.sonar_viewer:
+                self.sonar_viewer.measureDistance(False)
+
+            self.add_detection_btn.setText("Cancel")
+            try:
+                selection = self.table.selectionModel().selection().indexes();
+                self.add_detection_fish = self.fish_manager.getShownFish(selection[0].row())
+            except IndexError:
+                self.addDetectionDone()
+
+        if self.sonar_viewer:
+            self.sonar_viewer.createDetection(self.add_detection_fish is not None)
+
+    def setAddDetectionResult(self, value):
+        if self.add_detection_fish:
+            if value is not None:
+                self.add_detection_fish.addDetection(value)
+                self.fish_manager.refreshLayout()
+
+        self.addDetectionDone()
+
+    def addDetectionDone(self):
+        self.add_detection_fish = None
+        self.add_detection_btn.setText("Add detection")
 
     def checkDropdowns(self):
         print("Check dropdowns")

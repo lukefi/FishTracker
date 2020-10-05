@@ -56,6 +56,7 @@ class UIManager():
 
         self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
+        self.sonar_viewer.add_detection_event.append(self.fish_list.setAddDetectionResult)
 
         #self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector, self.tracker)
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)

@@ -54,6 +54,7 @@ class SonarViewer(QtWidgets.QDialog):
         #self.FDetectedDict = results
 
         self.measure_event = Event()
+        self.add_detection_event = Event()
 
         self.main_window = main_window
         self.playback_manager = playback_manager
@@ -298,6 +299,9 @@ class SonarViewer(QtWidgets.QDialog):
 
     def measureDistance(self, value):
         self.MyFigureWidget.setMeasuring(value)
+
+    def createDetection(self, value):
+        self.MyFigureWidget.setAddDetection(value)
 
     #def FLoadSONARFile(self, filePath):
     #    self.FFilePath = filePath
@@ -643,6 +647,10 @@ class SonarViewer(QtWidgets.QDialog):
 
         self.setStatusBarDistance(None)
 
+    def addDetectionDone(self, result):
+        self.add_detection_event(result)
+        self.setStatusBarDistance(None)
+
     def getSwimDirection(self):
         return self.fish_manager.up_down_inverted
 
@@ -650,31 +658,51 @@ class SonarFigure(ZoomableQLabel):
     def __init__(self, sonar_viewer):
         super().__init__(True, True, True)
         self.sonar_viewer = sonar_viewer
+
         self.init_measuring = False
         self.measure_origin = None
         self.measure_point = None
+
+        self.init_add_detection = False
+        self.add_detection_origin = None
+
         self.setStyleSheet("background-color: black;")
 
         self.measure_toggle = Event()
+        self.add_detection_toggle = Event()
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
+
+        if not self.pixmap():
+            return
 
         if event.button() == QtCore.Qt.LeftButton:
             xs = self.view2imageX(event.x())
             ys = self.view2imageY(event.y())
 
-            if self.init_measuring and self.pixmap(): # self.measure_origin is None
+            # Measure length
+            if self.init_measuring:
                 self.measure_origin = (xs, ys)
                 self.init_measuring = False
 
             elif self.measure_origin is not None:
-                #if(self.sonar_viewer.measure_btn.isChecked()):
-                #    self.sonar_viewer.measure_btn.toggle()
                 self.measure_toggle(True)
 
                 self.sonar_viewer.measurementDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
                 self.measure_origin = None
+                self.update()
+            
+            # Add detection
+            if self.init_add_detection:
+                self.add_detection_origin = (xs, ys)
+                self.init_add_detection = False
+
+            elif self.add_detection_origin is not None:
+                self.add_detection_toggle(True)
+
+                self.sonar_viewer.addDetectionDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
+                self.add_detection_origin = None
                 self.update()
 
     def setMeasuring(self, value):
@@ -692,6 +720,18 @@ class SonarFigure(ZoomableQLabel):
             self.measure_origin = None
             self.measure_point = None
             self.update()
+
+    def setAddDetection(self, value):
+        self.init_measuring = value
+        if value:
+            self.add_detection_toggle(False)
+        else:
+            self.sonar_viewer.addDetectionDone(None)
+            self.add_detection_toggle(True)
+
+            self.add_detection_origin = None
+            self.measure_point = None
+            self.update()
     
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -704,6 +744,9 @@ class SonarFigure(ZoomableQLabel):
             if self.measure_origin is not None:
                 self.update()
                 self.sonar_viewer.setStatusBarDistance((self.measure_origin[1], self.measure_origin[0], ys, xs))
+            elif self.add_detection_origin is not None:
+                self.update()
+                self.sonar_viewer.setStatusBarDistance((self.add_detection_origin[1], self.add_detection_origin[0], ys, xs))
 
             if self.pixmap():
                 self.sonar_viewer.setStatusBarMousePos(xs,ys)
@@ -731,12 +774,19 @@ class SonarFigure(ZoomableQLabel):
             painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "DOWN")
             painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 10, 0.95 * self.window_height, "UP")
 
-        if self.measure_origin is None or self.measure_point is None:
+        if self.measure_point is None:
+            return
+
+        if self.measure_origin:
+            origin = self.measure_origin
+        elif self.add_detection_origin:
+            origin = self.add_detection_origin
+        else:
             return
 
         painter.setPen(QtCore.Qt.darkRed)
-        x1 = self.image2viewX(self.measure_origin[0])
-        y1 = self.image2viewY(self.measure_origin[1])
+        x1 = self.image2viewX(self.origin[0])
+        y1 = self.image2viewY(self.origin[1])
         x2 = self.image2viewX(self.measure_point[0])
         y2 = self.image2viewY(self.measure_point[1])
         painter.drawLine(x1,y1,x2,y2)

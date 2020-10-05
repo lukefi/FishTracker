@@ -336,6 +336,11 @@ class FishEntry():
         insort(self.lengths, detection.length)
         self.setFrames()
 
+    def addDetectionByHand(self, track, frame):
+        self.tracks[frame] = None, detection
+        ...?
+
+
     def copy(self):
         f = FishEntry(self.id, self.frame_in, self.frame_out)
         f.length = self.length

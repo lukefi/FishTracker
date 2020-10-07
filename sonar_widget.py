@@ -3,7 +3,7 @@ files, and also used to show results of the analysis, and details about
 the detected fishes.
 """
 from PyQt5 import QtCore, QtGui, QtWidgets
-from main import MainWindow
+from main_window import MainWindow
 from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
 from detector import Detector

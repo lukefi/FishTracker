@@ -1,7 +1,8 @@
 import sys, os, cv2
+import numpy
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-from main import MainWindow
+from main_window import MainWindow
 from sonar_widget import SonarViewer
 from echogram_widget import EchogramViewer
 from fish_manager import FishManager
@@ -35,7 +36,7 @@ class UIManager():
 
         self.main_window.show()
         self.setupWidgets()
-        self.playback.openTestFile()
+        #self.playback.openTestFile()
 
     def setupWidgets(self):
         _translate = QtCore.QCoreApplication.translate
@@ -134,9 +135,7 @@ class UIManager():
         if path != "" :
             self.detector.saveDetectionsToFile(path)
 
-
-if __name__ == "__main__":
-
+def launch_ui():
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow() #QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
@@ -153,3 +152,7 @@ if __name__ == "__main__":
 
     ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager)
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    launch_ui()

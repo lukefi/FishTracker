@@ -81,7 +81,7 @@ class Tracker(QtCore.QObject):
     def matchingDetections(self, tracks, dets):
         """
         Tries to match tracking results with original detections based on squared distance.
-        Note: There should be some faster way to do this inside SORT tracker.
+        Note: There should be some faster/better way to do this inside SORT tracker.
         """
         all_dets = [d for d in dets if d.corners is not None]
         all_corners = np.mean([d.corners for d in all_dets], 1)

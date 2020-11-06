@@ -33,6 +33,9 @@ class MyReceiver(QObject):
             self.signal.emit(text)
 
 class OutputViewer(QWidget):
+
+    updateLogSignal = pyqtSignal(str)
+
     def __init__(self,*args,**kwargs):
         QWidget.__init__(self,*args,**kwargs)
         self.text_edit = QTextEdit()
@@ -43,6 +46,8 @@ class OutputViewer(QWidget):
         self.layout.addWidget(self.text_edit)
         self.layout.addWidget(self.clear_button)
         self.queue = None
+
+        self.latestLine = ""
 
     def redirectStdOut(self):
         # Create Queue and redirect sys.stdout to this queue
@@ -61,6 +66,10 @@ class OutputViewer(QWidget):
     def appendText(self,text):
         self.text_edit.moveCursor(QTextCursor.End)
         self.text_edit.insertPlainText( text )
+
+        lines = self.text_edit.toPlainText().splitlines(False)
+        if len(lines) > 0:
+            self.updateLogSignal.emit(lines[-1])
 
     def clear(self):
         self.text_edit.clear()

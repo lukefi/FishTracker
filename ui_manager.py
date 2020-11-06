@@ -26,8 +26,6 @@ class UIManager():
         self.detector = detector
         self.tracker = tracker
         self.fish_manager = fish_manager
-        #self.fish_manager.testPopulate(frame_count=100)
-        #self.playback.frame_available.append(self.showSonarFrame)
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(main_window)
@@ -36,6 +34,9 @@ class UIManager():
 
         self.main_window.show()
         self.setupWidgets()
+        self.playback.setTitle()
+
+        #self.fish_manager.testPopulate(frame_count=100)
         #self.playback.openTestFile()
 
     def setupWidgets(self):
@@ -58,7 +59,6 @@ class UIManager():
         self.fish_list = FishList(self.fish_manager, self.playback, self.sonar_viewer)
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 
-        #self.parameter_list = ParameterList(self.playback, self.sonar_viewer.image_processor, self.fish_manager, self.detector, self.tracker)
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
@@ -67,10 +67,10 @@ class UIManager():
 
         self.output = OutputViewer()
         self.output.redirectStdOut()
+        self.output.updateLogSignal.connect(self.main_window.updateStatusLog)
 
+        # Tabs for the side panel.
         self.ui.info_widget.removeTab(0)
-        #self.ui.info_widget.addTab(self.parameter_list, "")
-        #self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.parameter_list), _translate("MainWindow", "Display"))
         self.ui.info_widget.addTab(self.detector_parameters, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.detector_parameters), _translate("MainWindow", "Detector"))
         self.ui.info_widget.addTab(self.detection_list, "")
@@ -78,7 +78,7 @@ class UIManager():
         self.ui.info_widget.addTab(self.tracker_parameters, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.tracker_parameters), _translate("MainWindow", "Tracker"))
         self.ui.info_widget.addTab(self.fish_list, "")
-        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Fish List"))
+        self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Tracks"))
         self.ui.info_widget.addTab(self.output, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.output), _translate("MainWindow", "Log"))
 
@@ -96,9 +96,14 @@ class UIManager():
         self.ui.action_save_detections = QtWidgets.QAction(self.main_window)
         self.ui.action_save_detections.setObjectName("action_save_detections")
         self.ui.menu_File.addAction(self.ui.action_save_detections)
-        # self.ui.action_save_detections.setShortcut('Ctrl+Q')
         self.ui.action_save_detections.triggered.connect(self.saveDetections)
         self.ui.action_save_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save detections"))
+
+        self.ui.action_save_tracks = QtWidgets.QAction(self.main_window)
+        self.ui.action_save_tracks.setObjectName("action_save_tracks")
+        self.ui.menu_File.addAction(self.ui.action_save_tracks)
+        self.ui.action_save_tracks.triggered.connect(self.saveTracks)
+        self.ui.action_save_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save tracks"))
 
         self.ui.action_close_file = QtWidgets.QAction(self.main_window)
         self.ui.action_close_file.setObjectName("action_close_file")
@@ -106,15 +111,6 @@ class UIManager():
         self.ui.action_close_file.setShortcut('Ctrl+Q')
         self.ui.action_close_file.triggered.connect(self.closeFile)
         self.ui.action_close_file.setText(QtCore.QCoreApplication.translate("MainWindow", "&Close file"))
-
-    #def showSonarFrame(self, image):
-    #    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-    #    image = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
-    #    self.ui.sonar_frame.setPixmap(QtGui.QPixmap.fromImage(image))
-
-        #figurePixmap = QtGui.QPixmap.fromImage(image)
-        #self.ui.sonar_frame.setPixmap(figurePixmap.scaled(ffigure.size(), pyqtCore.Qt.KeepAspectRatio))
-        #ffigure.setAlignment(pyqtCore.Qt.AlignCenter)
 
     def getSavePath(self):
         homeDirectory = str(os.path.expanduser("~"))
@@ -134,6 +130,11 @@ class UIManager():
         path = self.getSavePath()
         if path != "" :
             self.detector.saveDetectionsToFile(path)
+
+    def saveTracks(self):
+        path = self.getSavePath()
+        if path != "" :
+            self.fish_manager.saveToFile(path)
 
 def launch_ui():
     app = QtWidgets.QApplication(sys.argv)

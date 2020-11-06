@@ -37,6 +37,7 @@ class PlaybackManager(QObject):
 
         self.path = ""
         self.sonar = None
+        self.setTitle()
 
         self.frame_timer = None
         self.fps = 30
@@ -61,12 +62,13 @@ class PlaybackManager(QObject):
 
     def loadFile(self, path, overrideLength=-1):
         self.path = path
-        sonar = FOpenSonarFile(self.path)
+        self.setTitle(path)
+        sonar = FOpenSonarFile(path)
         if overrideLength > 0:
             sonar.frameCount = min(overrideLength, sonar.frameCount)
 
         if self.playback_thread:
-            print("Stopping existing thread.")
+            #print("Stopping existing thread.")
             #self.playback_thread.signals.playback_ended_signal.connect(self.setLoadedFile)
             self.closeFile()
             self.setLoadedFile(sonar)
@@ -99,8 +101,15 @@ class PlaybackManager(QObject):
             self.playback_thread = None
 
         self.file_closed()
+        self.setTitle()
 
         #self.polar_transform = None
+
+    def setTitle(self, path=""):
+        if path == "":
+            self.main_window.setWindowTitle("FishTracker")
+        else:
+            self.main_window.setWindowTitle(path)
 
     def startThread(self, tuple):
         """
@@ -275,10 +284,12 @@ class PlaybackManager(QObject):
     def pausePolarLoading(self, value):
         if self.playback_thread is not None:
             self.playback_thread.pause_polar_loading = value
-            if value:
-                print("Polar loading paused.")
-            else:
-                print("Polar loading continued.")
+
+            if not self.polars_loaded:
+                if value:
+                    print("Polar loading paused.")
+                else:
+                    print("Polar loading continued.")
 
     def isMappingDone(self):
         return self.playback_thread is not None and self.playback_thread.polar_transform is not None
@@ -331,21 +342,15 @@ class PlaybackThread(QRunnable):
         self.pause_polar_loading = False
 
     def __del__(self):
-        print("Playback thread destroyed")
+        #print("Playback thread destroyed")
+        pass
 
     def run(self):
-        #print("C:", sys.getrefcount(self))
         map_worker = Worker(self.createMapping)
         self.signals.start_thread_signal.emit((map_worker, self.mappingDone, map_worker.signals.result))
-        #print("D:", sys.getrefcount(self))
         polar_worker = Worker(self.loadPolarFrames)
         self.signals.start_thread_signal.emit((polar_worker, self.polarsDone, polar_worker.signals.result))
-        #print("E:", sys.getrefcount(self))
 
-        #while self.alive:
-        #    if not self.is_playing and self.last_displayed_ind != self.display_ind and self.polar_transform:
-        #        self.displayFrame()
-        #        time.sleep(0.05)
 
     def loadPolarFrames(self):
         count = self.sonar.frameCount
@@ -368,9 +373,6 @@ class PlaybackThread(QRunnable):
         print("Loading: 100 %")
         self.polars_loaded = True
         self.signals.polars_loaded_signal.emit()
-
-        #frame = self.polar_transform.remap(self.buffer[0])
-        #self.signals.frame_available_signal.emit((0, frame))
 
     def createMapping(self):
         radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)

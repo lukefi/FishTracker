@@ -433,14 +433,24 @@ class Detector:
 		return self.parametersDirty() and not self.initializing
 
 	def saveDetectionsToFile(self, path):
-		with open(path, "w") as file:
-			file.write("frame distance(m) angle(deg) [corner_0] [corner_1] [corner_2] [corner_3]")
-			for frame, dets in enumerate(self.detections):
-				if dets is not None:
-					for d in dets:
-						if d.center is not None:
-							file.write("{} {} {} {} {} {} {}\n".format(frame, d.distance, d.angle, d.corners[0], d.corners[1], d.corners[2], d.corners[3]))
-		print("Detections saved to path:", path)
+		# Default formatting
+		f1 = "{:.5f}"
+		lineBase1 = "{};" + "{};{};{};".format(f1,f1,f1)
+
+		try:
+			with open(path, "w") as file:
+				file.write("frame;length;distance;angle;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y\n")
+				for frame, dets in enumerate(self.detections):
+					if dets is not None:
+						for d in dets:
+							if d.corners is not None:
+								file.write(lineBase1.format(frame, d.length, d.distance, d.angle))
+								file.write(d.cornersToString(";"))
+								file.write("\n")
+				print("Detections saved to path:", path)
+
+		except PermissionError as e:
+			print("Cannot open file {}. Permission denied.".format(path))
 			
 
 class MOGParameters:
@@ -588,6 +598,13 @@ class Detection:
 			return ""
 		
 		return str(int(self.center[1]*10)) + ' ' + str(int(self.center[0]*10)) + ' ' + str(int(self.diff[1]*2))
+
+	def cornersToString(self, delim):
+		if self.corners is None:
+			return ""
+
+		base = "{:.2f}" + delim + "{:.2f}"
+		return delim.join(base.format(cx,cy) for cy, cx in self.corners[0:4])
 
 
 class DetectorDisplay:

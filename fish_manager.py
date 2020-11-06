@@ -9,6 +9,8 @@ from tracker import Tracker
 fish_headers = ["ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
 fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
 
+# Implements functionality to store and manage the tracked fish items.
+# Items can be edited with the functions defined here through e.g. fish_list.py.
 class FishManager(QtCore.QAbstractTableModel):
     updateContentsSignal = QtCore.pyqtSignal()
 
@@ -19,17 +21,35 @@ class FishManager(QtCore.QAbstractTableModel):
             self.tracker.init_signal.connect(self.clear)
             self.tracker.all_computed_signal.connect(self.updateDataFromTracker)
 
+        # All fish items currently stored.
         self.all_fish = {}
+
+        # Fish items that are currently displayed.
         self.fish_list = []
+
+        # Index for fish_sort_keys array, that contains lambda functions to sort the currently shown array.
         self.sort_ind = 0
+
+        # Sort direction, ascending or descending
         self.sort_order = QtCore.Qt.DescendingOrder
+
+        # Min number of detections required for a fish to be included in fish_list
         self.min_detections = 2
+
+        # Percentile with which the shown length is determined
         self.length_percentile = 50
 
+        # If fish (tracks) are shown.
         self.show_fish = False
+
+        # Inverted upstream / downstream.
         self.up_down_inverted = False
 
     def testPopulate(self, frame_count):
+        """
+        Simple test function.
+        """
+
         self.all_fish = {}
         self.fish_list.clear()
         for i in range(10):
@@ -135,6 +155,10 @@ class FishManager(QtCore.QAbstractTableModel):
             return None
 
     def addFish(self):
+        """
+        Manual addition of fish.
+        Currently not supported. Manual fish detection from frames is required.
+        """
         f = FishEntry(self.getNewID())
         self.all_fish[f.id] = f
         self.trimFishList()
@@ -239,7 +263,13 @@ class FishManager(QtCore.QAbstractTableModel):
         return False
 
     def updateDataFromTracker(self):
+        """
+        Iterates through the results of the tracker and updates the data in FishManager.
+        """
+
+        # Iterate through all frames.
         for frame, tracks in self.tracker.tracks_by_frame.items():
+            # Iterate through all tracks in a frame.
             for tr, det in tracks:
                 id = tr[4]
                 if id in self.all_fish:
@@ -249,6 +279,7 @@ class FishManager(QtCore.QAbstractTableModel):
                     f = FishEntryFromTrack(tr, det, frame)
                     self.all_fish[id] = f
 
+        # Refresh values
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)
             fish.setDirection(self.up_down_inverted)
@@ -285,6 +316,36 @@ class FishManager(QtCore.QAbstractTableModel):
         for fish in self.all_fish.values():
             fish.setDirection(self.up_down_inverted)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def saveToFile(self, path):
+        f1 = "{:.5f}"
+        lineBase1 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
+
+        try:
+            with open(path, "w") as file:
+                file.write("id;frame;length;distance;angle;direction;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y\n")
+
+                lines = []
+
+                for fish in self.all_fish.values():
+                    for frame, td in fish.tracks.items():
+                        track, detection = td
+                        length = fish.length if fish.length_overwritten else detection.length
+                        line = lineBase1.format(fish.id, frame, length, detection.distance, detection.angle, fish.direction.name)
+                        if detection.corners is not None:
+                            line += detection.cornersToString(";")
+                        else:
+                            line += ";".join(8 * [" "])
+
+                        lines.append((fish, frame, line + "\n"))
+
+                lines.sort(key = lambda l: (l[0].id, l[1]))
+                for _, _, line in lines:
+                    file.write(line)
+
+                print("Tracks saved to path:", path)
+        except PermissionError as e:
+            print("Cannot open file {}. Permission denied.".format(path))
 
 class SwimDirection(IntEnum):
     UP = 0
@@ -379,7 +440,7 @@ class FishEntry():
 
     def setDirection(self, inverted):
         centers = [d.center for _, d in self.tracks.values()]
-        if len(centers) == 1:
+        if len(centers) <= 1:
             self.direction = SwimDirection.NONE
         elif inverted:
             self.direction = SwimDirection.UP if centers[0][1] >= centers[-1][1] else SwimDirection.DOWN

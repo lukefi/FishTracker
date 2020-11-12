@@ -109,10 +109,10 @@ class FishList(QtWidgets.QWidget):
         self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
         self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
 
-        self.test_save_btn = QtWidgets.QPushButton()
-        self.test_save_btn.setObjectName("testSaveButton")
-        self.test_save_btn.setText("Save")
-        self.test_save_btn.clicked.connect(lambda: self.fish_manager.saveToFile("C:/Users/Mixhu/Desktop/test.csv"))
+        #self.test_save_btn = QtWidgets.QPushButton()
+        #self.test_save_btn.setObjectName("testSaveButton")
+        #self.test_save_btn.setText("Save")
+        #self.test_save_btn.clicked.connect(lambda: self.fish_manager.saveToFile("C:/Users/Mixhu/Desktop/test.csv"))
 
         self.button_layout.addWidget(self.display_btn, 0, 0)
         self.button_layout.addWidget(self.measure_btn, 0, 1)
@@ -123,7 +123,7 @@ class FishList(QtWidgets.QWidget):
         self.button_layout.addWidget(self.merge_btn, 0, 4)
         self.button_layout.addWidget(self.split_btn, 1, 4)
         self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
-        self.button_layout.addWidget(self.test_save_btn, 1, 5)
+        #self.button_layout.addWidget(self.test_save_btn, 1, 5)
         #self.button_layout.addStretch()
 
         self.vertical_layout.addLayout(self.button_layout)

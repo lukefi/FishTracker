@@ -137,9 +137,11 @@ class EchogramViewer(QtWidgets.QWidget):
         self.figure.frame_count = sonar.frameCount
 
     def onFileClose(self):
-        self.figure.clear()
-        self.echogram.clear()
-        self.echogram = None
+        if self.figure is not None:
+            self.figure.clear()
+        if self.echogram is not None:
+            self.echogram.clear()
+            self.echogram = None
 
     def imageReady(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())

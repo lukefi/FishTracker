@@ -86,12 +86,12 @@ class UIManager():
         self.ui.action_Open.setShortcut('Ctrl+O')
         self.ui.action_Open.triggered.connect(self.openFile)
 
-        #self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
-        #self.ui.action_OpenTest.setObjectName("action_OpenTest")
-        #self.ui.menu_File.addAction(self.ui.action_OpenTest)
-        #self.ui.action_OpenTest.setShortcut('Ctrl+T')
-        #self.ui.action_OpenTest.triggered.connect(self.openTestFile)
-        #self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
+        self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
+        self.ui.action_OpenTest.setObjectName("action_OpenTest")
+        self.ui.menu_File.addAction(self.ui.action_OpenTest)
+        self.ui.action_OpenTest.setShortcut('Ctrl+T')
+        self.ui.action_OpenTest.triggered.connect(self.openTestFile)
+        self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
 
         self.ui.action_save_detections = QtWidgets.QAction(self.main_window)
         self.ui.action_save_detections.setObjectName("action_save_detections")

@@ -52,7 +52,7 @@ class Detector:
 		self.all_computed_event = Event()
 
 		self._show_detections = False
-		self._show_detection_size = True
+		self._show_detection_size = False
 		self.show_bgsub = False
 
 		# [flag] Whether MOG is initializing
@@ -571,24 +571,29 @@ class Detection:
 				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
 					
 
-	def visualize(self, image, colors, show_text):
+	def visualize(self, image, colors, show_text, show_detection=True):
 		if self.diff is None:
 			return image
 
 		# Visualize results	
 		if show_text:
-			if self.length > 0:
-				size_txt = 'Size (cm): ' + str(int(100*self.length))
-			else:
-				size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
-			image = cv2.putText(image, size_txt, (int(self.center[1])-50, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+			#if self.length > 0:
+			#	size_txt = 'Size (cm): ' + str(int(100*self.length))
+			#else:
+			#	size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
 
-		for i in range(self.data.shape[0]):
-			cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
-				(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
-		for i in range(0,3):
-			cv2.line(image, (int(self.corners[i,1]),int(self.corners[i,0])), (int(self.corners[i+1,1]),int(self.corners[i+1,0])),  (255,255,255), 1)
-		cv2.line(image, (int(self.corners[3,1]),int(self.corners[3,0])), (int(self.corners[0,1]),int(self.corners[0,0])),  (255,255,255), 1)
+			if self.length > 0:
+				size_txt = 'Size: ' + str(int(100*self.length))
+
+				image = cv2.putText(image, size_txt, (int(self.center[1])-20, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+
+		if show_detection:
+			for i in range(self.data.shape[0]):
+				cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
+					(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
+			for i in range(0,3):
+				cv2.line(image, (int(self.corners[i,1]),int(self.corners[i,0])), (int(self.corners[i+1,1]),int(self.corners[i+1,0])),  (255,255,255), 1)
+			cv2.line(image, (int(self.corners[3,1]),int(self.corners[3,0])), (int(self.corners[0,1]),int(self.corners[0,0])),  (255,255,255), 1)
 
 		return image
 	

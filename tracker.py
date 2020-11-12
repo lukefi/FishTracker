@@ -1,5 +1,6 @@
 ﻿import numpy as np
 import cv2
+import seaborn as sns
 from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
 
@@ -28,7 +29,9 @@ class Tracker(QtCore.QObject):
         self.tracking = False
         self.stop_tracking = False
         self._show_tracks = False
+        self._show_bounding_box = False
         self._show_id = True
+        self._show_detection_size = True
 
     def trackAllDetectorFrames(self):
         self.trackAll(self.detector.detections)
@@ -117,17 +120,22 @@ class Tracker(QtCore.QObject):
         if ind not in self.tracks_by_frame:
             return image
         
+        colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in self.tracks_by_frame[ind]]))
         for tr, det in self.tracks_by_frame[ind]:
+
             if self._show_id:
                 center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
                 image = cv2.putText(image, "ID: " + str(int(tr[4])), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
+            if self._show_detection_size:
+                det.visualize(image, colors, True, False)
 
-            corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
+            if self._show_bounding_box:
+                corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
 
-            for i in range(0,3):
-                cv2.line(image, (int(corners[i,1]),int(corners[i,0])), (int(corners[i+1,1]),int(corners[i+1,0])),  (255,255,255), 1)
-            cv2.line(image, (int(corners[3,1]),int(corners[3,0])), (int(corners[0,1]),int(corners[0,0])),  (255,255,255), 1)
+                for i in range(0,3):
+                    cv2.line(image, (int(corners[i,1]),int(corners[i,0])), (int(corners[i+1,1]),int(corners[i+1,0])),  (255,255,255), 1)
+                cv2.line(image, (int(corners[3,1]),int(corners[3,0])), (int(corners[0,1]),int(corners[0,0])),  (255,255,255), 1)
 
         return image
 
@@ -156,13 +164,22 @@ class Tracker(QtCore.QObject):
         except ValueError as e:
             print(e)
 
-    def setShowTracks(self, value):
-        self._show_tracks = value
+    def setShowTracks(self):
+        self._show_tracks = self._show_bounding_box or self._show_id or self._show_detection_size
         if not self._show_tracks:
             self.data_changed_signal.emit(0)
 
+    def setShowBoundingBox(self, value):
+        self._show_bounding_box = value
+        self.setShowTracks()
+
     def setShowTrackingIDs(self, value):
         self._show_id = value
+        self.setShowTracks()
+
+    def setShowTrackingSize(self, value):
+        self._show_detection_size = value
+        self.setShowTracks()
 
 
 class TrackerParameters:

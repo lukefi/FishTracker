@@ -123,9 +123,9 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_detection_size_btn.setFlat(True)
         self.show_detection_size_btn.setCheckable(True)
         self.show_detection_size_btn.setChecked(True)
-        self.show_detection_size_btn.clicked.connect(self.detector.setShowSize)
+        self.show_detection_size_btn.clicked.connect(self.tracker.setShowTrackingSize)
         self.show_detection_size_btn.clicked.connect(self.playback_manager.refreshFrame)
-        self.show_detection_size_btn.setEnabled(False)
+        #self.show_detection_size_btn.setEnabled(False)
         self.show_detection_size_btn.setToolTip("Show detection size\nShow also the length of the detection")
         self.show_detection_size_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("det_size")))
         self.show_detection_size_btn.setIconSize(btn_size)
@@ -162,7 +162,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_trackingIDs_btn.setChecked(True)
         self.show_trackingIDs_btn.clicked.connect(self.tracker.setShowTrackingIDs)
         self.show_trackingIDs_btn.clicked.connect(self.playback_manager.refreshFrame)
-        self.show_trackingIDs_btn.setEnabled(False)
+        #self.show_trackingIDs_btn.setEnabled(False)
         self.show_trackingIDs_btn.setToolTip("Show track IDs\nShow also the IDs of the tracked fish")
         self.show_trackingIDs_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("track_id")))
         self.show_trackingIDs_btn.setIconSize(btn_size)
@@ -193,13 +193,13 @@ class ParameterList(QtWidgets.QToolBar):
 
     def showDetectionsChanged(self, value):
         self.detector.setShowDetections(value)
-        self.show_detection_size_btn.setEnabled(value)
+        #self.show_detection_size_btn.setEnabled(value)
         self.playback_manager.refreshFrame()
 
     def showTracksChanged(self, value):
-        self.tracker.setShowTracks(value)
+        self.tracker.setShowBoundingBox(value)
         self.fish_manager.setShowFish(value)
-        self.show_trackingIDs_btn.setEnabled(value)
+        #self.show_trackingIDs_btn.setEnabled(value)
         self.playback_manager.refreshFrame()
 
     def toggleMeasureBtn(self, value):

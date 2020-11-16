@@ -21,7 +21,8 @@ class Tracker(QtCore.QObject):
         super().__init__()
 
         self.detector = detector
-        self.parameters = TrackerParameters()
+        self.resetParameters()
+
         self.applied_parameters = None
         self.applied_detector_parameters = None
         self.mot_tracker = None
@@ -32,6 +33,10 @@ class Tracker(QtCore.QObject):
         self._show_bounding_box = True
         self._show_id = True
         self._show_detection_size = True
+
+    def resetParameters(self):
+        self.parameters = TrackerParameters()
+
 
     def trackAllDetectorFrames(self):
         self.trackAll(self.detector.detections)
@@ -182,6 +187,12 @@ class Tracker(QtCore.QObject):
         self._show_detection_size = value
         self.setShowTracks()
 
+    def getParameterDict(self):
+        if self.parameters is not None:
+            return self.parameters.getParameterDict()
+        else:
+            return None
+
 
 class TrackerParameters:
     def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
@@ -199,6 +210,13 @@ class TrackerParameters:
 
     def copy(self):
         return TrackerParameters(self.max_age, self.min_hits, self.iou_threshold)
+
+    def getParameterDict(self):
+        return {
+            "max_age": self.max_age,
+	        "min_hits": self.min_hits,
+	        "iou_threshold": self.iou_threshold,
+        }
 
 
 if __name__ == "__main__":

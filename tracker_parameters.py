@@ -5,6 +5,16 @@ from tracker import Tracker
 from detector_parameters import LabeledSlider
 from fish_manager import FishManager
 
+import json
+import os.path
+
+PARAMETERS_PATH = "tracker_parameters.json"
+PARAMETER_TYPES = {
+            "max_age": int,
+	        "min_hits": int,
+	        "iou_threshold": float
+        }
+
 class TrackerParametersView(QWidget):
     def __init__(self, playback_manager, tracker, detector):
         super().__init__()
@@ -63,6 +73,22 @@ class TrackerParametersView(QWidget):
 
         self.vertical_layout.addStretch()
 
+        self.save_btn = QPushButton()
+        self.save_btn.setObjectName("saveButton")
+        self.save_btn.setText("Save")
+        self.save_btn.clicked.connect(self.saveJSON)
+
+        self.load_btn = QPushButton()
+        self.load_btn.setObjectName("loadButton")
+        self.load_btn.setText("Load")
+        self.load_btn.clicked.connect(self.loadJSON)
+
+        self.reset_btn = QPushButton()
+        self.reset_btn.setObjectName("resetButton")
+        self.reset_btn.setText("Reset")
+        self.reset_btn.clicked.connect(self.tracker.resetParameters)
+        self.reset_btn.clicked.connect(self.refreshValues)
+
         self.button_layout = QHBoxLayout()
         self.button_layout.setObjectName("buttonLayout")
         self.button_layout.setSpacing(7)
@@ -75,11 +101,55 @@ class TrackerParametersView(QWidget):
 
         self.button_layout.addWidget(self.track_all_btn)
         self.button_layout.addStretch()
+        self.button_layout.addWidget(self.save_btn)
+        self.button_layout.addWidget(self.load_btn)
+        self.button_layout.addWidget(self.reset_btn)
 
         self.vertical_layout.addLayout(self.button_layout)
 
         self.setLayout(self.vertical_layout)
 
+    def saveJSON(self):
+        dict = self.tracker.getParameterDict()
+        if dict is None:
+            return
+
+        try:
+            with open(PARAMETERS_PATH, "w") as f:
+                json.dump(dict, f, indent=3)
+        except FileNotFoundError as e:
+            print(e)
+
+    def loadJSON(self):
+        try:
+            with open(PARAMETERS_PATH, "r") as f:
+                dict = json.load(f)
+        except FileNotFoundError as e:
+            print("Error: Tracker parameters file not found:", e)
+            return
+        except json.JSONDecodeError as e:
+            print("Error: Invalid tracker parameters file:", e)
+            return
+
+
+        params = self.tracker.parameters
+        for key, value in dict.items():
+            if hasattr(params, key) and key in PARAMETER_TYPES:
+                try:
+                    setattr(params, key, PARAMETER_TYPES[key](value))
+                except ValueError as e:
+                    print("Error: Invalid value in tracker parameters file,", e)
+            else:
+                print("Error: Invalid parameters: {}: {}".format(key, value))
+
+        self.refreshValues()
+
+    def refreshValues(self):
+        params = self.tracker.parameters
+
+        self.max_age_slider.setValue(params.max_age)
+        self.min_hits_slider.setValue(params.min_hits)
+        self.iou_threshold_slider.setValue(params.iou_threshold)
 
 if __name__ == "__main__":
     import sys

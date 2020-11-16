@@ -195,7 +195,9 @@ class DetectorParametersView(QWidget):
         self.setButtonsEnabled()
 
     def saveJSON(self):
-        dict = detector.getParameterDict()
+        dict = self.detector.getParameterDict()
+        if dict is None:
+            return
 
         try:
             with open(PARAMETERS_PATH, "w") as f:
@@ -209,8 +211,10 @@ class DetectorParametersView(QWidget):
                 dict = json.load(f)
         except FileNotFoundError as e:
             print("Error: Detector parameters file not found:", e)
+            return
         except json.JSONDecodeError as e:
             print("Error: Invalid detector parameters file:", e)
+            return
 
 
         params = self.detector.parameters

@@ -1,0 +1,5 @@
+{
+   "max_age": 20,
+   "min_hits": 3,
+   "iou_threshold": 0.1
+}

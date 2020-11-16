@@ -399,6 +399,12 @@ class Detector:
 	def getCurrentDetection(self):
 		return self.getDetection(self.current_ind)
 
+	def getParameterDict(self):
+		if self.parameters is not None:
+			return self.parameters.getParameterDict()
+		else:
+			return None
+
 	def bgSubtraction(self, image):
 		fg_mask_mog = self.fgbg_mog.apply(image, learningRate=0)
 		fg_mask_cpy = fg_mask_mog

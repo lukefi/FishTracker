@@ -28,8 +28,8 @@ class Tracker(QtCore.QObject):
         self.tracks_by_frame = {}
         self.tracking = False
         self.stop_tracking = False
-        self._show_tracks = False
-        self._show_bounding_box = False
+        self._show_tracks = True
+        self._show_bounding_box = True
         self._show_id = True
         self._show_detection_size = True
 
@@ -116,6 +116,7 @@ class Tracker(QtCore.QObject):
             self.applied_detector_parameters = None
         self.state_changed_signal.emit()
 
+    #TODO: Move visualization to fish_manager
     def visualize(self, image, ind):
         if ind not in self.tracks_by_frame:
             return image

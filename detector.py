@@ -52,6 +52,7 @@ class Detector:
 		self.all_computed_event = Event()
 
 		self._show_detections = False
+		self._show_echogram_detections = False
 		self._show_detection_size = False
 		self.show_bgsub = False
 
@@ -173,7 +174,7 @@ class Detector:
 		self.compute(ind, frame)
 
 	def compute(self, ind, image, get_images=False):
-		if not self._show_detections:
+		if not self._show_detections and not self._show_echogram_detections:
 			return
 
 		images = self.computeBase(ind, image, get_images)
@@ -239,12 +240,6 @@ class Detector:
 					for d in detections:
 						image_o_rgb = d.visualize(image_o_rgb, colors)
 
-				
-			
-		# Print message: [timestamp camera_id position_x position_y length]
-		# Position now in pixel coordinates (times 10) for tracker, hould be in metric coordinates
-		# print(msg)
-
 		self.detections[ind] = detections
 		self.detections_clearable = True
 
@@ -255,12 +250,6 @@ class Detector:
 		self.computing = True
 		self.stop_computing = False
 		self.state_changed_event()
-
-		#if self.mog_dirty:
-		#	self.initMOG()
-		#	if self.mog_dirty:
-		#		self.abortComputing(True)
-		#		return
 
 		if self.mogParametersDirty():
 			self.initMOG()
@@ -287,7 +276,6 @@ class Detector:
 
 		print("Detecting: 100 %")
 		self.computing = False
-		#self.detections_dirty = False
 		self.detections_clearable = True
 		self.applied_parameters = self.parameters.copy()
 
@@ -299,7 +287,6 @@ class Detector:
 	def abortComputing(self, mog_aborted):
 		self.stop_computing = False
 		self.computing = False
-		#self.detections_dirty = True
 		self.detections_clearable = True
 		self.state_changed_event()
 		self.applied_parameters = None
@@ -315,7 +302,6 @@ class Detector:
 		self.state_changed_event()
 		
 	def overlayDetections(self, image, detections=None):
-		# labels = [d.label for d in labels]
 		if detections is None:
 			detections = self.getCurrentDetection()
 
@@ -328,7 +314,6 @@ class Detector:
 	def setDetectionSize(self, value):
 		try:
 			self.parameters.detection_size = int(value)
-			# self.clearDetections()
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -336,7 +321,6 @@ class Detector:
 	def setMOGVarThresh(self, value):
 		try:
 			self.mog_parameters.mog_var_thresh = int(value)
-			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -344,7 +328,6 @@ class Detector:
 	def setMinFGPixels(self, value):
 		try:
 			self.parameters.min_fg_pixels = int(value)
-			# self.clearDetections()
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -352,7 +335,6 @@ class Detector:
 	def setMedianSize(self, value):
 		try:
 			self.parameters.median_size = int(value)
-			# self.clearDetections()
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -360,7 +342,6 @@ class Detector:
 	def setNofBGFrames(self, value):
 		try:
 			self.mog_parameters.nof_bg_frames = int(value)
-			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -368,7 +349,6 @@ class Detector:
 	def setLearningRate(self, value):
 		try:
 			self.mog_parameters.learning_rate = float(value)
-			# self.mog_dirty = True
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -376,7 +356,6 @@ class Detector:
 	def setDBScanEps(self, value):
 		try:
 			self.parameters.dbscan_eps = int(value)
-			# self.clearDetections()
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
@@ -384,15 +363,18 @@ class Detector:
 	def setDBScanMinSamples(self, value):
 		try:
 			self.parameters.dbscan_min_samples = int(value)
-			# self.clearDetections()
 			self.state_changed_event()
 		except ValueError as e:
 			print(e)
 
 	def setShowDetections(self, value):
-		self._show_detections = value # and self.mog_ready
-		#print("{} && {}: {}".format(self.mog_ready, value, self._show_detections))
+		self._show_detections = value
 		if not self._show_detections:
+			self.data_changed_event(0)
+
+	def setShowEchogramDetections(self, value):
+		self._show_echogram_detections = value
+		if not self._show_echogram_detections:
 			self.data_changed_event(0)
 
 	def setShowSize(self, value):
@@ -617,6 +599,7 @@ class DetectorDisplay:
 		self.array = [cv2.imread(file, 0) for file in sorted(glob.glob("out/*.png"))]
 		self.detector = Detector(self)
 		self.detector._show_detections = True
+		self._show_echogram_detections = True
 
 	def run(self):
 		self.showWindow()
@@ -701,6 +684,7 @@ def playbackTest():
 	detector = Detector(playback_manager)
 	detector.mog_parameters.nof_bg_frames = 100
 	detector._show_detections = True
+	detector._show_echogram_detections = True
 	playback_manager.mapping_done.append(startDetector)
 	playback_manager.frame_available.insert(0, detector.compute_from_event)
 

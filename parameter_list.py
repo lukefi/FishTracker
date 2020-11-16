@@ -44,6 +44,27 @@ class ParameterList(QtWidgets.QToolBar):
         #self.gamma_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         #self.gamma_label.setMinimumWidth(50)
 
+        self.show_echogram_detections_btn = QtWidgets.QPushButton()
+        self.show_echogram_detections_btn.setObjectName("showEchogramDetections")
+        self.show_echogram_detections_btn.setFlat(True)
+        self.show_echogram_detections_btn.setCheckable(True)
+        self.show_echogram_detections_btn.setChecked(False)
+        self.show_echogram_detections_btn.clicked.connect(self.showEchogramDetectionsChanged)
+        self.show_echogram_detections_btn.setToolTip("Show detections\nOverlay the results from detector to Echogram")
+        self.show_echogram_detections_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("detections")))
+        self.show_echogram_detections_btn.setIconSize(btn_size)
+
+        self.show_echogram_tracks_btn = QtWidgets.QPushButton()
+        self.show_echogram_tracks_btn.setObjectName("showTracks")
+        self.show_echogram_tracks_btn.setFlat(True)
+        self.show_echogram_tracks_btn.setCheckable(True)
+        self.show_echogram_tracks_btn.setChecked(True)
+        self.show_echogram_tracks_btn.clicked.connect(self.showEchogramTracksChanged)
+        self.show_echogram_tracks_btn.setToolTip("Show tracks\nOverlay the results from tracker to Echogram")
+        self.show_echogram_tracks_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("tracks")))
+        self.show_echogram_tracks_btn.setIconSize(btn_size)
+
+
         self.gamma_value = QtWidgets.QLabel("1.0", self)
         self.gamma_value.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignTop)
         self.gamma_value.setMinimumWidth(30)
@@ -139,7 +160,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_tracks_btn.setObjectName("showTracks")
         self.show_tracks_btn.setFlat(True)
         self.show_tracks_btn.setCheckable(True)
-        self.show_tracks_btn.setChecked(False)
+        self.show_tracks_btn.setChecked(True)
         self.show_tracks_btn.clicked.connect(self.showTracksChanged)
         self.show_tracks_btn.setToolTip("Show tracks\nOverlay the results from tracker to Sonar View")
         self.show_tracks_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("tracks")))
@@ -175,13 +196,15 @@ class ParameterList(QtWidgets.QToolBar):
         #self.verticalLayout.addWidget(self.distance_tick)
         #self.verticalLayout.addWidget(self.contrast_tick)
         #self.verticalLayout.addWidget(self.gamma_label)
+        self.addWidget(self.show_echogram_detections_btn)
+        self.addWidget(self.show_echogram_tracks_btn)
         self.addWidget(self.gamma_value)
         self.addWidget(self.gamma_slider)
         self.addWidget(self.bgsub_btn)
         self.addWidget(self.colormap_btn)
         self.addWidget(self.show_detections_btn)
-        self.addWidget(self.show_detection_size_btn)
         self.addWidget(self.show_tracks_btn)
+        self.addWidget(self.show_detection_size_btn)
         self.addWidget(self.show_trackingIDs_btn)
         self.addWidget(line)
         self.addWidget(self.measure_btn)
@@ -193,13 +216,19 @@ class ParameterList(QtWidgets.QToolBar):
 
     def showDetectionsChanged(self, value):
         self.detector.setShowDetections(value)
-        #self.show_detection_size_btn.setEnabled(value)
         self.playback_manager.refreshFrame()
 
     def showTracksChanged(self, value):
         self.tracker.setShowBoundingBox(value)
         self.fish_manager.setShowFish(value)
-        #self.show_trackingIDs_btn.setEnabled(value)
+        self.playback_manager.refreshFrame()
+
+    def showEchogramDetectionsChanged(self, value):
+        self.detector.setShowEchogramDetections(value)
+        self.playback_manager.refreshFrame()
+
+    def showEchogramTracksChanged(self, value):
+        self.fish_manager.setShowEchogramFish(value)
         self.playback_manager.refreshFrame()
 
     def toggleMeasureBtn(self, value):

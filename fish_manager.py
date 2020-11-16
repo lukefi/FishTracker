@@ -40,7 +40,10 @@ class FishManager(QtCore.QAbstractTableModel):
         self.length_percentile = 50
 
         # If fish (tracks) are shown.
-        self.show_fish = False
+        self.show_fish = True
+
+        # If fish (tracks) are shown in Echogram.
+        self.show_echogram_fish = True
 
         # Inverted upstream / downstream.
         self.up_down_inverted = False
@@ -310,6 +313,9 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def setShowFish(self, value):
         self.show_fish = value
+
+    def setShowEchogramFish(self, value):
+        self.show_echogram_fish = value
 
     def toggleUpDownInversion(self):
         self.up_down_inverted = not self.up_down_inverted

@@ -48,10 +48,10 @@ class EchoFigure(ZoomableQLabel):
 
         painter = QtGui.QPainter(self)
 
-        if self.parent.detector._show_detections:
+        if self.parent.detector._show_echogram_detections:
             self.overlayDetections(painter, self.parent.getDetections(), QtCore.Qt.red)
 
-        if self.parent.fish_manager.show_fish:
+        if self.parent.fish_manager.show_echogram_fish:
             self.overlayDetections(painter, self.parent.squeezed_fish, QtCore.Qt.green)
 
         if h_pos_0 < width:
@@ -200,6 +200,7 @@ if __name__ == "__main__":
             self.detections = []
             self.image_height = height
             self.detections_clearable = True
+            self._show_echogram_detections = True
             for i in range(frameCount):
                 count = np.random.randint(0, 5)
                 if count > 0:
@@ -212,9 +213,14 @@ if __name__ == "__main__":
         def parametersDirty(self):
             return False
 
-    class TestFishManager():
+    class TestFishManager(QtCore.QAbstractTableModel):
+
+        updateContentsSignal = QtCore.pyqtSignal()
+
         def __init__(self):
+            super().__init__()
             self.show_fish = True
+            self.show_echogram_fish = True
 
 
     app = QtWidgets.QApplication(sys.argv)

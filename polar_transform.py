@@ -16,13 +16,24 @@ def linear(x, min_x, max_x, min_y, max_y):
 	return (x - min_x) / (max_x - min_x) * (max_y - min_y) + min_y
 
 class PolarTransform:
+	"""
+	A cv2.remap based mapping object that transformes polar images to cartesian ones.
+	"""
 	def __init__(self, pol_shape, cart_height, radius_limits, beam_angle):
+		"""
+		Initializes the mapping function.
+
+		Parameters:
+		pol_shape -- Shape of the polar frame
+		cart_height -- Height of the cartesian (output) image.
+		radius_limits -- Min and max radius of the beam.
+		beam_angle -- Angle covered by the beam.
+		"""
 		print("Init mapping")
 		self.pol_shape = pol_shape
 		self.setCartShape(cart_height, beam_angle)
 		self.radius_limits = radius_limits
 		self.angle_limits = (np.pi/2 - beam_angle/2, np.pi/2 + beam_angle/2)
-		# self.center = (self.cart_shape[0] - 1, (self.cart_shape[1] - 1) / 2)
 		self.center = (0, (self.cart_shape[1] - 1) / 2)
 		self.metric_cart_shape = (radius_limits[1], self.cart_shape[1] / self.cart_shape[0] * radius_limits[1])
 
@@ -109,10 +120,44 @@ class PolarTransform:
 		rho, phi = self.met2pixP(rho_met, phi_met)
 		return rho, phi
 
-	#TODO: def pol2cartImage(self, rho, phi):
+	def pol2cartMetric(self, rho, phi, invert_y=False):
+		""" Transforms polar metric coordinates to cartesian pixel coordinates
+		by first transforming the polar coordinates to cartesian metric coordinates,
+		and then to cartesian pixel coordinates.
+		"""
+		x_met, y_met = pol2cart(rho, phi)
+		y_pix, x_pix = self.met2pixC(y_met, x_met)
+		if invert_y:
+			return  y_pix + self.cart_shape[0] + self.center[0], self.center[1] - x_pix
+		else:
+			return y_pix + self.center[0], self.center[1] - x_pix
+
 
 	def remap(self, image, interpolation=cv2.INTER_NEAREST):
 		if not isinstance(image, np.ndarray) or image.shape != self.pol_shape:
 			raise ValueError("Passed array is not of the right shape")
 
 		return cv2.remap(cv2.flip(image,0), self.map_x, self.map_y, interpolation)
+
+	def getOuterEdge(self, distance, right=True):
+		"""
+		Function to get the outer edge at a specific distance in cartesian pixel coordinates.
+		Specifically built for SonarFigure to display the depth scale.
+		"""
+		offset = np.array((0, distance if right else -distance))
+		p1 = np.array(self.pol2cartMetric(-self.radius_limits[0], self.angle_limits[0 if right else 1], True)) + offset
+		p2 = np.array(self.pol2cartMetric(-self.radius_limits[1], self.angle_limits[0 if right else 1], True)) + offset
+		return np.stack((p1, p2), axis=0)
+
+if __name__ == "__main__":
+	pt = PolarTransform((100,100), 100, (0,50), np.pi/3)
+	point_c = np.array((80, 50))
+	point_p = pt.cart2polMetric(*point_c)
+	point_c2 = pt.pol2cartMetric(*point_p)
+	print(point_c, point_p, point_c2)
+
+	point_p = np.array((40, 1))
+	point_c = pt.pol2cartMetric(*point_p,True)
+	point_p2 = pt.cart2polMetric(*point_c, True)
+	print(point_p, point_c, point_p2)
+

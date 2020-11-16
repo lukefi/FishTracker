@@ -47,7 +47,6 @@ class EchoFigure(ZoomableQLabel):
             h_pos_1 = self.frame2xPos(0.01)
 
         painter = QtGui.QPainter(self)
-        #painter.drawPixmap(self.rect(), self.figurePixmap)
 
         if self.parent.detector._show_detections:
             self.overlayDetections(painter, self.parent.getDetections(), QtCore.Qt.red)
@@ -59,7 +58,6 @@ class EchoFigure(ZoomableQLabel):
             painter.setPen(QtCore.Qt.white)
             painter.setBrush(QtCore.Qt.white)
             painter.setOpacity(0.3)
-            # painter.drawLine(h_pos_0, 0, h_pos_0, height)
             painter.drawRect(h_pos_0, 0, h_pos_1-h_pos_0, height)
 
     def overlayDetections(self, painter, squeezed, color):
@@ -80,7 +78,7 @@ class EchoFigure(ZoomableQLabel):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         if self.displayed_image is not None and event.button() == QtCore.Qt.LeftButton:
-            self.parent.setFrame(self.xPos2Frame(event.x())) #float(event.x()) / self.size().width())
+            self.parent.setFrame(self.xPos2Frame(event.x()))
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -111,8 +109,6 @@ class EchogramViewer(QtWidgets.QWidget):
         self.playback_manager.frame_available.append(self.onImageAvailable)
         self.playback_manager.polars_loaded.append(self.imageReady)
         self.playback_manager.file_closed.append(self.onFileClose)
-        # self.playback_manager.polar_available.append(self.onPolarAvailable)
-        # self.playback_manager.polar_ended.append(self.imageReady)
 
         self.setLayout(self.horizontalLayout)
         self.echogram = None
@@ -125,9 +121,6 @@ class EchogramViewer(QtWidgets.QWidget):
         self.figure.frame_ind = self.playback_manager.getFrameInd()
         self.figure.detection_opacity = 0.5 if self.detector.parametersDirty() else 1.0
         self.figure.update()
-
-    #def onPolarAvailable(self, ind, polar):
-    #    self.echogram.insert(polar, ind)
 
     def setFrame(self, percentage):
         self.playback_manager.setRelativeIndex(percentage)
@@ -183,25 +176,8 @@ class Echogram():
             print("Echogram process buffer error:", e)
             self.data = None
 
-    #def insert(self, frame, ind):
-    #    if self.data is None:
-    #        self.data = np.zeros((frame.shape[0], self.length), np.uint8)
-
-    #    col_im = np.max(np.asarray(frame), axis=1)
-    #    try:
-    #        self.data[:, ind] = col_im
-    #    except IndexError as e:
-    #        print(e)
-
-    #    if(ind % 100 == 0):
-    #        print("EchoFrame:", ind)
-    #    #    img = cv2.resize(self.echogram, (1000, 200))
-    #    #    cv2.imshow("echogram", img)
-
     def clear(self):
         self.data = None
-        #if self.data is not None:
-        #    self.data = np.zeros(self.data.shape, np.uint8)
 
     def getDisplayedImage(self):
         return self.data

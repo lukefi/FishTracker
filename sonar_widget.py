@@ -596,8 +596,7 @@ class SonarViewer(QtWidgets.QDialog):
 
             }
         path = self.playback_manager.sonar.FILE_PATH.split('.')
-        path = path[0] + '.json'
-        # path = os.path.join(path, fileName)            
+        path = path[0] + '.json'        
         with open(path, 'w') as outFile:
             json.dump(data, outFile)
         
@@ -646,6 +645,24 @@ class SonarViewer(QtWidgets.QDialog):
     def getSwimDirection(self):
         return self.fish_manager.up_down_inverted
 
+    def getAxisBase(self):
+        """
+        Gets the min and max points for the scale (both left and right)
+        """
+        if self.polar_transform is not None:
+            L = self.polar_transform.getOuterEdge(20, False)
+            R = self.polar_transform.getOuterEdge(20, True)
+            return np.vstack((L,R))
+        else:
+            return None
+
+    def getDepthMinMax(self):
+        if self.polar_transform is not None:
+            return self.polar_transform.radius_limits
+        else:
+            return (0,0)
+
+
 class SonarFigure(ZoomableQLabel):
     def __init__(self, sonar_viewer):
         super().__init__(True, True, True)
@@ -664,13 +681,11 @@ class SonarFigure(ZoomableQLabel):
             xs = self.view2imageX(event.x())
             ys = self.view2imageY(event.y())
 
-            if self.init_measuring and self.pixmap(): # self.measure_origin is None
+            if self.init_measuring and self.pixmap():
                 self.measure_origin = (xs, ys)
                 self.init_measuring = False
 
             elif self.measure_origin is not None:
-                #if(self.sonar_viewer.measure_btn.isChecked()):
-                #    self.sonar_viewer.measure_btn.toggle()
                 self.measure_toggle(True)
 
                 self.sonar_viewer.measurementDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
@@ -680,13 +695,9 @@ class SonarFigure(ZoomableQLabel):
     def setMeasuring(self, value):
         self.init_measuring = value
         if value:
-            #if not self.sonar_viewer.measure_btn.isChecked():
-            #    self.sonar_viewer.measure_btn.toggle()
             self.measure_toggle(False)
         else:
             self.sonar_viewer.measurementDone(None)
-            #if self.sonar_viewer.measure_btn.isChecked():
-            #    self.sonar_viewer.measure_btn.toggle()
             self.measure_toggle(True)
 
             self.measure_origin = None
@@ -708,11 +719,6 @@ class SonarFigure(ZoomableQLabel):
             if self.pixmap():
                 self.sonar_viewer.setStatusBarMousePos(xs,ys)
 
-    #def resizeEvent(self, event):
-    #    super().resizeEvent(event)
-    #    if isinstance(self.figurePixmap, QtGui.QPixmap):
-    #        self.setPixmap(self.figurePixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio))
-
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
         print("Key")
@@ -731,15 +737,56 @@ class SonarFigure(ZoomableQLabel):
             painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "DOWN")
             painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 10, 0.95 * self.window_height, "UP")
 
+        # Draw depth axis
+        painter.setPen(QtCore.Qt.white)
+        axisBase = self.sonar_viewer.getAxisBase()
+        if axisBase is not None:
+
+            depthMin, depthMax = self.sonar_viewer.getDepthMinMax()
+
+            y = self.image2viewY(axisBase[:,0])
+            x = self.image2viewX(axisBase[:,1])
+            l0 = np.array((x[0],y[0]))
+            l1 = np.array((x[1],y[1]))
+            r0 = np.array((x[2],y[2]))
+            r1 = np.array((x[3],y[3]))
+
+            painter.drawLine(*l0, *l1)
+            painter.drawLine(*r0, *r1)
+
+            count = 5
+
+            for i in range(count):
+                if i == 0 or i == 4:
+                    len = 10
+                else:
+                    len = 5
+
+                t = float(i)/(count-1)
+                depth = depthMin + t * (depthMax - depthMin)
+
+                li = (1-t) * l0 + t * l1
+                ri = (1-t) * r0 + t * r1
+
+                painter.drawLine(*li, *(li - np.array((len,0))))
+                painter.drawLine(*ri, *(ri + np.array((len,0))))
+
+                text = "%.1f" % depth
+                text_width = QtGui.QFontMetrics(self.font()).width(text)
+
+                painter.drawText(*li + np.array((-15 - text_width, 5)), text)
+                painter.drawText(*ri + np.array((15, 5)), text)
+
+
+        # Draw measurement line:
         if self.measure_origin is None or self.measure_point is None:
             return
 
         painter.setPen(QtCore.Qt.darkRed)
-        x1 = self.image2viewX(self.measure_origin[0])
-        y1 = self.image2viewY(self.measure_origin[1])
-        x2 = self.image2viewX(self.measure_point[0])
-        y2 = self.image2viewY(self.measure_point[1])
-        painter.drawLine(x1,y1,x2,y2)
+        x = self.image2viewX(np.array((self.measure_origin[0], self.measure_point[0])))
+        y = self.image2viewY(np.array((self.measure_origin[1], self.measure_point[1])))
+
+        painter.drawLine(x[0], y[0] ,x[1] ,y[1])
 
 
 class FFishListItem():

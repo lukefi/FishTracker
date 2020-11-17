@@ -9,7 +9,7 @@ class EchoFigure(ZoomableQLabel):
     def __init__(self, parent):
         super().__init__(False, True, False)
         self.parent = parent
-        self.displayed_image = None #cv2.imread('echo_placeholder.png', 0)
+        self.displayed_image = None
         self.resetView()
         self.frame_ind = 0
         self.margin = 0
@@ -18,7 +18,6 @@ class EchoFigure(ZoomableQLabel):
 
 
     def frame2xPos(self, value):
-        # return value * width * self.applied_zoom
         try:
             return (value * self.image_width - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * self.window_width
         except ZeroDivisionError as e:
@@ -26,7 +25,6 @@ class EchoFigure(ZoomableQLabel):
             return 0
 
     def xPos2Frame(self, value):
-        #return value / width / self.applied_zoom
         try:
             return (value*(self.x_max_limit - self.x_min_limit)/self.window_width + self.x_min_limit) / self.image_width
         except ZeroDivisionError as e:

@@ -76,16 +76,19 @@ class TrackerParametersView(QWidget):
         self.save_btn = QPushButton()
         self.save_btn.setObjectName("saveButton")
         self.save_btn.setText("Save")
+        self.save_btn.setToolTip("Save tracker parameters")
         self.save_btn.clicked.connect(self.saveJSON)
 
         self.load_btn = QPushButton()
         self.load_btn.setObjectName("loadButton")
         self.load_btn.setText("Load")
+        self.load_btn.setToolTip("Load tracker parameters")
         self.load_btn.clicked.connect(self.loadJSON)
 
         self.reset_btn = QPushButton()
         self.reset_btn.setObjectName("resetButton")
         self.reset_btn.setText("Reset")
+        self.reset_btn.setToolTip("Reset tracker parameters")
         self.reset_btn.clicked.connect(self.tracker.resetParameters)
         self.reset_btn.clicked.connect(self.refreshValues)
 
@@ -97,6 +100,7 @@ class TrackerParametersView(QWidget):
         self.track_all_btn = QPushButton()
         self.track_all_btn.setObjectName("trackAllButton")
         self.track_all_btn.setText("Track all")
+        self.track_all_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
         self.track_all_btn.clicked.connect(self.trackAll)
 
         self.button_layout.addWidget(self.track_all_btn)

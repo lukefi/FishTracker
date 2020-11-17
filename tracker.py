@@ -121,7 +121,6 @@ class Tracker(QtCore.QObject):
             self.applied_detector_parameters = None
         self.state_changed_signal.emit()
 
-    #TODO: Move visualization to fish_manager
     def visualize(self, image, ind):
         if ind not in self.tracks_by_frame:
             return image
@@ -169,23 +168,6 @@ class Tracker(QtCore.QObject):
             self.state_changed_signal.emit()
         except ValueError as e:
             print(e)
-
-    def setShowTracks(self):
-        self._show_tracks = self._show_bounding_box or self._show_id or self._show_detection_size
-        if not self._show_tracks:
-            self.data_changed_signal.emit(0)
-
-    def setShowBoundingBox(self, value):
-        self._show_bounding_box = value
-        self.setShowTracks()
-
-    def setShowTrackingIDs(self, value):
-        self._show_id = value
-        self.setShowTracks()
-
-    def setShowTrackingSize(self, value):
-        self._show_detection_size = value
-        self.setShowTracks()
 
     def getParameterDict(self):
         if self.parameters is not None:

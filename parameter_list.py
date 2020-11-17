@@ -144,7 +144,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_detection_size_btn.setFlat(True)
         self.show_detection_size_btn.setCheckable(True)
         self.show_detection_size_btn.setChecked(True)
-        self.show_detection_size_btn.clicked.connect(self.tracker.setShowTrackingSize)
+        self.show_detection_size_btn.clicked.connect(self.fish_manager.setShowTrackingSize)
         self.show_detection_size_btn.clicked.connect(self.playback_manager.refreshFrame)
         #self.show_detection_size_btn.setEnabled(False)
         self.show_detection_size_btn.setToolTip("Show detection size\nShow also the length of the detection")
@@ -181,7 +181,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_trackingIDs_btn.setFlat(True)
         self.show_trackingIDs_btn.setCheckable(True)
         self.show_trackingIDs_btn.setChecked(True)
-        self.show_trackingIDs_btn.clicked.connect(self.tracker.setShowTrackingIDs)
+        self.show_trackingIDs_btn.clicked.connect(self.fish_manager.setShowTrackingIDs)
         self.show_trackingIDs_btn.clicked.connect(self.playback_manager.refreshFrame)
         #self.show_trackingIDs_btn.setEnabled(False)
         self.show_trackingIDs_btn.setToolTip("Show track IDs\nShow also the IDs of the tracked fish")
@@ -219,8 +219,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.playback_manager.refreshFrame()
 
     def showTracksChanged(self, value):
-        self.tracker.setShowBoundingBox(value)
-        self.fish_manager.setShowFish(value)
+        self.fish_manager.setShowBoundingBox(value)
         self.playback_manager.refreshFrame()
 
     def showEchogramDetectionsChanged(self, value):

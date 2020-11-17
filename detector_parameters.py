@@ -140,16 +140,20 @@ class DetectorParametersView(QWidget):
         self.save_btn = QPushButton()
         self.save_btn.setObjectName("saveButton")
         self.save_btn.setText("Save")
+        self.save_btn.setToolTip("Save detector parameters")
         self.save_btn.clicked.connect(self.saveJSON)
 
         self.load_btn = QPushButton()
         self.load_btn.setObjectName("loadButton")
         self.load_btn.setText("Load")
+        self.load_btn.setToolTip("Load detector parameters")
         self.load_btn.clicked.connect(self.loadJSON)
 
         self.reset_btn = QPushButton()
         self.reset_btn.setObjectName("resetButton")
+        self.reset_btn.setToolTip("Reset detector parameters")
         self.reset_btn.setText("Reset")
+
         self.reset_btn.clicked.connect(self.detector.resetParameters)
         self.reset_btn.clicked.connect(self.refreshValues)
 
@@ -168,11 +172,13 @@ class DetectorParametersView(QWidget):
         self.recalculate_mog_btn = QPushButton()
         self.recalculate_mog_btn.setObjectName("recalculateMOGButton")
         self.recalculate_mog_btn.setText("Apply Values")
+        self.recalculate_mog_btn.setToolTip("Initialize the detector with given parameters")
         self.recalculate_mog_btn.clicked.connect(self.recalculateMOG)
 
         self.calculate_all_btn = QPushButton()
         self.calculate_all_btn.setObjectName("calculateAllButton")
         self.calculate_all_btn.setText("Calculate All")
+        self.calculate_all_btn.setToolTip("Start a process that initializes the detector and detects fish in all the frames")
         self.calculate_all_btn.clicked.connect(self.calculateAll)
 
         self.second_button_layout = QHBoxLayout()

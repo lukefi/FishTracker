@@ -222,8 +222,8 @@ class SonarViewer(QtWidgets.QDialog):
             if self.detector._show_detections:
                 image = self.detector.overlayDetections(image)
 
-            if self.tracker._show_tracks:
-                image = self.tracker.visualize(image, ind)
+            if self.fish_manager.show_fish:
+                image = self.fish_manager.visualize(image, ind)
         
             #if(self.subtractBackground):
             #    frameBlur = cv2.blur(frame, (5,5))

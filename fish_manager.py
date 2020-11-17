@@ -2,6 +2,8 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import Qt
 
 import numpy as np
+import cv2
+import seaborn as sns
 from bisect import insort
 from enum import IntEnum
 from tracker import Tracker
@@ -44,6 +46,10 @@ class FishManager(QtCore.QAbstractTableModel):
 
         # If fish (tracks) are shown in Echogram.
         self.show_echogram_fish = True
+
+        self.show_bounding_box = True
+        self.show_id = True
+        self.show_detection_size = True
 
         # Inverted upstream / downstream.
         self.up_down_inverted = False
@@ -311,17 +317,58 @@ class FishManager(QtCore.QAbstractTableModel):
             fish.setLengthByPercentile(self.length_percentile)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
-    def setShowFish(self, value):
-        self.show_fish = value
-
-    def setShowEchogramFish(self, value):
-        self.show_echogram_fish = value
-
     def toggleUpDownInversion(self):
         self.up_down_inverted = not self.up_down_inverted
         for fish in self.all_fish.values():
             fish.setDirection(self.up_down_inverted)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def setShowFish(self):
+        self.show_fish = self.show_bounding_box or self.show_id or self.show_detection_size
+        if not self.show_fish:
+            #self.data_changed_signal.emit(0)
+            pass
+
+    def setShowEchogramFish(self, value):
+        self.show_echogram_fish = value
+
+    def setShowBoundingBox(self, value):
+        self.show_bounding_box = value
+        self.setShowFish()
+
+    def setShowTrackingIDs(self, value):
+        self.show_id = value
+        self.setShowFish()
+
+    def setShowTrackingSize(self, value):
+        self.show_detection_size = value
+        self.setShowFish()
+
+    def visualize(self, image, ind):
+        fish_by_frame = [f for f in self.fish_list if ind in f.tracks.keys()]
+        if len(fish_by_frame) == 0:
+            return image
+
+        
+        #colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in fish_by_frame]))
+        colors = sns.color_palette('deep', max(0, len(fish_by_frame)))
+        for fish in fish_by_frame:
+            tr, det = fish.tracks[ind]
+            if self.show_id:
+                center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
+                image = cv2.putText(image, "ID: " + str(fish.id), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+
+            if self.show_detection_size:
+                det.visualize(image, colors, True, False)
+
+            if self.show_bounding_box:
+                corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
+
+                for i in range(0,3):
+                    cv2.line(image, (int(corners[i,1]),int(corners[i,0])), (int(corners[i+1,1]),int(corners[i+1,0])),  (255,255,255), 1)
+                cv2.line(image, (int(corners[3,1]),int(corners[3,0])), (int(corners[0,1]),int(corners[0,0])),  (255,255,255), 1)
+
+        return image
 
     def saveToFile(self, path):
         f1 = "{:.5f}"

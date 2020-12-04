@@ -142,7 +142,7 @@ def launch_ui():
     playback_manager = PlaybackManager(app, main_window)
     detector = Detector(playback_manager)
     tracker = Tracker(detector)
-    fish_manager = FishManager(tracker)
+    fish_manager = FishManager(playback_manager, tracker)
 
     detector.all_computed_event.append(playback_manager.refreshFrame)
     tracker.all_computed_signal.connect(playback_manager.refreshFrame)

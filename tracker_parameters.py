@@ -7,12 +7,14 @@ from fish_manager import FishManager
 
 import json
 import os.path
+import numpy as np
 
 PARAMETERS_PATH = "tracker_parameters.json"
 PARAMETER_TYPES = {
             "max_age": int,
 	        "min_hits": int,
-	        "iou_threshold": float
+	        "iou_threshold": float,
+            "max_distance": int
         }
 
 class TrackerParametersView(QWidget):
@@ -66,9 +68,10 @@ class TrackerParametersView(QWidget):
         self.vertical_layout.addWidget(self.main_label)
 
         self.form_layout = QFormLayout()
-        self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], 20, 1, 100, self)
-        self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], 3, 1, 10, self)
-        self.iou_threshold_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
+        self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], self.tracker.parameters.max_age, 1, 100, self)
+        self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], self.tracker.parameters.min_hits, 1, 10, self)
+        #self.iou_threshold_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
+        self.max_distance_slider = LabeledSlider("Max distance", self.form_layout, [self.tracker.setMaxDistance], self.tracker.parameters.max_distance, 1, 100, self)
         self.vertical_layout.addLayout(self.form_layout)
 
         self.vertical_layout.addStretch()
@@ -153,7 +156,8 @@ class TrackerParametersView(QWidget):
 
         self.max_age_slider.setValue(params.max_age)
         self.min_hits_slider.setValue(params.min_hits)
-        self.iou_threshold_slider.setValue(params.iou_threshold)
+        #self.iou_threshold_slider.setValue(int(np.sqrt(params.iou_threshold)))
+        self.max_distance_slider.setValue(params.max_distance)
 
 if __name__ == "__main__":
     import sys

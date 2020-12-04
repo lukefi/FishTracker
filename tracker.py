@@ -59,12 +59,13 @@ class Tracker(QtCore.QObject):
         self.tracks_by_frame = {}
         self.mot_tracker = Sort(max_age=self.parameters.max_age,
                                 min_hits=self.parameters.min_hits,
-                                iou_threshold=self.parameters.iou_threshold)
+                                iou_threshold=self.parameters.max_distance**2)
+                                #iou_threshold=self.parameters.iou_threshold)
         KalmanBoxTracker.count = 0
 
         ten_perc = 0.1 * count
         print_limit = 0
-        for i, frame in enumerate(detection_frames):
+        for i, dets in enumerate(detection_frames):
             if i > print_limit:
                 print("Tracking:", int(float(i) / count * 100), "%")
                 print_limit += ten_perc
@@ -73,9 +74,11 @@ class Tracker(QtCore.QObject):
                 self.abortComputing(False)
                 return
 
-            tracks = self.trackBase(frame, i)
-            if len(tracks) > 0:
-                self.tracks_by_frame[i] = self.matchingDetections(tracks, frame)
+            #tracks = self.trackBase(dets, i)
+            #if len(tracks) > 0:
+            #    self.tracks_by_frame[i] = self.matchingDetections(tracks, dets)
+
+            self.tracks_by_frame[i] = self.trackBase(dets, i)
                 
 
         print("Tracking: 100 %")
@@ -107,11 +110,14 @@ class Tracker(QtCore.QObject):
             print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
             return self.mot_tracker.update()
 
-        detections = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in frame if d.corners is not None]) #[d.corners for d in f]
+        detections = [d for d in frame if d.corners is not None]
         if len(detections) > 0:
-            return self.mot_tracker.update(detections)
+            dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections]) #[d.corners for d in f]
+            tracks = self.mot_tracker.update(dets)
         else:
-            return self.mot_tracker.update()
+            tracks = self.mot_tracker.update()
+
+        return [(tr, detections[int(tr[7])]) if tr[7] > 0 else (tr, None) for tr in tracks]
 
     def abortComputing(self, detector_aborted):
         self.tracking = False
@@ -125,14 +131,15 @@ class Tracker(QtCore.QObject):
         if ind not in self.tracks_by_frame:
             return image
         
-        colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in self.tracks_by_frame[ind]]))
+        #colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in self.tracks_by_frame[ind]]))
+        colors = sns.color_palette('deep', len(self.tracks_by_frame[ind]))
         for tr, det in self.tracks_by_frame[ind]:
 
             if self._show_id:
                 center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
                 image = cv2.putText(image, "ID: " + str(int(tr[4])), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
-            if self._show_detection_size:
+            if self._show_detection_size and det is not None:
                 det.visualize(image, colors, True, False)
 
             if self._show_bounding_box:
@@ -169,6 +176,13 @@ class Tracker(QtCore.QObject):
         except ValueError as e:
             print(e)
 
+    def setMaxDistance(self, value):
+        try:
+            self.parameters.max_distance = float(value)
+            self.state_changed_signal.emit()
+        except ValueError as e:
+            print(e)
+
     def getParameterDict(self):
         if self.parameters is not None:
             return self.parameters.getParameterDict()
@@ -177,10 +191,12 @@ class Tracker(QtCore.QObject):
 
 
 class TrackerParameters:
-    def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
+    #def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
+    def __init__(self, max_age = 10, min_hits = 5, max_distance = 20):
         self.max_age = max_age
         self.min_hits = min_hits
-        self.iou_threshold = iou_threshold
+        self.iou_threshold = 0.1
+        self.max_distance = max_distance
 
     def __eq__(self, other):
         if not isinstance(other, TrackerParameters):
@@ -188,15 +204,17 @@ class TrackerParameters:
     
         return self.max_age == other.max_age \
             and self.min_hits == other.min_hits \
+            and self.max_distance == other.max_distance \
             and self.iou_threshold == other.iou_threshold
 
     def copy(self):
-        return TrackerParameters(self.max_age, self.min_hits, self.iou_threshold)
+        return TrackerParameters(self.max_age, self.min_hits, self.max_distance)
 
     def getParameterDict(self):
         return {
             "max_age": self.max_age,
 	        "min_hits": self.min_hits,
+            "max_distance": self.max_distance,
 	        "iou_threshold": self.iou_threshold,
         }
 
@@ -205,12 +223,18 @@ if __name__ == "__main__":
     import sys
     from PyQt5 import QtCore, QtGui, QtWidgets
     from playback_manager import PlaybackManager, TestFigure
-    from detector import Detector
+    from detector import Detector, DetectorParameters
 
     def test1():
         """
         Simple test code to assure tracker is working.
         """
+
+        class DetectorTest:
+            def __init__(self):
+                self.allCalculationAvailable = lambda: False
+                self.parameters = DetectorParameters()
+
         class DetectionTest:
             def __init__(self):
                 self.center = center = np.random.uniform(5, 95, (1,2))
@@ -224,9 +248,10 @@ if __name__ == "__main__":
             def __repr__(self):
                 return "DT"
 
-        tracker = Tracker()
+        detector = DetectorTest()
+        tracker = Tracker(detector)
         detection_frames = [[DetectionTest() for j in range(int(np.random.uniform(0,5)))] for i in range(50)]
-        tracker.run(detection_frames)
+        tracker.trackAll(detection_frames)
 
     def playbackTest():
         """
@@ -266,4 +291,5 @@ if __name__ == "__main__":
         main_window.show()
         sys.exit(app.exec_())
 
+    #test1()
     playbackTest()

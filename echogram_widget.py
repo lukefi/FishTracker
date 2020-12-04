@@ -5,7 +5,9 @@ import numpy as np
 from debug import Debug
 
 class EchoFigure(ZoomableQLabel):
-
+    """
+    Class that handles drawing the echogram image. Used in EchogramViewer widget.
+    """
     def __init__(self, parent):
         super().__init__(False, True, False)
         self.parent = parent
@@ -88,6 +90,10 @@ class EchoFigure(ZoomableQLabel):
         self.displayed_image = None
 
 class EchogramViewer(QtWidgets.QWidget):
+    """
+    Widget containing EchoFigure. Handles communication to PlaybackManager and other
+    core classes.
+    """
     def __init__(self, playback_manager, detector, fish_manager):
         super().__init__()
 
@@ -149,14 +155,13 @@ class EchogramViewer(QtWidgets.QWidget):
     def squeezeFish(self):
         self.squeezed_fish = [[] for fr in range(self.playback_manager.getFrameCount())]
         for fish in self.fish_manager.fish_list:
-            for key, (_, det) in fish.tracks.items():
-                self.squeezed_fish[key].append(det.center[0])
+            for key, (tr, _) in fish.tracks.items():
+                self.squeezed_fish[key].append((tr[0] + tr[2]) / 2)
         self.figure.update()
 
 class Echogram():
     """
-    Contains raw echogram data which can be edited on the go if needed.
-    The final image can be acquired through getDisplayedImage function.
+    Transforms polar frames into an echogram image.
     """
     def __init__(self, length):
         self.data = None

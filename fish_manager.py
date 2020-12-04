@@ -16,8 +16,9 @@ fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(
 class FishManager(QtCore.QAbstractTableModel):
     updateContentsSignal = QtCore.pyqtSignal()
 
-    def __init__(self, tracker):
+    def __init__(self, playback_manager, tracker):
         super().__init__()
+        self.playback_manager = playback_manager
         self.tracker = tracker
         if tracker is not None:
             self.tracker.init_signal.connect(self.clear)
@@ -358,7 +359,7 @@ class FishManager(QtCore.QAbstractTableModel):
                 center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
                 image = cv2.putText(image, "ID: " + str(fish.id), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
-            if self.show_detection_size:
+            if self.show_detection_size and det is not None:
                 det.visualize(image, colors, True, False)
 
             if self.show_bounding_box:
@@ -373,22 +374,39 @@ class FishManager(QtCore.QAbstractTableModel):
     def saveToFile(self, path):
         f1 = "{:.5f}"
         lineBase1 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
+        lineBase2 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
 
         try:
             with open(path, "w") as file:
-                file.write("id;frame;length;distance;angle;direction;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y\n")
+                file.write("id;frame;length;distance;angle;direction;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y; detection\n")
 
                 lines = []
+                polar_transform = self.playback_manager.playback_thread.polar_transform
 
                 for fish in self.all_fish.values():
                     for frame, td in fish.tracks.items():
                         track, detection = td
-                        length = fish.length if fish.length_overwritten else detection.length
-                        line = lineBase1.format(fish.id, frame, length, detection.distance, detection.angle, fish.direction.name)
-                        if detection.corners is not None:
-                            line += detection.cornersToString(";")
-                        else:
-                            line += ";".join(8 * [" "])
+                        if detection is not None: # Values calculated from detection
+                            length = fish.length if fish.length_overwritten else detection.length
+                            line = lineBase1.format(fish.id, frame, length, detection.distance, detection.angle, fish.direction.name)
+                            if detection.corners is not None:
+                                line += self.cornersToString(detection.corners, ";")
+                            else:
+                                line += ";".join(8 * [" "])
+                            line += ";1"
+
+                        else: # Values calculated from track
+                            if fish.length_overwritten:
+                                length = fish.length
+                            else:
+                                length, _ = polar_transform.getMetricDistance(*track[:4])
+                            center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
+                            distance, angle = polar_transform.cart2polMetric(center[0], center[1], True)
+                            angle = float(angle / np.pi * 180 + 90)
+
+                            line = lineBase1.format(fish.id, frame, length, distance, angle, fish.direction.name)
+                            line += self.cornersToString([[track[0], track[1]], [track[2], track[1]], [track[2], track[3]], [track[0], track[3]]], ";")
+                            line += ";0"
 
                         lines.append((fish, frame, line + "\n"))
 
@@ -399,6 +417,10 @@ class FishManager(QtCore.QAbstractTableModel):
                 print("Tracks saved to path:", path)
         except PermissionError as e:
             print("Cannot open file {}. Permission denied.".format(path))
+
+    def cornersToString(self, corners, delim):
+        base = "{:.2f}" + delim + "{:.2f}"
+        return delim.join(base.format(cx,cy) for cy, cx in corners[0:4])
 
 class SwimDirection(IntEnum):
     UP = 0
@@ -447,7 +469,8 @@ class FishEntry():
 
     def addTrack(self, track, detection, frame):
         self.tracks[frame] = (track[0:4], detection)
-        insort(self.lengths, detection.length)
+        if detection is not None:
+            insort(self.lengths, detection.length)
         self.setFrames()
 
     def copy(self):
@@ -480,7 +503,7 @@ class FishEntry():
                 tr, det = self.tracks.pop(tr_frame)
                 f.addTrack(tr, det, tr_frame)
 
-        self.lengths = sorted([det.length for _, det in self.tracks.values()])
+        self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
         self.setFrames()
         return f
 
@@ -492,7 +515,7 @@ class FishEntry():
             self.duration = self.frame_out - self.frame_in + 1
 
     def setDirection(self, inverted):
-        centers = [d.center for _, d in self.tracks.values()]
+        centers = [d.center for _, d in self.tracks.values() if d is not None]
         if len(centers) <= 1:
             self.direction = SwimDirection.NONE
         elif inverted:
@@ -513,7 +536,7 @@ def intTryParse(value):
         return value, False
 
 if __name__ == "__main__":
-    fish_manager = FishManager(None)
+    fish_manager = FishManager(None, None)
     fish_manager.testPopulate(500)
     for fish in fish_manager.fish_list:
         print(fish)

@@ -376,7 +376,7 @@ class PlaybackThread(QRunnable):
 
     def createMapping(self):
         radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
-        return PolarTransform(self.sonar.DATA_SHAPE, 1200, radius_limits, 2 * self.sonar.firstBeamAngle/180*np.pi)
+        return PolarTransform(self.sonar.DATA_SHAPE, 1000, radius_limits, 2 * self.sonar.firstBeamAngle/180*np.pi)
 
     def mappingDone(self, result):
         self.polar_transform = result

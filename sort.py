@@ -286,10 +286,8 @@ class Sort(object):
             # do not initialize new track to existing bounding box area
             new_allowed = True
             for trk in self.trackers:
-                #print(trk)
                 bb = trk.get_state()
                 iou = eucl_batch(bb,[dets[i,:]])
-                #print(bb)
                 if iou[0,0] < self.iou_threshold:
                     new_allowed = False
             if new_allowed == True:

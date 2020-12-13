@@ -283,9 +283,14 @@ class Sort(object):
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        # do not initialize new track to existing bounding box area
-		#for trk in reversed(self.trackers):
-          
+      # do not initialize new track to existing bounding box area
+      new_allowed = True
+      for trk in self.trackers:
+        bb = trk.get_state()
+        iou = eucl_batch(bb,[dets[i,:]])
+        if iou[0,0] < self.iou_threshold:
+          new_allowed = False
+      if new_allowed == True:
         trk = KalmanBoxTracker(dets[i,:])
         self.trackers.append(trk)
     

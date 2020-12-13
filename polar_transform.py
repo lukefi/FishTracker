@@ -133,7 +133,7 @@ class PolarTransform:
 			return y_pix + self.center[0], self.center[1] - x_pix
 
 
-	def remap(self, image, interpolation=cv2.INTER_NEAREST):
+	def remap(self, image, interpolation=cv2.INTER_LINEAR):
 		if not isinstance(image, np.ndarray) or image.shape != self.pol_shape:
 			raise ValueError("Passed array is not of the right shape")
 

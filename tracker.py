@@ -113,10 +113,13 @@ class Tracker(QtCore.QObject):
         detections = [d for d in frame if d.corners is not None]
         if len(detections) > 0:
             dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections]) #[d.corners for d in f]
+            #print(dets[0], detections[0].corners)
             tracks = self.mot_tracker.update(dets)
         else:
             tracks = self.mot_tracker.update()
 
+        # Return (track, detection) if the track was updated this frame.
+        # Otherwise return (track, None).
         return [(tr, detections[int(tr[7])]) if tr[7] > 0 else (tr, None) for tr in tracks]
 
     def abortComputing(self, detector_aborted):
@@ -192,7 +195,7 @@ class Tracker(QtCore.QObject):
 
 class TrackerParameters:
     #def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
-    def __init__(self, max_age = 10, min_hits = 5, max_distance = 20):
+    def __init__(self, max_age = 10, min_hits = 5, max_distance = 10):
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = 0.1
@@ -206,6 +209,9 @@ class TrackerParameters:
             and self.min_hits == other.min_hits \
             and self.max_distance == other.max_distance \
             and self.iou_threshold == other.iou_threshold
+
+    def __repr__(self):
+        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.max_distance)
 
     def copy(self):
         return TrackerParameters(self.max_age, self.min_hits, self.max_distance)
@@ -287,6 +293,10 @@ if __name__ == "__main__":
 
         figure = TestFigure(playback_manager.togglePlay)
         main_window.setCentralWidget(figure)
+
+        print(detector.parameters)
+        print(detector.parameters.mog_parameters)
+        print(tracker.parameters)
 
         main_window.show()
         sys.exit(app.exec_())

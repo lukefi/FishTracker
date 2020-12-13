@@ -174,9 +174,6 @@ class Detector:
 		self.compute(ind, frame)
 
 	def compute(self, ind, image, get_images=False):
-		if not self._show_detections and not self._show_echogram_detections:
-			return
-
 		images = self.computeBase(ind, image, get_images)
 
 		self.current_ind = ind
@@ -238,7 +235,7 @@ class Detector:
 				if get_images:
 					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
 					for d in detections:
-						image_o_rgb = d.visualize(image_o_rgb, colors)
+						image_o_rgb = d.visualize(image_o_rgb, colors, self._show_detection_size)
 
 		self.detections[ind] = detections
 		self.detections_clearable = True
@@ -539,10 +536,10 @@ class Detection:
 
 			# Get the 4 corners by subtracting and adding half the bounding boxes height and width to the center
 			corners = np.array([center+[-diff[0],-diff[1]], \
-				center+[diff[0],-diff[1]], \
-				center+[diff[0],diff[1]], \
-				center+[-diff[0],diff[1]], \
-				center+[-diff[0],-diff[1]]])
+								center+[diff[0],-diff[1]], \
+								center+[diff[0],diff[1]], \
+								center+[-diff[0],diff[1]], \
+								center+[-diff[0],-diff[1]]])
 
 			self.diff = diff
 

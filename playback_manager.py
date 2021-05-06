@@ -106,6 +106,9 @@ class PlaybackManager(QObject):
         #self.polar_transform = None
 
     def setTitle(self, path=""):
+        if self.main_window is None:
+            return
+
         if path == "":
             self.main_window.setWindowTitle("FishTracker")
         else:

@@ -2,14 +2,22 @@
 LUKE Fish Tracking
 
 ## Run with Python
-The easiest way to run the code is by installing Anaconda. Dependencies include opencv and filterpy. Tested with Python 3.7.6 and 3.8.5.
-In the path, run:
+The easiest way to run the code is by using Anaconda and a provided yml file to create an environment. At the project root, run:
+```
+conda env create --file environment.yml --name fish_tracking
+```
+Activate environment:
+```
+conda activate fish_tracking
+```
+And run the program:
 ```
 python main.py
 ```
+The program has been tested in Windows (Python 3.7.6 and 3.8.5) and Ubuntu 20.04 (Python 3.8.8).
 
-## Build and create installer (Windows)
-The source code can be built with all the required dependecies using PyInstaller. The following command does exactly this based on the configuration file "fish_tracker.spec". Navigate to the path and run:
+## Bundle and create installer (Windows)
+PyInstaller can be used to bundle the source code into a single package with all the required dependecies. The following command does exactly this based on the configuration file "fish_tracker.spec". At the project root, run:
 ```
 pyinstaller fish_tracker.spec
 ```

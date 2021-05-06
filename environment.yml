@@ -1,0 +1,13 @@
+name: fish_tracking
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - opencv=4.5.2
+  - pyqt=5.12.3
+  - filterpy=1.4.5
+  - scikit-image
+  - seaborn
+  - scikit-learn
+  - jinja2

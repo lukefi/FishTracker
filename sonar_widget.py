@@ -846,7 +846,7 @@ if __name__ == "__main__":
     detector = Detector(playback_manager)
     detector.nof_bg_frames = 100
     tracker = Tracker(detector)
-    fish_manager = FishManager(tracker)
+    fish_manager = FishManager(playback_manager, tracker)
     playback_manager.mapping_done.append(test)
     playback_manager.mapping_done.append(startDetector)
     playback_manager.frame_available.insert(0, detector.compute_from_event)

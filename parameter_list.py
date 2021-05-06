@@ -245,7 +245,7 @@ if __name__ == "__main__":
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     #playback_manager.openTestFile()
-    fish_manager = FishManager(None)
+    fish_manager = FishManager(None, None)
     #fish_manager.testPopulate(100)
     #info_w = InfoWidget(playback_manager, fish_manager)
     sonar_processor = ImageProcessor()

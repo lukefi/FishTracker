@@ -372,44 +372,18 @@ class FishManager(QtCore.QAbstractTableModel):
         return image
 
     def saveToFile(self, path):
-        f1 = "{:.5f}"
-        lineBase1 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
-        lineBase2 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
+        """
+        Tries to save all fish information (from all_fish dictionary) to a file.
+        """
+        if(self.playback_manager.playback_thread is None):
+            print("No file open, cannot save.")
+            return
 
         try:
             with open(path, "w") as file:
                 file.write("id;frame;length;distance;angle;direction;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y; detection\n")
 
-                lines = []
-                polar_transform = self.playback_manager.playback_thread.polar_transform
-
-                for fish in self.all_fish.values():
-                    for frame, td in fish.tracks.items():
-                        track, detection = td
-                        if detection is not None: # Values calculated from detection
-                            length = fish.length if fish.length_overwritten else detection.length
-                            line = lineBase1.format(fish.id, frame, length, detection.distance, detection.angle, fish.direction.name)
-                            if detection.corners is not None:
-                                line += self.cornersToString(detection.corners, ";")
-                            else:
-                                line += ";".join(8 * [" "])
-                            line += ";1"
-
-                        else: # Values calculated from track
-                            if fish.length_overwritten:
-                                length = fish.length
-                            else:
-                                length, _ = polar_transform.getMetricDistance(*track[:4])
-                            center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
-                            distance, angle = polar_transform.cart2polMetric(center[0], center[1], True)
-                            angle = float(angle / np.pi * 180 + 90)
-
-                            line = lineBase1.format(fish.id, frame, length, distance, angle, fish.direction.name)
-                            line += self.cornersToString([[track[0], track[1]], [track[2], track[1]], [track[2], track[3]], [track[0], track[3]]], ";")
-                            line += ";0"
-
-                        lines.append((fish, frame, line + "\n"))
-
+                lines = getSaveLines()
                 lines.sort(key = lambda l: (l[0].id, l[1]))
                 for _, _, line in lines:
                     file.write(line)
@@ -418,7 +392,55 @@ class FishManager(QtCore.QAbstractTableModel):
         except PermissionError as e:
             print("Cannot open file {}. Permission denied.".format(path))
 
+    def getSaveLines(self):
+        """
+        Iterates through all the fish and returns a list containing the fish object, frames the appear in, and the following information:
+        ID, Frame, Length, Angle, Direction, Corner coordinates and wether the values are from a detection or a track.
+        Detection information are preferred over tracks.
+        """
+        lines = []
+        polar_transform = self.playback_manager.playback_thread.polar_transform
+
+        f1 = "{:.5f}"
+        lineBase1 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
+        lineBase2 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
+
+        for fish in self.all_fish.values():
+            for frame, td in fish.tracks.items():
+                track, detection = td
+
+                # Values calculated from detection
+                if detection is not None:
+                    length = fish.length if fish.length_overwritten else detection.length
+                    line = lineBase1.format(fish.id, frame, length, detection.distance, detection.angle, fish.direction.name)
+                    if detection.corners is not None:
+                        line += self.cornersToString(detection.corners, ";")
+                    else:
+                        line += ";".join(8 * [" "])
+                    line += ";1"
+
+                # Values calculated from track
+                else:
+                    if fish.length_overwritten:
+                        length = fish.length
+                    else:
+                        length, _ = polar_transform.getMetricDistance(*track[:4])
+                    center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
+                    distance, angle = polar_transform.cart2polMetric(center[0], center[1], True)
+                    angle = float(angle / np.pi * 180 + 90)
+
+                    line = lineBase1.format(fish.id, frame, length, distance, angle, fish.direction.name)
+                    line += self.cornersToString([[track[0], track[1]], [track[2], track[1]], [track[2], track[3]], [track[0], track[3]]], ";")
+                    line += ";0"
+
+                lines.append((fish, frame, line + "\n"))
+
+        return lines
+
     def cornersToString(self, corners, delim):
+        """
+        Formats the corner information in a saveable format.
+        """
         base = "{:.2f}" + delim + "{:.2f}"
         return delim.join(base.format(cx,cy) for cy, cx in corners[0:4])
 

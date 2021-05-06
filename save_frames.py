@@ -3,6 +3,8 @@ import cv2
 from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager
 
+# Save frames using playback_manager
+
 def saveImage(tuple):
 	ind, frame = tuple
 	print("ASD")

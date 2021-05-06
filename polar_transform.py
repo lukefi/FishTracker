@@ -17,7 +17,7 @@ def linear(x, min_x, max_x, min_y, max_y):
 
 class PolarTransform:
 	"""
-	A cv2.remap based mapping object that transformes polar images to cartesian ones.
+	Transformes polar images to cartesian ones, based on cv2.remap mapping.
 	"""
 	def __init__(self, pol_shape, cart_height, radius_limits, beam_angle):
 		"""
@@ -27,7 +27,7 @@ class PolarTransform:
 		pol_shape -- Shape of the polar frame
 		cart_height -- Height of the cartesian (output) image.
 		radius_limits -- Min and max radius of the beam.
-		beam_angle -- Angle covered by the beam.
+		beam_angle -- Angle covered by the beam (radians).
 		"""
 		print("Init mapping")
 		self.pol_shape = pol_shape

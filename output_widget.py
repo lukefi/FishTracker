@@ -4,9 +4,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import * 
 
-# The new Stream Object which replaces the default stream associated with sys.stdout
-# This object just puts data in a queue!
 class WriteStream(object):
+    """
+    The new Stream Object which replaces the default stream associated with sys.stdout
+    This object just puts data in a queue!
+    """
     def __init__(self,queue):
         self.queue = queue
 
@@ -16,10 +18,12 @@ class WriteStream(object):
     def flush(self):
         pass
 
-# A QObject (to be run in a QThread) which sits waiting for data to come through a Queue.Queue().
-# It blocks until data is available, and one it has got something from the queue, it sends
-# it to the "MainThread" by emitting a Qt Signal 
 class MyReceiver(QObject):
+    """
+    A QObject (to be run in a QThread) which sits waiting for data to come through a Queue.Queue().
+    It blocks until data is available, and one it has got something from the queue, it sends
+    it to the "MainThread" by emitting a Qt Signal 
+    """
     signal = pyqtSignal(str)
 
     def __init__(self,queue,*args,**kwargs):
@@ -89,19 +93,13 @@ if __name__ == "__main__":
 
             self.thread = None
             self.layout = QVBoxLayout(self)
-            #self.textedit = QTextEdit()
             self.output_viewer = OutputViewer()
             self.output_viewer.redirectStdOut()
             self.button = QPushButton('start long running thread')
             self.button.clicked.connect(self.start_thread)
-            #self.layout.addWidget(self.textedit)
             self.layout.addWidget(self.output_viewer)
             self.layout.addWidget(self.button)
 
-        #@pyqtSlot(str)
-        #def appendText(self,text):
-        #    self.textedit.moveCursor(QTextCursor.End)
-        #    self.textedit.insertPlainText( text )
 
         @pyqtSlot()
         def start_thread(self):

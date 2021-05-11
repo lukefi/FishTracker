@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, errno
 import traceback
 from file_handler import FOpenSonarFile
 from PyQt5.QtWidgets import *
@@ -47,13 +47,18 @@ class PlaybackManager(QObject):
     def openFile(self):
         homeDirectory = str(os.path.expanduser("~"))
         filePathTuple = QFileDialog.getOpenFileName(self.main_window, "Open File", homeDirectory, "Sonar Files (*.aris *.ddf)")
-        if filePathTuple[0] != "" : 
-            self.loadFile(filePathTuple[0])
+        self.loadFile(filePathTuple[0])
 
-    def openTestFile(self):
+    @staticmethod
+    def getTestFilePath():
         path = "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
         if not os.path.exists(path):
             path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
+        return path
+
+    def openTestFile(self):
+        path = getTestFilePath()
+
         if os.path.exists(path):
             # Override test file length
             self.loadFile(path, 200)
@@ -117,12 +122,25 @@ class PlaybackManager(QObject):
     def startThread(self, tuple):
         """
         Used to start threads from another thread running in thread_pool.
+
+        Parameter tuple contains:
+        thread: Worker object containing the function being executed
+        receiver: Function that is attached to signal
+        signal: pyqtSignal object triggered (emitted) at some point of the thread and thus calling receiver
+
+        Usually signal is the result signal passing the results to receiver.
         """
+
         thread, receiver, signal = tuple
         signal.connect(lambda x: receiver(x)) #signal.connect(receiver) <- why this doesn't work?
         self.thread_pool.start(thread)
 
     def runInThread(self, f):
+        """
+        Straightforward way to start threads in thread_pool.
+        To start threads inside another thread, use startThread instead.
+        """
+
         thread = Worker(f)
         self.thread_pool.start(thread)
 
@@ -305,7 +323,7 @@ class PlaybackSignals(QObject):
     PyQt signals used by PlaybackThread
     """
 
-    # Used to pass processes to a ThreadPool outside.
+    # Used to pass processes to a ThreadPool containing the current thread.
     start_thread_signal = pyqtSignal(tuple)
 
     # Signals that playback can be started (cartesian mapping created).

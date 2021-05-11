@@ -118,10 +118,19 @@ class UIManager():
         return filePathTuple[0]
 
     def openFile(self):
-        self.playback.openFile()
+        try:
+            self.playback.openFile()
+        except FileNotFoundError as e:
+            if e.filename and e.filename != "":
+                print(e)
+
 
     def openTestFile(self):
-        self.playback.openTestFile()
+        try:
+            self.playback.openTestFile()
+        except FileNotFoundError as e:
+            if e.filename and e.filename != "":
+                print(e)
 
     def closeFile(self):
         self.playback.closeFile()

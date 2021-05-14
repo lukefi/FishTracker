@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 class WriteStream(object):
     """
     The new Stream Object which replaces the default stream associated with sys.stdout
-    This object just puts data in a queue!
+    This object puts the received data in a queue
     """
     def __init__(self,queue):
         self.queue = queue
@@ -18,10 +18,10 @@ class WriteStream(object):
     def flush(self):
         pass
 
-class MyReceiver(QObject):
+class StreamReceiver(QObject):
     """
     A QObject (to be run in a QThread) which sits waiting for data to come through a Queue.Queue().
-    It blocks until data is available, and one it has got something from the queue, it sends
+    It blocks until data is available, and once it gets something from the queue, it sends
     it to the "MainThread" by emitting a Qt Signal 
     """
     signal = pyqtSignal(str)
@@ -60,7 +60,7 @@ class OutputViewer(QWidget):
 
         # Create thread that will listen on the other end of the queue, and send the text to the textedit in our application
         self.thread = QThread()
-        self.receiver = MyReceiver(self.queue)
+        self.receiver = StreamReceiver(self.queue)
         self.receiver.signal.connect(self.appendText)
         self.receiver.moveToThread(self.thread)
         self.thread.started.connect(self.receiver.run)
@@ -117,5 +117,4 @@ if __name__ == "__main__":
     qapp = QApplication(sys.argv)  
     app = MyApp()
     app.show()
-
-    qapp.exec_()
+    sys.exit(qapp.exec_())

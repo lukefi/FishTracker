@@ -1,12 +1,14 @@
-import sys, os, cv2
+import sys, os, io, cv2
 import subprocess
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
+from queue import Queue
 
 from playback_manager import PlaybackManager, TestFigure, Worker
 from detector import Detector
 from tracker import Tracker
 from track_process import TrackProcess, getDefaultParser, getFiles
+from output_widget import WriteStream
 
 class BatchTrack(QtCore.QObject):
     """
@@ -22,27 +24,51 @@ class BatchTrack(QtCore.QObject):
         self.thread_pool = QtCore.QThreadPool()
         self.thread_pool.setMaxThreadCount(parallel)
 
-
     def beginTrack(self, test=False):
+        """
+        For each file in files, creates a Worker that runs track and places it in thread_pool.
+        """
+
         for file in self.files:
-            thread = Worker(self.track, file)
-            self.thread_pool.start(thread)
+            worker = Worker(self.track, file)
+            self.thread_pool.start(worker)
             print("Created Worker for file ", file)
 
     def track(self, file):
-        args = ['python', 'track_process.py', '-f', file]
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, creationflags=self.creationflags)
+        """
+        Starts a subprocess running track_process.py with file as a parameter.
+        Waits for the process to finish before exiting. This way thread_pool will
+        not start more processes in parallel than is defined.
+        """
+        args = ['python', '-u', 'track_process.py', '-f', file]
+        proc = subprocess.Popen(args, creationflags=self.creationflags, universal_newlines=True)
+        #proc = subprocess.Popen(args, creationflags=self.creationflags, universal_newlines=True)
         print(proc)
 
         while proc.returncode is None:
             try:
                 outs, errs = proc.communicate(timeout=1)
-                if outs is not None:
-                    print(outs)
+                print("Output:", outs)
+                        
+                if errs:
+                    print(errs)
             except subprocess.TimeoutExpired:
+                print("Timeout")
                 pass
         
         print("Process returned: ", proc.returncode)
+
+#class TrackIO(object):
+#    def __init__(self):
+#        self.io = None
+
+#    def __enter__(self):
+#        self.io = io.StringIO()
+
+#    def __exit__(self):
+#        self.io.close()
+
+#    def write()
 
 
 def str2bool(v):

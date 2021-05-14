@@ -57,7 +57,7 @@ class PlaybackManager(QObject):
         return path
 
     def openTestFile(self):
-        path = getTestFilePath()
+        path = self.getTestFilePath()
 
         if os.path.exists(path):
             # Override test file length

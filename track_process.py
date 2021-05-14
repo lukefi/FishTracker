@@ -1,6 +1,6 @@
 ﻿import sys, os, cv2
-import argparse
-import time
+import argparse, time
+from queue import Queue
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from playback_manager import PlaybackManager, TestFigure

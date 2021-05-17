@@ -6,6 +6,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager, TestFigure
 from detector import Detector
 from tracker import Tracker
+from output_widget import WriteStream, StreamReceiver
+import file_handler as fh
 
 def getDefaultParser(getArgs=False):
     parser = argparse.ArgumentParser()
@@ -22,11 +24,12 @@ def getFiles(args):
     if args.file:
          files = [f.name for f in args.file]
     elif args.test:
-        files = [PlaybackManager.getTestFilePath()]
+        files = [fh.getTestFilePath()]
     else:
-        homeDirectory = str(os.path.expanduser("~"))
+        dir = fh.getLatestDirectory()
         filePathTuple = QtWidgets.QFileDialog.getOpenFileNames(None, "Open File", homeDirectory, "Sonar Files (*.aris *.ddf)")
         files = [f for f in filePathTuple[0]]
+        fh.setLatestDirectory(os.path.dirname(files[0]))
 
     return files
 
@@ -36,12 +39,13 @@ class TrackProcess(QtCore.QObject):
     These are used for the tracking process of the file provided in the method track.
     Each file should be processed with their own TrackProcess instances.
     """
-    def __init__(self, app, display, file):
+    def __init__(self, app, display, file, connection=None):
         super().__init__()
         self.app = app
         self.display = display
         self.figure = None
         self.file = file
+        self.connection = connection
 
         if display:
             self.main_window = QtWidgets.QMainWindow()
@@ -54,7 +58,25 @@ class TrackProcess(QtCore.QObject):
         self.tracker = Tracker(self.detector)
         self.playback_manager.fps = 100
 
+        # Redirect std out
+        self.queue = Queue()
+        sys.stdout = WriteStream(self.queue)
+        self.thread = QtCore.QThread()
+        self.receiver = StreamReceiver(self.queue)
+        self.receiver.signal.connect(self.writeToFile)
+        self.receiver.moveToThread(self.thread)
+        self.thread.started.connect(self.receiver.run)
+        self.thread.start()
+
         print("Process created for file: ", self.file)
+
+    def writeToConnection(self, value):
+        if self.connection:
+            self.connection.send(value)
+
+    def writeToFile(self, value):
+        with open("track_process_io.txt", 'a') as f:
+            f.write(value)
 
     def forwardImage(self, tuple):
         ind, frame = tuple
@@ -80,14 +102,7 @@ class TrackProcess(QtCore.QObject):
             self.playback_manager.play()
 
     def track(self):
-        self.playback_manager.loadFile(self.file)
-
-
-        #if test:
-        #    self.playback_manager.openTestFile()
-        #elif file is None:
-        #    self.playback_manager.openFile()
-            
+        self.playback_manager.loadFile(self.file)            
 
         if self.display:
             self.playback_manager.frame_available.append(self.forwardImageDisplay)
@@ -113,10 +128,15 @@ class TrackProcess(QtCore.QObject):
     def quit(self):
         self.app.quit()
 
-if __name__ == "__main__":
+
+def trackProcess(display, file, connection=None):
     app = QtWidgets.QApplication(sys.argv)
-    args = getDefaultParser(getArgs=True)
-    file = getFiles(args)
-    process = TrackProcess(app, args.display, file[0])
+    process = TrackProcess(app, display, file, connection)
     process.track()
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    args = getDefaultParser(getArgs=True)
+    file = getFiles(args)
+    trackProcess(args.display, file[0])

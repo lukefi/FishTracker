@@ -24,6 +24,8 @@ from file_handlers.v5.v5_file_info import *
 
 from image_manipulation import ImageManipulation
 
+CONF_PATH = "conf.json"
+
 class FSONAR_File():
     def __init__(self, filename):
         self.FILE_PATH = filename
@@ -285,7 +287,42 @@ def loadJSON(jsonFilePath):
             config = json.load(template)
             return config
     except:
-        return False
+        return None
+
+def getTestFilePath():
+    try:
+        conf = loadJSON(CONF_PATH)
+        if os.path.exists(conf["test_file_path"]):
+            return conf["test_file_path"]
+        else:
+            return None
+    except:
+        print("Reading test file path failed", sys.exc_info()[1])
+        return None
+
+def getLatestDirectory():
+    try:
+        conf = loadJSON(CONF_PATH)
+        if os.path.exists(conf["latest_directory"]):
+            return conf["latest_directory"]
+        else:
+            return str(os.path.expanduser("~"))
+    except:
+        print("Reading directory path failed:", sys.exc_info()[1])
+        return str(os.path.expanduser("~"))
+
+def setLatestDirectory(path):
+    if path is None or path == "":
+        return
+    try:
+        conf = loadJSON(CONF_PATH)
+        conf["latest_directory"] = path
+        with open(CONF_PATH, 'w') as f:
+            json.dump(conf, f, sort_keys=True, indent=4, separators=(',', ': '))
+    except:
+        print("Writing conf file failed:", sys.exc_info()[1])
+
+            
 
 def pathFromList(listOfDirectories):
     """This function generates a sting path suitable for the used OS.

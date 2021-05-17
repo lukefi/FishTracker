@@ -1,6 +1,6 @@
 import sys, os, errno
 import traceback
-from file_handler import FOpenSonarFile
+import file_handler as fh
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -45,21 +45,14 @@ class PlaybackManager(QObject):
         app.aboutToQuit.connect(self.applicationClosing)
 
     def openFile(self):
-        homeDirectory = str(os.path.expanduser("~"))
-        filePathTuple = QFileDialog.getOpenFileName(self.main_window, "Open File", homeDirectory, "Sonar Files (*.aris *.ddf)")
+        dir = fh.getLatestDirectory()
+        filePathTuple = QFileDialog.getOpenFileName(self.main_window, "Open File", dir, "Sonar Files (*.aris *.ddf)")
+        fh.setLatestDirectory(os.path.dirname(filePathTuple[0]))
         self.loadFile(filePathTuple[0])
 
-    @staticmethod
-    def getTestFilePath():
-        path = "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
-        if not os.path.exists(path):
-            path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
-        return path
-
     def openTestFile(self):
-        path = self.getTestFilePath()
-
-        if os.path.exists(path):
+        path = fh.getTestFilePath()
+        if path is not None:
             # Override test file length
             self.loadFile(path, 200)
         else:
@@ -68,7 +61,7 @@ class PlaybackManager(QObject):
     def loadFile(self, path, overrideLength=-1):
         self.path = path
         self.setTitle(path)
-        sonar = FOpenSonarFile(path)
+        sonar = fh.FOpenSonarFile(path)
         if overrideLength > 0:
             sonar.frameCount = min(overrideLength, sonar.frameCount)
 
@@ -98,13 +91,13 @@ class PlaybackManager(QObject):
 
     def closeFile(self):
         self.stopAll()
-        self.sonar = None
 
         if self.playback_thread is not None:
             self.playback_thread.clear()
             del self.playback_thread
             self.playback_thread = None
 
+        self.sonar = None
         self.file_closed()
         self.setTitle()
 
@@ -362,6 +355,8 @@ class PlaybackThread(QRunnable):
 
         self.pause_polar_loading = False
 
+        self.alive = True
+
     def __del__(self):
         #print("Playback thread destroyed")
         pass
@@ -378,7 +373,7 @@ class PlaybackThread(QRunnable):
         ten_perc = 0.1 * count
         print_limit = 0
         i = 0
-        while i < count:
+        while i < count and self.alive:
             if self.pause_polar_loading:
                 time.sleep(0.1)
                 continue
@@ -387,23 +382,27 @@ class PlaybackThread(QRunnable):
                 print("Loading:", int(float(print_limit) / count * 100), "%")
                 print_limit += ten_perc
             if self.buffer[i] is None:
-                self.buffer[i] = self.sonar.getPolarFrame(i)
+                value = self.sonar.getPolarFrame(i)
+                if self.alive:
+                    self.buffer[i] = value
             i += 1
 
     def polarsDone(self, result):
-        print("Loading: 100 %")
-        self.polars_loaded = True
-        self.signals.polars_loaded_signal.emit()
+        if self.alive:
+            print("Loading: 100 %")
+            self.polars_loaded = True
+            self.signals.polars_loaded_signal.emit()
 
     def createMapping(self):
         radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
         return PolarTransform(self.sonar.DATA_SHAPE, 1000, radius_limits, 2 * self.sonar.firstBeamAngle/180*np.pi)
 
     def mappingDone(self, result):
-        self.polar_transform = result
-        self.signals.mapping_done_signal.emit()
-        print("Polar mapping done")
-        self.displayFrame()
+        if self.alive:
+            self.polar_transform = result
+            self.signals.mapping_done_signal.emit()
+            print("Polar mapping done")
+            self.displayFrame()
 
     def testF(self):
         print("Test")
@@ -425,6 +424,7 @@ class PlaybackThread(QRunnable):
                 self.signals.playback_ended_signal.emit()
 
     def clear(self):
+        self.alive = False
         self.buffer = None
         self.polar_transform = None
 

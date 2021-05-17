@@ -1,5 +1,5 @@
 import sys, os, io, cv2
-import subprocess
+import multiprocessing as mp
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from queue import Queue
@@ -7,8 +7,15 @@ from queue import Queue
 from playback_manager import PlaybackManager, TestFigure, Worker
 from detector import Detector
 from tracker import Tracker
-from track_process import TrackProcess, getDefaultParser, getFiles
+from track_process import TrackProcess, getDefaultParser, getFiles, trackProcess
 from output_widget import WriteStream
+
+class ProcessInfo(object):
+    def __init__(self, id, file, connection):
+        self.id = id
+        self.file = file
+        self.connection = connection
+        self.process = None
 
 class BatchTrack(QtCore.QObject):
     """
@@ -19,56 +26,55 @@ class BatchTrack(QtCore.QObject):
         print("Display: ", display)
         self.app = app
         self.files = files
-        self.creationflags = subprocess.CREATE_NEW_CONSOLE
+        self.display = display
 
         self.thread_pool = QtCore.QThreadPool()
-        self.thread_pool.setMaxThreadCount(parallel)
+        self.thread_pool.setMaxThreadCount(parallel + 1)
+
+        self.processes = []
+        self.batch_running = False
 
     def beginTrack(self, test=False):
         """
         For each file in files, creates a Worker that runs track and places it in thread_pool.
         """
 
-        for file in self.files:
-            worker = Worker(self.track, file)
-            self.thread_pool.start(worker)
-            print("Created Worker for file ", file)
+        self.batch_running = True
+        worker = Worker(self.communicate)
+        self.thread_pool.start(worker)
+        id = 0
 
-    def track(self, file):
+        for file in self.files:
+            parent_conn, child_conn = mp.Pipe()
+            proc_info = ProcessInfo(id, file, parent_conn)
+            self.processes.append(proc_info)
+
+            worker = Worker(self.track, proc_info, child_conn)
+            self.thread_pool.start(worker)
+            print("Created Worker for file " + file)
+            id += 1
+
+    def track(self, proc_info, child_conn):
         """
-        Starts a subprocess running track_process.py with file as a parameter.
+        Starts a process running trackProcess with file as a parameter.
         Waits for the process to finish before exiting. This way thread_pool will
         not start more processes in parallel than is defined.
         """
-        args = ['python', '-u', 'track_process.py', '-f', file]
-        proc = subprocess.Popen(args, creationflags=self.creationflags, universal_newlines=True)
-        #proc = subprocess.Popen(args, creationflags=self.creationflags, universal_newlines=True)
-        print(proc)
 
-        while proc.returncode is None:
-            try:
-                outs, errs = proc.communicate(timeout=1)
-                print("Output:", outs)
-                        
-                if errs:
-                    print(errs)
-            except subprocess.TimeoutExpired:
-                print("Timeout")
-                pass
-        
-        print("Process returned: ", proc.returncode)
+        proc = mp.Process(target=trackProcess, args=(self.display, proc_info.file, child_conn))
+        proc_info.process = proc
+        proc.start()
+        proc.join()
 
-#class TrackIO(object):
-#    def __init__(self):
-#        self.io = None
+        print("File", proc_info.file, "finished.")
 
-#    def __enter__(self):
-#        self.io = io.StringIO()
+    def communicate(self):
+        while(self.batch_running):
+            for proc_info in self.processes:
+                if(proc_info.process and proc_info.process.is_alive() and proc_info.connection.poll()):
+                    print(proc_info.id, proc_info.connection.recv(), end="")
 
-#    def __exit__(self):
-#        self.io.close()
-
-#    def write()
+            time.sleep(0.2)
 
 
 def str2bool(v):

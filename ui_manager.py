@@ -2,6 +2,7 @@ import sys, os, cv2
 import numpy
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+from file_handler import getTestFilePath
 from main_window import MainWindow
 from sonar_widget import SonarViewer
 from echogram_widget import EchogramViewer
@@ -86,12 +87,13 @@ class UIManager():
         self.ui.action_Open.setShortcut('Ctrl+O')
         self.ui.action_Open.triggered.connect(self.openFile)
 
-        #self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
-        #self.ui.action_OpenTest.setObjectName("action_OpenTest")
-        #self.ui.menu_File.addAction(self.ui.action_OpenTest)
-        #self.ui.action_OpenTest.setShortcut('Ctrl+T')
-        #self.ui.action_OpenTest.triggered.connect(self.openTestFile)
-        #self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
+        if getTestFilePath() is not None:
+            self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
+            self.ui.action_OpenTest.setObjectName("action_OpenTest")
+            self.ui.menu_File.addAction(self.ui.action_OpenTest)
+            self.ui.action_OpenTest.setShortcut('Ctrl+T')
+            self.ui.action_OpenTest.triggered.connect(self.openTestFile)
+            self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
 
         self.ui.action_save_detections = QtWidgets.QAction(self.main_window)
         self.ui.action_save_detections.setObjectName("action_save_detections")

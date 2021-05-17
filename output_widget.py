@@ -20,7 +20,7 @@ class WriteStream(object):
 
 class StreamReceiver(QObject):
     """
-    A QObject (to be run in a QThread) which sits waiting for data to come through a Queue.Queue().
+    A QObject (to be run in a QThread) which sits waiting for data to come through a queue.
     It blocks until data is available, and once it gets something from the queue, it sends
     it to the "MainThread" by emitting a Qt Signal 
     """

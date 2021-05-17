@@ -26,7 +26,7 @@ class TrackerParametersView(QWidget):
 
         self.initUI()
 
-        self.playback_manager.polars_loaded.append(self.setButtonsEnabled)
+        self.playback_manager.polars_loaded.connect(self.setButtonsEnabled)
         self.detector.state_changed_event.append(self.setButtonsEnabled)
         #self.tracker.state_changed_event.append(self.setButtonsEnabled)
         self.tracker.state_changed_signal.connect(self.setButtonsEnabled)

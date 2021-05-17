@@ -1,8 +1,10 @@
 ﻿import sys
+import time
 from queue import Queue
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import * 
+from log_object import LogObject
 
 class WriteStream(object):
     """
@@ -13,7 +15,8 @@ class WriteStream(object):
         self.queue = queue
 
     def write(self, text):
-        self.queue.put(text)
+        if text not in ["", " ", "\n"]:
+            self.queue.put("-" + text + str(time.time()) + "-\n")
 
     def flush(self):
         pass
@@ -53,7 +56,22 @@ class OutputViewer(QWidget):
 
         self.latestLine = ""
 
+    def connectToLogObject(self, format=None):
+        """
+        Connect text_edit field to LogObject signal.
+        """
+        log = LogObject()
+        if format:
+            log.connect(lambda s: self.appendText(format(s)))
+        else:
+            log.connect(lambda s: self.appendText(s + "\n"))
+        log.disconnectDefault()
+
     def redirectStdOut(self):
+        """
+        Redirects standard output stream (from e.g. print()) to StreamReceiver
+        and connects text_edit to the receiver.
+        """
         # Create Queue and redirect sys.stdout to this queue
         self.queue = Queue()
         sys.stdout = WriteStream(self.queue)

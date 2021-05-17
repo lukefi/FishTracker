@@ -6,3 +6,4 @@ MOG Parameters: 11 500 0.01
 Tracker Parameters: 10 5 10
 Init mapping
 Loading: 0 %
+End mapping

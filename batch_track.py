@@ -7,8 +7,9 @@ from queue import Queue
 from playback_manager import PlaybackManager, TestFigure, Worker
 from detector import Detector
 from tracker import Tracker
-from track_process import TrackProcess, getDefaultParser, getFiles, trackProcess
+import track_process as tp
 from output_widget import WriteStream
+from log_object import LogObject
 
 class ProcessInfo(object):
     def __init__(self, id, file, connection):
@@ -23,10 +24,13 @@ class BatchTrack(QtCore.QObject):
     """
     def __init__(self, app, display, files, parallel=1):
         super().__init__()
-        print("Display: ", display)
+        LogObject().print("Display: ", display)
         self.app = app
         self.files = files
         self.display = display
+
+        # Clear file
+        tp.writeToFile("", 'w')
 
         self.thread_pool = QtCore.QThreadPool()
         self.thread_pool.setMaxThreadCount(parallel + 1)
@@ -51,7 +55,7 @@ class BatchTrack(QtCore.QObject):
 
             worker = Worker(self.track, proc_info, child_conn)
             self.thread_pool.start(worker)
-            print("Created Worker for file " + file)
+            LogObject().print("Created Worker for file " + file)
             id += 1
 
     def track(self, proc_info, child_conn):
@@ -61,18 +65,18 @@ class BatchTrack(QtCore.QObject):
         not start more processes in parallel than is defined.
         """
 
-        proc = mp.Process(target=trackProcess, args=(self.display, proc_info.file, child_conn))
+        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, child_conn))
         proc_info.process = proc
         proc.start()
         proc.join()
 
-        print("File", proc_info.file, "finished.")
+        LogObject().print("File", proc_info.file, "finished.")
 
     def communicate(self):
         while(self.batch_running):
             for proc_info in self.processes:
                 if(proc_info.process and proc_info.process.is_alive() and proc_info.connection.poll()):
-                    print(proc_info.id, proc_info.connection.recv(), end="")
+                    LogObject().print(proc_info.id, proc_info.connection.recv(), end="")
 
             time.sleep(0.2)
 
@@ -92,12 +96,12 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
 
-    parser = getDefaultParser()
+    parser = tp.getDefaultParser()
     parser.add_argument('-p', '--parallel', type=int, default=1, help="number of files processed simultaneously in parallel")
     args = parser.parse_args()
-    files = getFiles(args)
+    files = tp.getFiles(args)
 
-    print(files)
+    LogObject().print(files)
 
     bath_track = BatchTrack(app, args.display, files, args.parallel)
     bath_track.beginTrack(args.test)

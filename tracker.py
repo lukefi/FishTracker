@@ -3,6 +3,7 @@ import cv2
 import seaborn as sns
 from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
+from log_object import LogObject
 
 class Tracker(QtCore.QObject):
     # When new computation is started
@@ -50,7 +51,7 @@ class Tracker(QtCore.QObject):
         if self.detector.allCalculationAvailable():
             self.detector.computeAll()
             if self.detector.allCalculationAvailable():
-                print("Stopped before tracking.")
+                LogObject().print("Stopped before tracking.")
                 self.abortComputing(True)
                 return
 
@@ -67,10 +68,10 @@ class Tracker(QtCore.QObject):
         print_limit = 0
         for i, dets in enumerate(detection_frames):
             if i > print_limit:
-                print("Tracking:", int(float(i) / count * 100), "%")
+                LogObject().print("Tracking:", int(float(i) / count * 100), "%")
                 print_limit += ten_perc
             if self.stop_tracking:
-                print("Stopped tracking at", i)
+                LogObject().print("Stopped tracking at", i)
                 self.abortComputing(False)
                 return
 
@@ -81,7 +82,7 @@ class Tracker(QtCore.QObject):
             self.tracks_by_frame[i] = self.trackBase(dets, i)
                 
 
-        print("Tracking: 100 %")
+        LogObject().print("Tracking: 100 %")
         self.tracking = False
         self.applied_parameters = self.parameters.copy()
         self.applied_detector_parameters = self.detector.parameters.copy()
@@ -107,13 +108,13 @@ class Tracker(QtCore.QObject):
 
     def trackBase(self, frame, ind):
         if frame is None:
-            print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
+            LogObject().print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
             return self.mot_tracker.update()
 
         detections = [d for d in frame if d.corners is not None]
         if len(detections) > 0:
             dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections]) #[d.corners for d in f]
-            #print(dets[0], detections[0].corners)
+            #LogObject().print(dets[0], detections[0].corners)
             tracks = self.mot_tracker.update(dets)
         else:
             tracks = self.mot_tracker.update()
@@ -163,28 +164,28 @@ class Tracker(QtCore.QObject):
             self.parameters.max_age = int(value)
             self.state_changed_signal.emit()
         except ValueError as e:
-            print(e)
+            LogObject().print(e)
 
     def setMinHits(self, value):
         try:
             self.parameters.min_hits = int(value)
             self.state_changed_signal.emit()
         except ValueError as e:
-            print(e)
+            LogObject().print(e)
 
     def setIoUThreshold(self, value):
         try:
             self.parameters.iou_threshold = float(value)
             self.state_changed_signal.emit()
         except ValueError as e:
-            print(e)
+            LogObject().print(e)
 
     def setMaxDistance(self, value):
         try:
             self.parameters.max_distance = float(value)
             self.state_changed_signal.emit()
         except ValueError as e:
-            print(e)
+            LogObject().print(e)
 
     def getParameterDict(self):
         if self.parameters is not None:
@@ -286,17 +287,17 @@ if __name__ == "__main__":
 
         playback_manager.fps = 10
         playback_manager.openTestFile()
-        playback_manager.frame_available.append(forwardImage)
+        playback_manager.frame_available.connect(forwardImage)
         detector.mog_parameters.nof_bg_frames = 500
         detector._show_detections = True
-        playback_manager.mapping_done.append(startDetector)
+        playback_manager.mapping_done.connect(startDetector)
 
         figure = TestFigure(playback_manager.togglePlay)
         main_window.setCentralWidget(figure)
 
-        print(detector.parameters)
-        print(detector.parameters.mog_parameters)
-        print(tracker.parameters)
+        LogObject().print(detector.parameters)
+        LogObject().print(detector.parameters.mog_parameters)
+        LogObject().print(tracker.parameters)
 
         main_window.show()
         sys.exit(app.exec_())

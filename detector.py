@@ -13,6 +13,7 @@ import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager, Event, TestFigure
+from log_object import LogObject
 
 def nothing(x):
     pass
@@ -124,15 +125,18 @@ class Detector:
 
 		ten_perc = 0.1 * nof_bg_frames
 		print_limit = 0
+
+		LogObject().print("InitMOG:", QtCore.QThread.currentThreadId())
+
 		for i in range(nof_bg_frames):
 			if i > print_limit:
-				print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")
+				LogObject().print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")
 				print_limit += ten_perc
 
 			ind = math.floor(i * step)
 
 			if self.stop_initializing:
-				print("Stopped initializing at", ind)
+				LogObject().print("Stopped initializing at", ind)
 				self.stop_initializing = False
 				self.mog_ready = False
 				self.initializing = False
@@ -159,7 +163,7 @@ class Detector:
 		self.applied_mog_parameters = self.mog_parameters.copy()
 
 		self.state_changed_event()
-		print("Initializing: 100 %")
+		LogObject().print("Initializing: 100 %")
 
 		if hasattr(self.image_provider, "pausePolarLoading"):
 			self.image_provider.pausePolarLoading(False)
@@ -251,7 +255,7 @@ class Detector:
 		if self.mogParametersDirty():
 			self.initMOG()
 			if self.mogParametersDirty():
-				print("Stopped before detecting.")
+				LogObject().print("Stopped before detecting.")
 				self.abortComputing(True)
 				return
 
@@ -260,18 +264,18 @@ class Detector:
 		print_limit = 0
 		for ind in range(count):
 			if ind > print_limit:
-				print("Detecting:", int(float(ind) / count * 100), "%")
+				LogObject().print("Detecting:", int(float(ind) / count * 100), "%")
 				print_limit += ten_perc
 
 			if self.stop_computing:
-				print("Stopped detecting at", ind)
+				LogObject().print("Stopped detecting at", ind)
 				self.abortComputing(False)
 				return
 
 			img = self.image_provider.getFrame(ind)
 			self.computeBase(ind, img)
 
-		print("Detecting: 100 %")
+		LogObject().print("Detecting: 100 %")
 		self.computing = False
 		self.detections_clearable = True
 		self.applied_parameters = self.parameters.copy()
@@ -313,56 +317,56 @@ class Detector:
 			self.parameters.detection_size = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setMOGVarThresh(self, value):
 		try:
 			self.mog_parameters.mog_var_thresh = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setMinFGPixels(self, value):
 		try:
 			self.parameters.min_fg_pixels = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setMedianSize(self, value):
 		try:
 			self.parameters.median_size = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setNofBGFrames(self, value):
 		try:
 			self.mog_parameters.nof_bg_frames = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setLearningRate(self, value):
 		try:
 			self.mog_parameters.learning_rate = float(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setDBScanEps(self, value):
 		try:
 			self.parameters.dbscan_eps = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setDBScanMinSamples(self, value):
 		try:
 			self.parameters.dbscan_min_samples = int(value)
 			self.state_changed_event()
 		except ValueError as e:
-			print(e)
+			LogObject().print(e)
 
 	def setShowDetections(self, value):
 		self._show_detections = value
@@ -432,10 +436,10 @@ class Detector:
 								file.write(lineBase1.format(frame, d.length, d.distance, d.angle))
 								file.write(d.cornersToString(";"))
 								file.write("\n")
-				print("Detections saved to path:", path)
+				LogObject().print("Detections saved to path:", path)
 
 		except PermissionError as e:
-			print("Cannot open file {}. Permission denied.".format(path))
+			LogObject().print("Cannot open file {}. Permission denied.".format(path))
 			
 
 class MOGParameters:
@@ -483,7 +487,7 @@ class DetectorParameters:
 			and self.dbscan_eps == other.dbscan_eps \
 			and self.dbscan_min_samples == other.dbscan_min_samples
 
-		#print(self, other, value)
+		#LogObject().print(self, other, value)
 		return value
 
 	def __repr__(self):
@@ -611,7 +615,7 @@ class DetectorDisplay:
 		for i in range(self.getFrameCount()):
 			self.readParameters()
 			images = self.detector.compute(i, self.getFrame(i), True)
-			print(images)
+			LogObject().print(images)
 			self.updateWindows(*images)
 
 	def showWindow(self):
@@ -683,13 +687,13 @@ def playbackTest():
 	playback_manager = PlaybackManager(app, main_window)
 	playback_manager.fps = 1000
 	playback_manager.openTestFile()
-	playback_manager.frame_available.append(forwardImage)
+	playback_manager.frame_available.connect(forwardImage)
 	detector = Detector(playback_manager)
 	detector.mog_parameters.nof_bg_frames = 100
 	detector._show_detections = True
 	detector._show_echogram_detections = True
-	playback_manager.mapping_done.append(startDetector)
-	playback_manager.frame_available.insert(0, detector.compute_from_event)
+	playback_manager.mapping_done.connect(startDetector)
+	playback_manager.frame_available_early.connect(detector.compute_from_event)
 
 	figure = TestFigure(playback_manager.togglePlay)
 	main_window.setCentralWidget(figure)

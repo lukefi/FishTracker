@@ -8,6 +8,7 @@ from detector import Detector
 from tracker import Tracker
 from output_widget import WriteStream, StreamReceiver
 import file_handler as fh
+from log_object import LogObject
 
 def getDefaultParser(getArgs=False):
     parser = argparse.ArgumentParser()
@@ -33,19 +34,24 @@ def getFiles(args):
 
     return files
 
+def writeToFile(value, mode='a'):
+    with open("track_process_io.txt", mode) as f:
+        f.write(value)
+
 class TrackProcess(QtCore.QObject):
     """
     TrackProcess launches individual PlaybackManager, Detector and Tracker.
     These are used for the tracking process of the file provided in the method track.
     Each file should be processed with their own TrackProcess instances.
     """
-    def __init__(self, app, display, file, connection=None):
+    def __init__(self, app, display, file, connection=None, testFile=False):
         super().__init__()
         self.app = app
         self.display = display
         self.figure = None
         self.file = file
         self.connection = connection
+        self.testFile = testFile
 
         if display:
             self.main_window = QtWidgets.QMainWindow()
@@ -63,20 +69,16 @@ class TrackProcess(QtCore.QObject):
         sys.stdout = WriteStream(self.queue)
         self.thread = QtCore.QThread()
         self.receiver = StreamReceiver(self.queue)
-        self.receiver.signal.connect(self.writeToFile)
+        self.receiver.signal.connect(lambda v: writeToFile(v))
         self.receiver.moveToThread(self.thread)
         self.thread.started.connect(self.receiver.run)
         self.thread.start()
 
-        print("Process created for file: ", self.file)
+        LogObject().print("Process created for file: ", self.file)
 
     def writeToConnection(self, value):
         if self.connection:
             self.connection.send(value)
-
-    def writeToFile(self, value):
-        with open("track_process_io.txt", 'a') as f:
-            f.write(value)
 
     def forwardImage(self, tuple):
         ind, frame = tuple
@@ -102,25 +104,28 @@ class TrackProcess(QtCore.QObject):
             self.playback_manager.play()
 
     def track(self):
-        self.playback_manager.loadFile(self.file)            
+        if self.testFile:
+            self.playback_manager.openTestFile()
+        else:
+            self.playback_manager.loadFile(self.file)            
 
         if self.display:
-            self.playback_manager.frame_available.append(self.forwardImageDisplay)
+            self.playback_manager.frame_available.connect(self.forwardImageDisplay)
         else:
-            self.playback_manager.frame_available.append(self.forwardImage)
+            self.playback_manager.frame_available.connect(self.forwardImage)
 
         self.detector.mog_parameters.nof_bg_frames = 500
         self.detector._show_detections = True
-        self.playback_manager.mapping_done.append(self.startDetector)
+        self.playback_manager.mapping_done.connect(self.startDetector)
         self.tracker.all_computed_signal.connect(self.quit)
 
         if self.display:
             self.figure = TestFigure(self.playback_manager.togglePlay)
             self.main_window.setCentralWidget(self.figure)
 
-        print(self.detector.parameters)
-        print(self.detector.parameters.mog_parameters)
-        print(self.tracker.parameters)
+        LogObject().print(self.detector.parameters)
+        LogObject().print(self.detector.parameters.mog_parameters)
+        LogObject().print(self.tracker.parameters)
 
         if self.display:
             self.main_window.show()
@@ -129,9 +134,9 @@ class TrackProcess(QtCore.QObject):
         self.app.quit()
 
 
-def trackProcess(display, file, connection=None):
+def trackProcess(display, file, connection=None, testFile=False):
     app = QtWidgets.QApplication(sys.argv)
-    process = TrackProcess(app, display, file, connection)
+    process = TrackProcess(app, display, file, connection, testFile)
     process.track()
     sys.exit(app.exec_())
 
@@ -139,4 +144,4 @@ def trackProcess(display, file, connection=None):
 if __name__ == "__main__":
     args = getDefaultParser(getArgs=True)
     file = getFiles(args)
-    trackProcess(args.display, file[0])
+    trackProcess(args.display, file[0], testFile=args.test)

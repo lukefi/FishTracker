@@ -117,8 +117,8 @@ if __name__ == "__main__":
         ind, frame = tuple
         detector.compute(ind, frame)
 
-    playback_manager.mapping_done.append(startDetector)
-    playback_manager.frame_available.append(handleFrame)
+    playback_manager.mapping_done.connect(startDetector)
+    playback_manager.frame_available.connect(handleFrame)
 
     data_model = DetectionDataModel(detector)
     detection_list = DetectionList(data_model)

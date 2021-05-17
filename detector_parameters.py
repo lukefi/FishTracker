@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import *
 from detector import Detector
 import json
 import os.path
+from log_object import LogObject
 
 PARAMETERS_PATH = "detector_parameters.json"
 PARAMETER_TYPES = {
@@ -195,7 +196,7 @@ class DetectorParametersView(QWidget):
 
         self.loadJSON()
 
-        self.playback_manager.polars_loaded.append(self.setButtonsEnabled)
+        self.playback_manager.polars_loaded.connect(self.setButtonsEnabled)
         self.detector.state_changed_event.append(self.setButtonsEnabled)
         self.detector.state_changed_event.append(self.setButtonTexts)
         self.setButtonsEnabled()
@@ -209,17 +210,17 @@ class DetectorParametersView(QWidget):
             with open(PARAMETERS_PATH, "w") as f:
                 json.dump(dict, f, indent=3)
         except FileNotFoundError as e:
-            print(e)
+            LogObject().print(e)
 
     def loadJSON(self):
         try:
             with open(PARAMETERS_PATH, "r") as f:
                 dict = json.load(f)
         except FileNotFoundError as e:
-            print("Error: Detector parameters file not found:", e)
+            LogObject().print("Error: Detector parameters file not found:", e)
             return
         except json.JSONDecodeError as e:
-            print("Error: Invalid detector parameters file:", e)
+            LogObject().print("Error: Invalid detector parameters file:", e)
             return
 
 
@@ -230,14 +231,14 @@ class DetectorParametersView(QWidget):
                 try:
                     setattr(params, key, PARAMETER_TYPES[key](value))
                 except ValueError as e:
-                    print("Error: Invalid value in detector parameters file,", e)
+                    LogObject().print("Error: Invalid value in detector parameters file,", e)
             elif hasattr(mog_params, key) and key in PARAMETER_TYPES:
                 try:
                     setattr(mog_params, key, PARAMETER_TYPES[key](value))
                 except ValueError as e:
-                    print("Error: Invalid value in detector parameters file,", e)
+                    LogObject().print("Error: Invalid value in detector parameters file,", e)
             else:
-                print("Error: Invalid parameters: {}: {}".format(key, value))
+                LogObject().print("Error: Invalid parameters: {}: {}".format(key, value))
 
         self.refreshValues()
 
@@ -280,7 +281,7 @@ class DetectorParametersView(QWidget):
             self.recalculate_mog_btn.setText("Apply Values")
 
     def setButtonsEnabled(self):
-        #print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
+        #LogObject().print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
         mog_value = self.playback_manager.isMappingDone() and self.detector.mogParametersDirty() #mog_dirty
         self.recalculate_mog_btn.setEnabled(mog_value)
 

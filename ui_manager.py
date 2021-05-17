@@ -1,5 +1,6 @@
 import sys, os, cv2
 import numpy
+from datetime import datetime
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 from file_handler import getTestFilePath
@@ -17,6 +18,7 @@ from tracker_parameters import TrackerParametersView
 from playback_manager import PlaybackManager
 from sonar_view3 import Ui_MainWindow
 from output_widget import OutputViewer
+from log_object import LogObject
 
 class UIManager():
     def __init__(self, main_window, playback_manager, detector, tracker, fish_manager):
@@ -67,7 +69,9 @@ class UIManager():
         self.tracker_parameters = TrackerParametersView(self.playback, self.tracker, self.detector)
 
         self.output = OutputViewer()
-        self.output.redirectStdOut()
+        #self.output.redirectStdOut()
+        #self.output.connectToLogObject()
+        self.output.connectToLogObject(self.formatLogString)
         self.output.updateLogSignal.connect(self.main_window.updateStatusLog)
 
         # Tabs for the side panel.
@@ -82,6 +86,9 @@ class UIManager():
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Tracks"))
         self.ui.info_widget.addTab(self.output, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.output), _translate("MainWindow", "Log"))
+
+    def formatLogString(self, str):
+        return "{} [{}]\n".format(str, datetime.now().time())
 
     def setUpFunctions(self):
         self.ui.action_Open.setShortcut('Ctrl+O')
@@ -124,7 +131,7 @@ class UIManager():
             self.playback.openFile()
         except FileNotFoundError as e:
             if e.filename and e.filename != "":
-                print(e)
+                LogObject().print(e)
 
 
     def openTestFile(self):
@@ -132,7 +139,7 @@ class UIManager():
             self.playback.openTestFile()
         except FileNotFoundError as e:
             if e.filename and e.filename != "":
-                print(e)
+                LogObject().print(e)
 
     def closeFile(self):
         self.playback.closeFile()
@@ -157,10 +164,10 @@ def launch_ui():
 
     detector.all_computed_event.append(playback_manager.refreshFrame)
     tracker.all_computed_signal.connect(playback_manager.refreshFrame)
-    playback_manager.mapping_done.append(lambda: playback_manager.runInThread(detector.initMOG))
-    playback_manager.frame_available.insert(0, detector.compute_from_event)
-    playback_manager.file_opened.append(lambda x: fish_manager.clear())
-    playback_manager.file_opened.append(lambda x: detector.clearDetections())
+    playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(detector.initMOG))
+    playback_manager.frame_available_early.connect(detector.compute_from_event)
+    playback_manager.file_opened.connect(lambda x: fish_manager.clear())
+    playback_manager.file_opened.connect(lambda x: detector.clearDetections())
 
     ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager)
     sys.exit(app.exec_())

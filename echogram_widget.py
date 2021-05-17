@@ -109,10 +109,10 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.figure = EchoFigure(self)
         self.horizontalLayout.addWidget(self.figure)
-        self.playback_manager.file_opened.append(self.onFileOpen)
-        self.playback_manager.frame_available.append(self.onImageAvailable)
-        self.playback_manager.polars_loaded.append(self.imageReady)
-        self.playback_manager.file_closed.append(self.onFileClose)
+        self.playback_manager.file_opened.connect(self.onFileOpen)
+        self.playback_manager.frame_available.connect(self.onImageAvailable)
+        self.playback_manager.polars_loaded.connect(self.imageReady)
+        self.playback_manager.file_closed.connect(self.onFileClose)
 
         self.setLayout(self.horizontalLayout)
         self.echogram = None

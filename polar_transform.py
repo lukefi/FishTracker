@@ -1,6 +1,7 @@
 ﻿import math
 import numpy as np
 import cv2
+from log_object import LogObject
 
 def cart2pol(x, y):
 	rho = np.sqrt(x**2 + y**2)
@@ -29,7 +30,7 @@ class PolarTransform:
 		radius_limits -- Min and max radius of the beam.
 		beam_angle -- Angle covered by the beam (radians).
 		"""
-		print("Init mapping")
+		LogObject().print("Init mapping")
 		self.pol_shape = pol_shape
 		self.setCartShape(cart_height, beam_angle)
 		self.radius_limits = radius_limits
@@ -40,11 +41,15 @@ class PolarTransform:
 		self.map_x = np.zeros(self.cart_shape, dtype=np.float32)
 		self.map_y = np.zeros(self.cart_shape, dtype=np.float32)
 
+		LogObject().print("Init mapping B")
+
 		for j in range(self.cart_shape[0]):	
+			if j % 100 == 0:
+				LogObject().print("Mapping:", j)
 			for i in range(self.cart_shape[1]):
 				_j = self.cart_shape[0] - j - 1
 				self.map_y[j, i], self.map_x[j, i] = self.cart2polImage(_j, i)
-		print("End mapping")
+		LogObject().print("End mapping")
 
 	def setCartShape(self, height, angle):
 		half_width = height * np.sin(angle/2)
@@ -107,7 +112,7 @@ class PolarTransform:
 		else:
 			y_met, x_met = self.pix2metC(y-self.center[0], self.center[1]-x)
 		rho_met, phi_met = cart2pol(x_met, y_met)
-		#print("{:.2f} {:.2f}\n{:.2f} {:.2f}\n{:.2f} {:.2f}\n".format(x,y,x_met,y_met,rho_met,phi_met))
+		#LogObject().print("{:.2f} {:.2f}\n{:.2f} {:.2f}\n{:.2f} {:.2f}\n".format(x,y,x_met,y_met,rho_met,phi_met))
 		return rho_met, phi_met
 		
 	def cart2polImage(self, y, x):
@@ -154,10 +159,10 @@ if __name__ == "__main__":
 	point_c = np.array((80, 50))
 	point_p = pt.cart2polMetric(*point_c)
 	point_c2 = pt.pol2cartMetric(*point_p)
-	print(point_c, point_p, point_c2)
+	LogObject().print(point_c, point_p, point_c2)
 
 	point_p = np.array((40, 1))
 	point_c = pt.pol2cartMetric(*point_p,True)
 	point_p2 = pt.cart2polMetric(*point_c, True)
-	print(point_p, point_c, point_p2)
+	LogObject().print(point_p, point_c, point_p2)
 

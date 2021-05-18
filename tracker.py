@@ -1,8 +1,10 @@
 ﻿import numpy as np
 import cv2
 import seaborn as sns
-from sort import Sort, KalmanBoxTracker
+#from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
+
+from sort import Sort, KalmanBoxTracker
 
 class Tracker(QtCore.QObject):
     # When new computation is started
@@ -58,11 +60,9 @@ class Tracker(QtCore.QObject):
         count = len(detection_frames)
         self.tracks_by_frame = {}
         self.mot_tracker = Sort(max_age=self.parameters.max_age,
-                                min_hits=self.parameters.min_hits,
-                                iou_threshold=self.parameters.max_distance**2)
-                                #iou_threshold=self.parameters.iou_threshold)
+                                 min_hits=self.parameters.min_hits,
+                                 iou_threshold=self.parameters.max_distance)
         KalmanBoxTracker.count = 0
-
         ten_perc = 0.1 * count
         print_limit = 0
         for i, dets in enumerate(detection_frames):

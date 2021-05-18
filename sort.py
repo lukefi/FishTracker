@@ -34,7 +34,6 @@ import argparse
 from filterpy.kalman import KalmanFilter
 
 from scipy.optimize import linear_sum_assignment
-import lap
 
 
 def linear_assignment(cost_matrix):

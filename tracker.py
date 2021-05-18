@@ -1,7 +1,6 @@
 ﻿import numpy as np
 import cv2
 import seaborn as sns
-#from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
 
 from sort import Sort, KalmanBoxTracker
@@ -44,6 +43,10 @@ class Tracker(QtCore.QObject):
         self.trackAll(self.detector.detections)
 
     def trackAll(self, detection_frames):
+        """
+        Tracks all detections in the given frames. Updates tracks_by_frame and
+        signals when the computation has finished.
+        """
         self.tracking = True
         self.stop_tracking = False
         self.state_changed_signal.emit()
@@ -74,10 +77,6 @@ class Tracker(QtCore.QObject):
                 self.abortComputing(False)
                 return
 
-            #tracks = self.trackBase(dets, i)
-            #if len(tracks) > 0:
-            #    self.tracks_by_frame[i] = self.matchingDetections(tracks, dets)
-
             self.tracks_by_frame[i] = self.trackBase(dets, i)
                 
 
@@ -89,37 +88,22 @@ class Tracker(QtCore.QObject):
         self.state_changed_signal.emit()
         self.all_computed_signal.emit()
 
-    def matchingDetections(self, tracks, dets):
-        """
-        Tries to match tracking results with original detections based on squared distance.
-        Note: There should be some faster/better way to do this inside SORT tracker.
-        """
-        all_dets = [d for d in dets if d.corners is not None]
-        all_corners = np.mean([d.corners for d in all_dets], 1)
-        ret = []
-        for tr in tracks:
-            center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
-            diff = all_corners - center
-            sqr_magn = np.sum(diff**2,axis=1)
-            min_ind = np.argmin(sqr_magn)
-            ret.append((tr, all_dets[min_ind]))
-        return ret
-
     def trackBase(self, frame, ind):
+        """
+        Performs tracking step for a single frame.
+        Returns (track, detection) if the track was updated this frame, otherwise (track, None).
+        """
         if frame is None:
             print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
             return self.mot_tracker.update()
 
         detections = [d for d in frame if d.corners is not None]
         if len(detections) > 0:
-            dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections]) #[d.corners for d in f]
-            #print(dets[0], detections[0].corners)
+            dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections])
             tracks = self.mot_tracker.update(dets)
         else:
             tracks = self.mot_tracker.update()
 
-        # Return (track, detection) if the track was updated this frame.
-        # Otherwise return (track, None).
         return [(tr, detections[int(tr[7])]) if tr[7] > 0 else (tr, None) for tr in tracks]
 
     def abortComputing(self, detector_aborted):
@@ -194,7 +178,6 @@ class Tracker(QtCore.QObject):
 
 
 class TrackerParameters:
-    #def __init__(self, max_age = 20, min_hits = 3, iou_threshold = 0.1):
     def __init__(self, max_age = 10, min_hits = 5, max_distance = 10):
         self.max_age = max_age
         self.min_hits = min_hits

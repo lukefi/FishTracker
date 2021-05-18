@@ -56,7 +56,7 @@ class PlaybackManager(QObject):
             path = "C:/data/LUKE/Teno1_2019-07-02_153000.aris"
         if os.path.exists(path):
             # Override test file length
-            self.loadFile(path, 200)
+            self.loadFile(path, 1000)
         else:
             self.openFile()
 

@@ -15,8 +15,8 @@ class WriteStream(object):
         self.queue = queue
 
     def write(self, text):
-        if text not in ["", " ", "\n"]:
-            self.queue.put("-" + text + str(time.time()) + "-\n")
+        if text not in ['', ' ', '\n']:
+            self.queue.put(text)
 
     def flush(self):
         pass

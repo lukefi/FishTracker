@@ -28,7 +28,7 @@ def getFiles(args):
         files = [fh.getTestFilePath()]
     else:
         dir = fh.getLatestDirectory()
-        filePathTuple = QtWidgets.QFileDialog.getOpenFileNames(None, "Open File", homeDirectory, "Sonar Files (*.aris *.ddf)")
+        filePathTuple = QtWidgets.QFileDialog.getOpenFileNames(None, "Open File", dir, "Sonar Files (*.aris *.ddf)")
         files = [f for f in filePathTuple[0]]
         fh.setLatestDirectory(os.path.dirname(files[0]))
 
@@ -36,7 +36,7 @@ def getFiles(args):
 
 def writeToFile(value, mode='a'):
     with open("track_process_io.txt", mode) as f:
-        f.write(value)
+        f.write(str(value) + "\n")
 
 class TrackProcess(QtCore.QObject):
     """
@@ -44,6 +44,9 @@ class TrackProcess(QtCore.QObject):
     These are used for the tracking process of the file provided in the method track.
     Each file should be processed with their own TrackProcess instances.
     """
+
+    exit_signal = QtCore.pyqtSignal()
+
     def __init__(self, app, display, file, connection=None, testFile=False):
         super().__init__()
         self.app = app
@@ -65,16 +68,20 @@ class TrackProcess(QtCore.QObject):
         self.playback_manager.fps = 100
 
         # Redirect std out
-        self.queue = Queue()
-        sys.stdout = WriteStream(self.queue)
-        self.thread = QtCore.QThread()
-        self.receiver = StreamReceiver(self.queue)
-        self.receiver.signal.connect(lambda v: writeToFile(v))
-        self.receiver.moveToThread(self.thread)
-        self.thread.started.connect(self.receiver.run)
-        self.thread.start()
+        #self.queue = Queue()
+        #sys.stdout = WriteStream(self.queue)
+        #self.thread = QtCore.QThread()
+        #self.receiver = StreamReceiver(self.queue)
+        #self.receiver.signal.connect(lambda v: writeToFile(v))
+        #self.receiver.moveToThread(self.thread)
+        #self.thread.started.connect(self.receiver.run)
+        #self.thread.start()
 
-        LogObject().print("Process created for file: ", self.file)
+        log = LogObject()
+        log.disconnectDefault()
+        #log.connect(writeToFile)
+        log.connect(self.writeToConnection)
+        log.print("Process created for file: ", self.file)
 
     def writeToConnection(self, value):
         if self.connection:
@@ -107,7 +114,9 @@ class TrackProcess(QtCore.QObject):
         if self.testFile:
             self.playback_manager.openTestFile()
         else:
-            self.playback_manager.loadFile(self.file)            
+            self.playback_manager.loadFile(self.file)
+            
+        LogObject().print("Frame count:", self.playback_manager.getFrameCount())
 
         if self.display:
             self.playback_manager.frame_available.connect(self.forwardImageDisplay)

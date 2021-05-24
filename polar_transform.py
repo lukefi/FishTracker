@@ -41,8 +41,6 @@ class PolarTransform:
 		self.map_x = np.zeros(self.cart_shape, dtype=np.float32)
 		self.map_y = np.zeros(self.cart_shape, dtype=np.float32)
 
-		LogObject().print("Init mapping B")
-
 		for j in range(self.cart_shape[0]):	
 			if j % 100 == 0:
 				LogObject().print("Mapping:", j)

@@ -1,9 +1,1 @@
-Process created for file:  D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris
-inside DIDSON v5
-inside v5_getAllFramesData(fhand)
-Parameters: 10 25 3 10 10
-MOG Parameters: 11 500 0.01
-Tracker Parameters: 10 5 10
-Init mapping
-Loading: 0 %
-End mapping
+

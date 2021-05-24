@@ -37,7 +37,7 @@ class Detector:
 		self.current_ind = 0
 		self.current_len = 0
 
-		self.fbgb_mog = None
+		self.fgbg_mog = None
 
 		self.ts = 0
 

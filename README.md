@@ -17,9 +17,15 @@ python main.py
 The program has been tested in Windows (Python 3.7.6 and 3.8.5) and Ubuntu 20.04 (Python 3.8.8).
 
 ## Bundle and create installer (Windows)
-PyInstaller can be used to bundle the source code into a single package with all the required dependecies. The following command does exactly this based on the configuration file "fish_tracker.spec". At the project root, run:
+PyInstaller can be used to bundle the source code into a single package with all the required dependecies. The following command does this based on the configuration file "fish_tracker.spec". At the project root, run:
 ```
 pyinstaller fish_tracker.spec
 ```
+or
+```
+pyinstaller fish_tracker.spec --noconfirm
+```
+so the removal of the previous bundle does not have to be confirmed.
+
 The resulting bundle can be found in the "dist" folder. It includes an executable, "fish_tracker.exe", which can be used to run the program.
 For easier distribution, an installer can be created using NSIS or similar.

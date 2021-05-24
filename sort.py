@@ -143,8 +143,7 @@ class KalmanBoxTracker(object):
         return self.hit_streak
 
 
-def associate_detections_to_trackers2(detections, trackers,
-        search_radius=10):
+def associate_detections_to_trackers(detections, trackers, search_radius=10):
 
     if len(trackers) == 0:
         return (np.empty((0, 2), dtype=int),
@@ -186,23 +185,19 @@ def associate_detections_to_trackers2(detections, trackers,
 
 class Sort(object):
 
-    def __init__(self, max_age=1, min_hits=3, iou_threshold=10):
+    def __init__(self, max_age=1, min_hits=3, search_radius=10):
         """
         Sets key parameters for SORT
         """
 
         self.max_age = max_age
         self.min_hits = min_hits
-        self.search_radius = iou_threshold
+        self.search_radius = search_radius
 
         # self.iou_threshold = search_radius * search_radius
 
         self.trackers = []
         self.frame_count = 0
-
-    def update(self):  # TODO ei tarvitse
-        dets = np.empty((0, 4))
-        self.update(dets)
 
     def update(self, detz=np.empty((0, 4))):
 
@@ -241,7 +236,7 @@ class Sort(object):
         for t in reversed(to_del):
             self.trackers.pop(t)
 
-        (matched, unmatched_dets, unmatched_trks) = associate_detections_to_trackers2(dets, trks, self.search_radius)
+        (matched, unmatched_dets, unmatched_trks) = associate_detections_to_trackers(dets, trks, self.search_radius)
 
         for m in matched:
 

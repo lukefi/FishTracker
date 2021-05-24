@@ -62,9 +62,9 @@ class Tracker(QtCore.QObject):
 
         count = len(detection_frames)
         self.tracks_by_frame = {}
-        self.mot_tracker = Sort(max_age=self.parameters.max_age,
-                                 min_hits=self.parameters.min_hits,
-                                 iou_threshold=self.parameters.max_distance)
+        self.mot_tracker = Sort(max_age = self.parameters.max_age,
+                                min_hits = self.parameters.min_hits,
+                                search_radius = self.parameters.search_radius)
         KalmanBoxTracker.count = 0
         ten_perc = 0.1 * count
         print_limit = 0
@@ -156,16 +156,9 @@ class Tracker(QtCore.QObject):
         except ValueError as e:
             print(e)
 
-    def setIoUThreshold(self, value):
+    def setSearchRadius(self, value):
         try:
-            self.parameters.iou_threshold = float(value)
-            self.state_changed_signal.emit()
-        except ValueError as e:
-            print(e)
-
-    def setMaxDistance(self, value):
-        try:
-            self.parameters.max_distance = float(value)
+            self.parameters.search_radius = int(value)
             self.state_changed_signal.emit()
         except ValueError as e:
             print(e)
@@ -178,11 +171,10 @@ class Tracker(QtCore.QObject):
 
 
 class TrackerParameters:
-    def __init__(self, max_age = 10, min_hits = 5, max_distance = 10):
+    def __init__(self, max_age = 10, min_hits = 5, search_radius = 10):
         self.max_age = max_age
         self.min_hits = min_hits
-        self.iou_threshold = 0.1
-        self.max_distance = max_distance
+        self.search_radius = search_radius
 
     def __eq__(self, other):
         if not isinstance(other, TrackerParameters):
@@ -190,21 +182,19 @@ class TrackerParameters:
     
         return self.max_age == other.max_age \
             and self.min_hits == other.min_hits \
-            and self.max_distance == other.max_distance \
-            and self.iou_threshold == other.iou_threshold
+            and self.search_radius == other.search_radius
 
     def __repr__(self):
-        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.max_distance)
+        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.search_radius)
 
     def copy(self):
-        return TrackerParameters(self.max_age, self.min_hits, self.max_distance)
+        return TrackerParameters(self.max_age, self.min_hits, self.search_radius)
 
     def getParameterDict(self):
         return {
             "max_age": self.max_age,
 	        "min_hits": self.min_hits,
-            "max_distance": self.max_distance,
-	        "iou_threshold": self.iou_threshold,
+            "search_radius": self.search_radius
         }
 
 

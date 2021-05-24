@@ -13,8 +13,7 @@ PARAMETERS_PATH = "tracker_parameters.json"
 PARAMETER_TYPES = {
             "max_age": int,
 	        "min_hits": int,
-	        "iou_threshold": float,
-            "max_distance": int
+            "search_radius": int
         }
 
 class TrackerParametersView(QWidget):
@@ -28,11 +27,8 @@ class TrackerParametersView(QWidget):
 
         self.playback_manager.polars_loaded.append(self.setButtonsEnabled)
         self.detector.state_changed_event.append(self.setButtonsEnabled)
-        #self.tracker.state_changed_event.append(self.setButtonsEnabled)
         self.tracker.state_changed_signal.connect(self.setButtonsEnabled)
-        #self.tracker.state_changed_event.append(self.setButtonTexts)
         self.tracker.state_changed_signal.connect(self.setButtonTexts)
-        #self.tracker.state_changed_event.append(self.setButtonTexts)
         self.setButtonsEnabled()
 
     def setButtonsEnabled(self):
@@ -70,8 +66,7 @@ class TrackerParametersView(QWidget):
         self.form_layout = QFormLayout()
         self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], self.tracker.parameters.max_age, 1, 100, self)
         self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], self.tracker.parameters.min_hits, 1, 10, self)
-        #self.iou_threshold_slider = LabeledSlider("IoU threshold", self.form_layout, [self.tracker.setIoUThreshold], 10, 1, 100, self, lambda x: x/100, lambda x: 100*x)
-        self.max_distance_slider = LabeledSlider("Max distance", self.form_layout, [self.tracker.setMaxDistance], self.tracker.parameters.max_distance, 1, 100, self)
+        self.search_radius_slider = LabeledSlider("Search radius", self.form_layout, [self.tracker.setSearchRadius], self.tracker.parameters.search_radius, 1, 100, self)
         self.vertical_layout.addLayout(self.form_layout)
 
         self.vertical_layout.addStretch()
@@ -141,13 +136,18 @@ class TrackerParametersView(QWidget):
 
         params = self.tracker.parameters
         for key, value in dict.items():
-            if hasattr(params, key) and key in PARAMETER_TYPES:
-                try:
-                    setattr(params, key, PARAMETER_TYPES[key](value))
-                except ValueError as e:
-                    print("Error: Invalid value in tracker parameters file,", e)
-            else:
+            if not hasattr(params, key):
                 print("Error: Invalid parameters: {}: {}".format(key, value))
+                continue
+
+            if not key in PARAMETER_TYPES:
+                print("Error: Key [{}] not in PARAMETER_TYPES".format(key, value))
+                continue
+
+            try:
+                setattr(params, key, PARAMETER_TYPES[key](value))
+            except ValueError as e:
+                print("Error: Invalid value in tracker parameters file,", e)
 
         self.refreshValues()
 
@@ -156,8 +156,7 @@ class TrackerParametersView(QWidget):
 
         self.max_age_slider.setValue(params.max_age)
         self.min_hits_slider.setValue(params.min_hits)
-        #self.iou_threshold_slider.setValue(int(np.sqrt(params.iou_threshold)))
-        self.max_distance_slider.setValue(params.max_distance)
+        self.search_radius_slider.setValue(params.search_radius)
 
 if __name__ == "__main__":
     import sys

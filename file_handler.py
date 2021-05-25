@@ -339,6 +339,23 @@ def setSonarHeight(value):
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 
+def getParallelProcesses():
+    try:
+        conf = loadJSON(CONF_PATH)
+        return int(conf["parallel_processes"])
+    except:
+        print("Reading parallel process count failed", sys.exc_info()[1])
+        return 1
+
+def setParallelProcesses(value):
+    try:
+        conf = loadJSON(CONF_PATH)
+        conf["parallel_processes"] = int(value)
+        with open(CONF_PATH, 'w') as f:
+            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+    except:
+        print("Writing conf file failed:", sys.exc_info()[1])
+
             
 
 def pathFromList(listOfDirectories):

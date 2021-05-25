@@ -23,10 +23,11 @@ class BatchTrack(QtCore.QObject):
     Container for multiple TrackProcess objects.
     """
 
-    def __init__(self, app, display, files, parallel=1):
+    exit_signal = QtCore.pyqtSignal()
+
+    def __init__(self, display, files, parallel=1):
         super().__init__()
         LogObject().print("Display: ", display)
-        self.app = app
         self.files = files
         self.display = display
 
@@ -83,18 +84,18 @@ class BatchTrack(QtCore.QObject):
 
     def processFinished(self, proc_info):
         """
-        Reduces n_processes by one and if none are remaining exits the app.
+        Reduces n_processes by one and if none are remaining, emits the exit_signal
         """
 
         LogObject().print("File {} finished.".format(proc_info.file))
         self.n_processes -= 1
         if self.n_processes <= 0:
-            # Let main thread (running communicate) know the app is about to quit,
-            # sleep for 2 seconds and exit.
+            # Let main thread (running communicate) know the process is about to quit,
+            # sleep for 2 seconds and emit signal.
             self.batch_running = False
             self.exit_time = time.time()
             time.sleep(2)
-            self.app.exit()
+            self.exit_signal.emit()
 
     def communicate(self):
         """
@@ -131,7 +132,8 @@ if __name__ == "__main__":
 
     LogObject().print(files)
 
-    batch_track = BatchTrack(app, args.display, files, args.parallel)
+    batch_track = BatchTrack(args.display, files, args.parallel)
+    batch_track.exit_signal.connect(app.exit)
 
     # Delay beginTrack
     timer = QtCore.QTimer()

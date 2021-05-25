@@ -161,7 +161,7 @@ class UIManager():
     def runBatch(self):
         dparams = self.detector.parameters.copy()
         tparams = self.tracker.parameters.copy()
-        dialog = BatchDialog(dparams, tparams)
+        dialog = BatchDialog(self.playback, dparams, tparams)
         dialog.exec_()
 
 

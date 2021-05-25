@@ -19,6 +19,7 @@ from playback_manager import PlaybackManager
 from sonar_view3 import Ui_MainWindow
 from output_widget import OutputViewer
 from log_object import LogObject
+from batch_dialog import BatchDialog
 
 class UIManager():
     def __init__(self, main_window, playback_manager, detector, tracker, fish_manager):
@@ -94,6 +95,9 @@ class UIManager():
         self.ui.action_Open.setShortcut('Ctrl+O')
         self.ui.action_Open.triggered.connect(self.openFile)
 
+        self.ui.action_Batch.setShortcut('Ctrl+B')
+        self.ui.action_Batch.triggered.connect(self.runBatch)
+
         if getTestFilePath() is not None:
             self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
             self.ui.action_OpenTest.setObjectName("action_OpenTest")
@@ -153,6 +157,13 @@ class UIManager():
         path = self.getSavePath()
         if path != "" :
             self.fish_manager.saveToFile(path)
+
+    def runBatch(self):
+        dparams = self.detector.parameters.copy()
+        tparams = self.tracker.parameters.copy()
+        dialog = BatchDialog(dparams, tparams)
+        dialog.exec_()
+
 
 def launch_ui():
     app = QtWidgets.QApplication(sys.argv)

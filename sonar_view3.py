@@ -75,6 +75,13 @@ class Ui_MainWindow(object):
         self.menu_File.addAction(self.action_Open)
         self.menubar.addAction(self.menu_File.menuAction())
 
+        self.menu_Run = QtWidgets.QMenu(self.menubar)
+        self.menu_Run.setObjectName("menu_Run")
+        self.action_Batch = QtWidgets.QAction(MainWindow)
+        self.action_Batch.setObjectName("action_Batch")
+        self.menu_Run.addAction(self.action_Batch)
+        self.menubar.addAction(self.menu_Run.menuAction())
+
         self.retranslateUi(MainWindow)
         self.info_widget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -84,5 +91,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.info_widget.setTabText(self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
+        self.menu_Run.setTitle(_translate("MainWindow", "&Run"))
         self.action_Open.setText(_translate("MainWindow", "&Open"))
+        self.action_Batch.setText(_translate("MainWindow", "&Batch"))
 

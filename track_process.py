@@ -20,17 +20,20 @@ def getDefaultParser(getArgs=False):
     else:
         return parser
 
-def getFiles(args):
+def getFiles(args = None):
     files = []
-    if args.file:
+    if args is not None and args.file:
          files = [f.name for f in args.file]
-    elif args.test:
+    elif args is not None and args.test:
         files = [fh.getTestFilePath()]
     else:
         dir = fh.getLatestDirectory()
         filePathTuple = QtWidgets.QFileDialog.getOpenFileNames(None, "Open File", dir, "Sonar Files (*.aris *.ddf)")
         files = [f for f in filePathTuple[0]]
-        fh.setLatestDirectory(os.path.dirname(files[0]))
+        try:
+            fh.setLatestDirectory(os.path.dirname(files[0]))
+        except IndexError:
+            pass
 
     return files
 
@@ -150,6 +153,7 @@ def trackProcess(display, file, connection=None, testFile=False):
     sys.exit(app.exec_())
 
 
+#TODO: Fix test code
 if __name__ == "__main__":
     args = getDefaultParser(getArgs=True)
     file = getFiles(args)

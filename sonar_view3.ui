@@ -103,12 +103,24 @@ border-radius: 4px;
     </property>
     <addaction name="action_Open"/>
    </widget>
+   <widget class="QMenu" name="menuRun">
+    <property name="title">
+     <string>Run</string>
+    </property>
+    <addaction name="actionBatch"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menuRun"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Open">
    <property name="text">
     <string>&amp;Open</string>
+   </property>
+  </action>
+  <action name="actionBatch">
+   <property name="text">
+    <string>Batch</string>
    </property>
   </action>
  </widget>

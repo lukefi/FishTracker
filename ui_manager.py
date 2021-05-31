@@ -3,7 +3,7 @@ import numpy
 from datetime import datetime
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-from file_handler import getTestFilePath
+import file_handler as fh
 from main_window import MainWindow
 from sonar_widget import SonarViewer
 from echogram_widget import EchogramViewer
@@ -98,7 +98,7 @@ class UIManager():
         self.ui.action_Batch.setShortcut('Ctrl+B')
         self.ui.action_Batch.triggered.connect(self.runBatch)
 
-        if getTestFilePath() is not None:
+        if fh.getTestFilePath() is not None:
             self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
             self.ui.action_OpenTest.setObjectName("action_OpenTest")
             self.ui.menu_File.addAction(self.ui.action_OpenTest)
@@ -126,8 +126,9 @@ class UIManager():
         self.ui.action_close_file.setText(QtCore.QCoreApplication.translate("MainWindow", "&Close file"))
 
     def getSavePath(self):
-        homeDirectory = str(os.path.expanduser("~"))
+        homeDirectory = fh.getLatestSaveDirectory()
         filePathTuple = QtWidgets.QFileDialog.getSaveFileName(self.main_window, "Open File", homeDirectory)
+        fh.setLatestSaveDirectory(filePathTuple[0])
         return filePathTuple[0]
 
     def openFile(self):

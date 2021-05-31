@@ -4,24 +4,38 @@ from playback_manager import PlaybackManager
 import track_process as tp
 import file_handler as fh
 from batch_track import BatchTrack
+from log_object import LogObject
 
 class BatchDialog(QtWidgets.QDialog):
+    """
+    UI (QDialog window) for configuring and launching BatchTrack processes.
+    """
     def __init__(self, playback_manager, params_detector=None, params_tracker=None):
         super().__init__()
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
         self.playback_manager = playback_manager
 
         self.files = set()
         self.n_parallel = fh.getParallelProcesses()
+        self.batch_track = None
 
         self.detector_params = params_detector
         self.tracker_params = params_tracker
 
+        self.initUI()
+
+        self.setRemoveBtnActive(None, None)
+        self.setListDependentButtons()
+
+    def initUI(self):
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
         # Number of parallel processes
         self.parallel_layout = QtWidgets.QHBoxLayout()
 
+        parallel_tooltip = "Defines the number of files that are processed simultaneosly / in parallel."
         self.label_p = QtWidgets.QLabel("Parallel:")
+        self.label_p.setToolTip(parallel_tooltip)
         self.parallel_layout.addWidget(self.label_p)
 
         intValidator = EmptyOrIntValidator(1, 32, self)
@@ -30,6 +44,7 @@ class BatchDialog(QtWidgets.QDialog):
         self.line_edit_p.setAlignment(QtCore.Qt.AlignRight)
         self.line_edit_p.editingFinished.connect(self.parallelEditFinished)
         self.line_edit_p.setText(str(self.n_parallel))
+        self.line_edit_p.setToolTip(parallel_tooltip)
 
         self.parallel_layout.addWidget(self.line_edit_p)
         self.main_layout.addLayout(self.parallel_layout)
@@ -42,6 +57,11 @@ class BatchDialog(QtWidgets.QDialog):
         self.select_files_btn.clicked.connect(self.getFiles)
         self.list_btn_layout.addWidget(self.select_files_btn)
 
+        self.remove_file_btn = QtWidgets.QPushButton(self)
+        self.remove_file_btn.setText("Remove file")
+        self.remove_file_btn.clicked.connect(self.removeFile)
+        self.list_btn_layout.addWidget(self.remove_file_btn)
+
         self.clear_files_btn = QtWidgets.QPushButton(self)
         self.clear_files_btn.setText("Clear files")
         self.clear_files_btn.clicked.connect(self.clearFiles)
@@ -52,15 +72,22 @@ class BatchDialog(QtWidgets.QDialog):
         # File list
         self.file_list = QtWidgets.QListWidget(self)
         self.main_layout.addWidget(self.file_list)
+        self.file_list.currentItemChanged.connect(self.setRemoveBtnActive)
+
+        # Status label
+        self.status_label = QtWidgets.QLabel()
+        self.setStatusLabel()
+        self.main_layout.addWidget(self.status_label)
 
         # Start button
         self.start_btn = QtWidgets.QPushButton(self)
         self.start_btn.setText("Start")
-        self.start_btn.clicked.connect(self.startBatch)
+        self.start_btn.clicked.connect(self.toggleBatch)
         self.main_layout.addWidget(self.start_btn)
 
         self.setLayout(self.main_layout)
         self.setWindowTitle("Run batch")
+
 
     def parallelEditFinished(self):
         try:
@@ -74,19 +101,98 @@ class BatchDialog(QtWidgets.QDialog):
         for file in tp.getFiles():
             self.files.add(file)
 
-        self.file_list.clear()
+        self.updateList()
 
-        for file in self.files:
-            self.file_list.addItem(file)
+    def removeFile(self):
+        for file in self.file_list.selectedItems():
+            if file.text() in self.files:
+                self.files.remove(file.text())
+        
+        self.updateList()
+
+    def setRemoveBtnActive(self, current, previous):
+        is_selected = current is not None
+        self.remove_file_btn.setEnabled(is_selected)
+
+    def setListDependentButtons(self):
+        list_not_empty = len(self.files) > 0
+        self.clear_files_btn.setEnabled(list_not_empty)
+        self.start_btn.setEnabled(list_not_empty)
 
     def clearFiles(self):
         self.files.clear()
+        self.updateList()
+
+    def updateList(self):
         self.file_list.clear()
+        for file in self.files:
+            self.file_list.addItem(file)
+        self.setListDependentButtons()
+
+    def toggleBatch(self):
+        """
+        Starts a new batch process or cancels the existing one.
+        """
+        if self.batch_track is None:
+            self.startBatch()
+        else:
+            self.terminateBatch()
 
     def startBatch(self):
+        """
+        Starts a new batch process.
+        """
         fh.setParallelProcesses(self.n_parallel)
-        batch_track = BatchTrack(False, self.files, self.n_parallel)
-        self.playback_manager.runInThread(batch_track.beginTrack)
+        self.batch_track = BatchTrack(False, self.files, self.n_parallel)
+        self.batch_track.active_processes_changed_signal.connect(self.setStatusLabel)
+        self.batch_track.exit_signal.connect(self.onBatchExit)
+        self.playback_manager.runInThread(self.batch_track.beginTrack)
+        self.start_btn.setText("Cancel")
+        self.setStatusLabel()
+
+    def terminateBatch(self):
+        """
+        Terminates existing batch process.
+        """
+        self.batch_track.terminate()
+        self.batch_track = None
+        self.start_btn.setText("Start")
+        self.start_btn.setEnabled(False)
+        self.setStatusLabel()
+
+    def onBatchExit(self, finished):
+        """
+        Called when the system is ready to start a new batch.
+        """
+        self.start_btn.setText("Start")
+        self.start_btn.setEnabled(True)
+        self.batch_track = None
+        self.setStatusLabel()
+
+    def setStatusLabel(self):
+        """
+        Sets the status label based on the current state of the system.
+        """
+        if self.batch_track is None:
+            self.status_label.setText("Status: Inactive")
+        else:
+            process_ids = [id + 1 for id in self.batch_track.active_processes]
+            if len(process_ids) > 1:
+                text = "Status: Processing files {} / {}".format(process_ids, self.batch_track.total_processes)
+            elif len(process_ids) == 1:
+                text = "Status: Processing file {} / {}".format(process_ids[0], self.batch_track.total_processes)
+            else:
+                text = "Status: No active files to process"
+
+            self.status_label.setText(text)
+
+    def closeEvent(self, e):
+        """
+        Terminates batch track (if active) when the dialog window is closed.
+        """
+        if self.batch_track is not None:
+            self.terminateBatch()
+
 
 class EmptyOrIntValidator(QtGui.QIntValidator):
     def __init__(self, *args, **kwargs):

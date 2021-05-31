@@ -322,6 +322,28 @@ def setLatestDirectory(path):
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 
+def getLatestSaveDirectory():
+    try:
+        conf = loadJSON(CONF_PATH)
+        if os.path.exists(conf["latest_save_directory"]):
+            return conf["latest_save_directory"]
+        else:
+            return str(os.path.expanduser("~"))
+    except:
+        print("Reading save directory path failed:", sys.exc_info()[1])
+        return str(os.path.expanduser("~"))
+
+def setLatestSaveDirectory(path):
+    if path is None or path == "":
+        return
+    try:
+        conf = loadJSON(CONF_PATH)
+        conf["latest_save_directory"] = path
+        with open(CONF_PATH, 'w') as f:
+            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+    except:
+        print("Writing conf file failed:", sys.exc_info()[1])
+
 def getSonarHeight():
     try:
         conf = loadJSON(CONF_PATH)

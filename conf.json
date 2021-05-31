@@ -1,6 +1,7 @@
 {
   "latest_directory": "D:/Projects/VTT/Vetsjoki",
-  "parallel_processes": 2,
+  "latest_save_directory": "D:/Projects/VTT/Vetsjoki/asd.asd",
+  "parallel_processes": 1,
   "sonar_height": 1000,
   "test_file_path": "D:/Projects/VTT/FishTracking/Teno1_2019-07-02_153000.aris"
 }

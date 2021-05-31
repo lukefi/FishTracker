@@ -34,11 +34,14 @@ class LogObject(metaclass=Singleton):
         self.log_signal.signal.disconnect(receiver)
 
     def print(self, *args,**kwargs):
-        with io.StringIO() as output:
-            kwargs['end'] = ""
-            kwargs['file'] = output
-            print(*args, **kwargs)
-            self.log_signal.signal.emit(output.getvalue())
+        try:
+            with io.StringIO() as output:
+                kwargs['end'] = ""
+                kwargs['file'] = output
+                print(*args, **kwargs)
+                self.log_signal.signal.emit(output.getvalue())
+        except AttributeError as e:
+            print("Potential misuse of LogObject. When calling print, remember to use LogObject() with parenthesis.", e)
 
     def disconnectDefault(self):
         self.disconnect(print)

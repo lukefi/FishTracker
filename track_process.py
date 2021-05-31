@@ -43,9 +43,10 @@ def writeToFile(value, mode='a'):
 
 class TrackProcess(QtCore.QObject):
     """
-    TrackProcess launches individual PlaybackManager, Detector and Tracker.
-    These are used for the tracking process of the file provided in the method track.
-    Each file should be processed with their own TrackProcess instances.
+    TrackProcess launches individual PlaybackManager, Detector and Tracker,
+    separate from the ones associated with the UI.
+    These are used for the tracking process of the file provided in the track method.
+    Each file are intended to be processed with their own TrackProcess instances.
     """
 
     exit_signal = QtCore.pyqtSignal()
@@ -58,6 +59,7 @@ class TrackProcess(QtCore.QObject):
         self.file = file
         self.connection = connection
         self.testFile = testFile
+        self.alive = True
 
         if display:
             self.main_window = QtWidgets.QMainWindow()
@@ -70,15 +72,7 @@ class TrackProcess(QtCore.QObject):
         self.tracker = Tracker(self.detector)
         self.playback_manager.fps = 100
 
-        # Redirect std out
-        #self.queue = Queue()
-        #sys.stdout = WriteStream(self.queue)
-        #self.thread = QtCore.QThread()
-        #self.receiver = StreamReceiver(self.queue)
-        #self.receiver.signal.connect(lambda v: writeToFile(v))
-        #self.receiver.moveToThread(self.thread)
-        #self.thread.started.connect(self.receiver.run)
-        #self.thread.start()
+        self.playback_manager.runInThread(self.listenConnection)
 
         log = LogObject()
         log.disconnectDefault()
@@ -129,7 +123,7 @@ class TrackProcess(QtCore.QObject):
         self.detector.mog_parameters.nof_bg_frames = 500
         self.detector._show_detections = True
         self.playback_manager.mapping_done.connect(self.startDetector)
-        self.tracker.all_computed_signal.connect(self.quit)
+        self.tracker.all_computed_signal.connect(self.onAllComputed)
 
         if self.display:
             self.figure = TestFigure(self.playback_manager.togglePlay)
@@ -142,7 +136,22 @@ class TrackProcess(QtCore.QObject):
         if self.display:
             self.main_window.show()
 
+    def listenConnection(self):
+        while self.alive:
+            if self.connection.poll():
+                id, msg = self.connection.recv()
+                if id == -1:
+                    self.connection.send((-1, "Terminating"))
+                    self.quit()
+            else:
+                time.sleep(0.5)
+
+    def onAllComputed(self):
+        # Save to file here
+        self.quit()
+
     def quit(self):
+        self.alive = False
         self.app.quit()
 
 

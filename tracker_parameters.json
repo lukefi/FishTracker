@@ -1,6 +1,5 @@
 {
    "max_age": 10,
    "min_hits": 5,
-   "max_distance": 20,
-   "iou_threshold": 0.1
+   "search_radius": 10
 }

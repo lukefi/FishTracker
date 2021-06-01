@@ -125,12 +125,6 @@ class UIManager():
         self.ui.action_close_file.triggered.connect(self.closeFile)
         self.ui.action_close_file.setText(QtCore.QCoreApplication.translate("MainWindow", "&Close file"))
 
-    def getSavePath(self):
-        homeDirectory = fh.getLatestSaveDirectory()
-        filePathTuple = QtWidgets.QFileDialog.getSaveFileName(self.main_window, "Open File", homeDirectory)
-        fh.setLatestSaveDirectory(filePathTuple[0])
-        return filePathTuple[0]
-
     def openFile(self):
         try:
             self.playback.openFile()
@@ -150,12 +144,12 @@ class UIManager():
         self.playback.closeFile()
 
     def saveDetections(self):
-        path = self.getSavePath()
+        path = self.playback.selectSaveFile()
         if path != "" :
             self.detector.saveDetectionsToFile(path)
 
     def saveTracks(self):
-        path = self.getSavePath()
+        path = self.playback.selectSaveFile()
         if path != "" :
             self.fish_manager.saveToFile(path)
 

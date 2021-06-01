@@ -1,8 +1,10 @@
-﻿import sys
-from PyQt5 import QtGui, QtCore, QtWidgets
-from playback_manager import PlaybackManager
+﻿import sys, os
 import track_process as tp
 import file_handler as fh
+import iconsLauncher as uiIcons
+
+from PyQt5 import QtGui, QtCore, QtWidgets
+from playback_manager import PlaybackManager
 from batch_track import BatchTrack
 from log_object import LogObject
 
@@ -17,6 +19,7 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.files = set()
         self.n_parallel = fh.getParallelProcesses()
+        self.save_path = fh.getLatestSaveDirectory()
         self.batch_track = None
 
         self.detector_params = params_detector
@@ -48,6 +51,28 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.parallel_layout.addWidget(self.line_edit_p)
         self.main_layout.addLayout(self.parallel_layout)
+
+        # Save path
+        self.path_layout = QtWidgets.QHBoxLayout()
+
+        path_tooltip = "Set the folder where the results are saved."
+        self.label_path = QtWidgets.QLabel("Save path:")
+        self.label_path.setToolTip(path_tooltip)
+        self.path_layout.addWidget(self.label_path)
+
+        self.line_edit_path = QtWidgets.QLineEdit(self)
+        #self.line_edit_path.setAlignment(QtCore.Qt.AlignRight)
+        self.line_edit_path.editingFinished.connect(self.savePathEditFinished)
+        self.line_edit_path.setText(self.save_path)
+        self.line_edit_path.setToolTip(path_tooltip)
+        self.path_layout.addWidget(self.line_edit_path)
+
+        self.btn_path = QtWidgets.QToolButton()
+        self.btn_path.setIcon(QtGui.QIcon(uiIcons.FGetIcon("three_dots")))
+        self.btn_path.clicked.connect(self.selectSavePath)
+        self.path_layout.addWidget(self.btn_path)
+
+        self.main_layout.addLayout(self.path_layout)
 
         # Modify files buttons
         self.list_btn_layout = QtWidgets.QHBoxLayout()
@@ -95,6 +120,21 @@ class BatchDialog(QtWidgets.QDialog):
             self.n_parallel = int_value
         except ValueError:
             self.line_edit_p.setText(str(self.n_parallel))
+
+    def savePathEditFinished(self):
+        if os.path.exists(self.line_edit_path.text()):
+            self.save_path = self.line_edit_path.text()
+        else:
+            self.line_edit_path.setText(self.save_path)
+
+    def selectSavePath(self):
+        open_path = self.line_edit_path.text()
+        open_path = open_path if os.path.exists(open_path) else None
+        path = self.playback_manager.selectSaveDirectory(open_path)
+        if path != "" :
+            self.save_path = path
+            self.line_edit_path.setText(path)
+
 
 
     def getFiles(self):

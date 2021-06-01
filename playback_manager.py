@@ -56,11 +56,32 @@ class PlaybackManager(QObject):
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def openFile(self):
-        dir = fh.getLatestDirectory()
-        filePathTuple = QFileDialog.getOpenFileName(self.main_window, "Open File", dir, "Sonar Files (*.aris *.ddf)")
-        fh.setLatestDirectory(os.path.dirname(filePathTuple[0]))
-        self.loadFile(filePathTuple[0])
+    def openFile(self, open_path=None):
+        """
+        Select .aris file using QFileDialog
+        """
+        open_path = open_path if open_path is not None else fh.getLatestDirectory()
+        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path, "Sonar Files (*.aris *.ddf)")
+        fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
+        self.loadFile(file_path_tuple[0])
+
+    def selectSaveDirectory(self, open_path=None):
+        """
+        Select save directory using QFileDialog
+        """
+        open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
+        path = QFileDialog.getExistingDirectory(self.main_window, "Open File", open_path)
+        fh.setLatestSaveDirectory(path)
+        return path
+
+    def selectSaveFile(self, open_path=None):
+        """
+        Select save file using QFileDialog
+        """
+        open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
+        file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Open File", open_path)
+        fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
+        return file_path_tuple[0]
 
     def openTestFile(self):
         path = fh.getTestFilePath()

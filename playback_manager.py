@@ -34,14 +34,6 @@ class PlaybackManager(QObject):
     def __init__(self, app, main_window):
         super().__init__()
 
-        self.mapping_done.connect(lambda: LogObject().print("A"))
-        self.polars_loaded.connect(lambda: LogObject().print("B"))
-        self.frame_available_early.connect(lambda v: LogObject().print("C"))
-        self.frame_available.connect(lambda v: LogObject().print("D"))
-        self.file_opened.connect(lambda v: LogObject().print("E"))
-        self.playback_ended.connect(lambda: LogObject().print("F"))
-        self.file_closed.connect(lambda: LogObject().print("G"))
-
         self.main_window = main_window
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(16)
@@ -92,7 +84,6 @@ class PlaybackManager(QObject):
             self.openFile()
 
     def loadFile(self, path, overrideLength=-1):
-        LogObject().print("LoadFile:", QThread.currentThreadId())
         self.path = path
         self.setTitle(path)
         sonar = fh.FOpenSonarFile(path)
@@ -419,7 +410,6 @@ class PlaybackThread(QRunnable):
         ten_perc = 0.1 * count
         print_limit = 0
         i = 0
-        LogObject().print("Polar:", QThread.currentThreadId())
         while i < count and self.alive:
             if self.pause_polar_loading:
                 time.sleep(0.1)
@@ -441,7 +431,6 @@ class PlaybackThread(QRunnable):
             self.signals.polars_loaded_signal.emit()
 
     def createMapping(self):
-        LogObject().print("Mapping:", QThread.currentThreadId())
         radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
         height = fh.getSonarHeight()
         beam_angle = 2 * self.sonar.firstBeamAngle/180*np.pi

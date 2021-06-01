@@ -7,6 +7,7 @@ import seaborn as sns
 from bisect import insort
 from enum import IntEnum
 from tracker import Tracker
+from log_object import LogObject
 
 fish_headers = ["ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
 fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
@@ -114,7 +115,7 @@ class FishManager(QtCore.QAbstractTableModel):
             col = index.column()
 
             if row >= len(self.fish_list):
-                print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
+                LogObject().print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
                 return QtCore.QVariant()
 
             if col == 0:
@@ -190,7 +191,7 @@ class FishManager(QtCore.QAbstractTableModel):
                     del_f = self.all_fish.pop(fish_id)
                     del del_f
                 except KeyError:
-                    print("KeyError occured when removing entry with id:", fish_id)
+                    LogObject().print("KeyError occured when removing entry with id:", fish_id)
 
             if update:
                 self.trimFishList()
@@ -376,21 +377,21 @@ class FishManager(QtCore.QAbstractTableModel):
         Tries to save all fish information (from all_fish dictionary) to a file.
         """
         if(self.playback_manager.playback_thread is None):
-            print("No file open, cannot save.")
+            LogObject().print("No file open, cannot save.")
             return
 
         try:
             with open(path, "w") as file:
                 file.write("id;frame;length;distance;angle;direction;corner1 x;corner1 y;corner2 x;corner2 y;corner3 x;corner3 y;corner4 x;corner4 y; detection\n")
 
-                lines = getSaveLines()
+                lines = self.getSaveLines()
                 lines.sort(key = lambda l: (l[0].id, l[1]))
                 for _, _, line in lines:
                     file.write(line)
 
-                print("Tracks saved to path:", path)
+                LogObject().print("Tracks saved to path:", path)
         except PermissionError as e:
-            print("Cannot open file {}. Permission denied.".format(path))
+            LogObject().print("Cannot open file {}. Permission denied.".format(path))
 
     def getSaveLines(self):
         """
@@ -516,7 +517,7 @@ class FishEntry():
             if frame not in self.tracks:
                 self.tracks[frame] = track
             else:
-                print("TODO: Overlapping tracks.")
+                LogObject().print("TODO: Overlapping tracks.")
 
     def split(self, frame, new_id):
         f = FishEntry(new_id, frame, self.frame_out)

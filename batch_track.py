@@ -4,6 +4,7 @@ import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from queue import Queue
 from enum import Enum
+from datetime import datetime
 
 from playback_manager import PlaybackManager, TestFigure, Worker
 from detector import Detector
@@ -36,11 +37,19 @@ class BatchTrack(QtCore.QObject):
     # Signaled when all processes are finished or terminated.
     exit_signal = QtCore.pyqtSignal(bool)
 
-    def __init__(self, display, files, parallel=1):
+    def __init__(self, display, files, save_directory, parallel=1, create_directory=True):
         super().__init__()
         LogObject().print("Display: ", display)
         self.files = files
         self.display = display
+
+        if create_directory:
+            date_time_directory = "batch_{}".format(datetime.now().strftime("%Y-%m-%d-%H%M%S"))
+            self.save_directory = os.path.join(save_directory, date_time_directory)
+            if not os.path.exists(self.save_directory):
+                os.mkdir(self.save_directory)
+        else:
+            self.save_directory = save_directory
 
         self.thread_pool = QtCore.QThreadPool()
         self.thread_pool.setMaxThreadCount(parallel + 1)
@@ -89,7 +98,7 @@ class BatchTrack(QtCore.QObject):
         self.active_processes.append(proc_info.id)
         self.active_processes_changed_signal.emit()
 
-        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, child_conn, test))
+        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory, child_conn, test))
         proc_info.process = proc
         proc.start()
 
@@ -171,6 +180,7 @@ class BatchTrack(QtCore.QObject):
 
 if __name__ == "__main__":
     import argparse
+    import file_handler as fh
 
     app = QtWidgets.QApplication(sys.argv)
 
@@ -178,10 +188,11 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--parallel', type=int, default=1, help="number of files processed simultaneously in parallel")
     args = parser.parse_args()
     files = tp.getFiles(args)
+    save_directory = fh.getLatestSaveDirectory()
 
     LogObject().print(files)
 
-    batch_track = BatchTrack(args.display, files, args.parallel)
+    batch_track = BatchTrack(args.display, files, save_directory, args.parallel)
     batch_track.exit_signal.connect(lambda b: app.exit())
 
     # Delay beginTrack

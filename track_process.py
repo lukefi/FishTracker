@@ -2,10 +2,12 @@
 import argparse, time
 from queue import Queue
 from PyQt5 import QtCore, QtGui, QtWidgets
+from pathlib import Path
 
 from playback_manager import PlaybackManager, TestFigure
 from detector import Detector
 from tracker import Tracker
+from fish_manager import FishManager
 from output_widget import WriteStream, StreamReceiver
 import file_handler as fh
 from log_object import LogObject
@@ -51,15 +53,19 @@ class TrackProcess(QtCore.QObject):
 
     exit_signal = QtCore.pyqtSignal()
 
-    def __init__(self, app, display, file, connection=None, testFile=False):
+    def __init__(self, app, display, file, save_directory, connection=None, testFile=False):
         super().__init__()
         self.app = app
         self.display = display
         self.figure = None
         self.file = file
+        self.save_directory = os.path.abspath(save_directory)
         self.connection = connection
         self.testFile = testFile
         self.alive = True
+
+        self.save_detections = True
+        self.save_tracks = True
 
         if display:
             self.main_window = QtWidgets.QMainWindow()
@@ -70,6 +76,7 @@ class TrackProcess(QtCore.QObject):
 
         self.detector = Detector(self.playback_manager)
         self.tracker = Tracker(self.detector)
+        self.fish_manager = FishManager(self.playback_manager, self.tracker)
         self.playback_manager.fps = 100
 
         self.playback_manager.runInThread(self.listenConnection)
@@ -85,10 +92,16 @@ class TrackProcess(QtCore.QObject):
             self.connection.send(value)
 
     def forwardImage(self, tuple):
+        """
+        Default function for forwarding the image, does not visualize the result.
+        """
         ind, frame = tuple
         detections = self.detector.getDetection(ind)
 
     def forwardImageDisplay(self, tuple):
+        """
+        If the progress is visualized, this is used to forward the image.
+        """
         ind, frame = tuple
         detections = self.detector.getDetection(ind)
 
@@ -96,7 +109,7 @@ class TrackProcess(QtCore.QObject):
         image = self.tracker.visualize(image, ind)
         self.figure.displayImage((ind, image))
 
-    def startDetector(self):
+    def startTrackingProcess(self):
         """
         Initiates detecting and tracking. Called from an event (mapping_done)
         when the playback_manager is ready to feed frames.
@@ -108,6 +121,11 @@ class TrackProcess(QtCore.QObject):
             self.playback_manager.play()
 
     def track(self):
+        """
+        Handles the tracking process. Opens file and connects detection and tracking
+        calls to the appropriate signals, so that they can be started when the file
+        has been loaded.
+        """
         if self.testFile:
             self.playback_manager.openTestFile()
         else:
@@ -122,7 +140,7 @@ class TrackProcess(QtCore.QObject):
 
         self.detector.mog_parameters.nof_bg_frames = 500
         self.detector._show_detections = True
-        self.playback_manager.mapping_done.connect(self.startDetector)
+        self.playback_manager.mapping_done.connect(self.startTrackingProcess)
         self.tracker.all_computed_signal.connect(self.onAllComputed)
 
         if self.display:
@@ -137,6 +155,10 @@ class TrackProcess(QtCore.QObject):
             self.main_window.show()
 
     def listenConnection(self):
+        """
+        Listens the connection for messages. Currently, only terminate message (-1) is supported,
+        but others should be easy to add when needed.
+        """
         while self.alive:
             if self.connection.poll():
                 id, msg = self.connection.recv()
@@ -146,8 +168,33 @@ class TrackProcess(QtCore.QObject):
             else:
                 time.sleep(0.5)
 
+    def getSaveFilePath(self, end_string):
+        """
+        Formats the save file path. Detections and tracks are separated based on end_string.
+        """
+        base_name = os.path.basename(self.file)
+        file_name = os.path.splitext(base_name)[0]
+        file_path = os.path.join(self.save_directory, "{}_{}".format(file_name, end_string))
+        return file_path
+
+    def saveResults(self):
+        """
+        Saves both detections and tracks to the directory provided earlier.
+        """
+        file_name = os.path.splitext(self.file)[0]
+        if self.save_detections:
+            det_path = self.getSaveFilePath("dets.txt")
+            self.detector.saveDetectionsToFile(det_path)
+
+        if self.save_tracks:
+            track_path = self.getSaveFilePath("tracks.txt")
+            self.fish_manager.saveToFile(track_path)
+
     def onAllComputed(self):
-        # Save to file here
+        """
+        Saves and quits the process.
+        """
+        self.saveResults()
         self.quit()
 
     def quit(self):
@@ -155,15 +202,16 @@ class TrackProcess(QtCore.QObject):
         self.app.quit()
 
 
-def trackProcess(display, file, connection=None, testFile=False):
+def trackProcess(display, file, save_directory, connection=None, testFile=False):
     app = QtWidgets.QApplication(sys.argv)
-    process = TrackProcess(app, display, file, connection, testFile)
+    process = TrackProcess(app, display, file, save_directory, connection, testFile)
     process.track()
     sys.exit(app.exec_())
 
 
 #TODO: Fix test code
 if __name__ == "__main__":
+    save_directory = fh.getLatestSaveDirectory()
     args = getDefaultParser(getArgs=True)
     file = getFiles(args)
-    trackProcess(args.display, file[0], testFile=args.test)
+    trackProcess(args.display, file[0], save_directory, testFile=args.test)

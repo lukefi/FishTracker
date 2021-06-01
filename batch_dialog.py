@@ -183,7 +183,7 @@ class BatchDialog(QtWidgets.QDialog):
         Starts a new batch process.
         """
         fh.setParallelProcesses(self.n_parallel)
-        self.batch_track = BatchTrack(False, self.files, self.n_parallel)
+        self.batch_track = BatchTrack(False, self.files, self.save_path, self.n_parallel, True)
         self.batch_track.active_processes_changed_signal.connect(self.setStatusLabel)
         self.batch_track.exit_signal.connect(self.onBatchExit)
         self.playback_manager.runInThread(self.batch_track.beginTrack)

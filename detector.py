@@ -99,6 +99,7 @@ class Detector:
 
 
 	def initMOG(self):
+		LogObject().print("Init mog")
 		if hasattr(self.image_provider, "pausePolarLoading"):
 			self.image_provider.pausePolarLoading(True)
 

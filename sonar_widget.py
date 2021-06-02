@@ -159,6 +159,9 @@ class SonarViewer(QtWidgets.QDialog):
             if self.fish_manager.show_fish:
                 image = self.fish_manager.visualize(image, ind)
         
+            if self.show_first_frame:
+                ffigure.resetViewToShape(image.shape)
+
             ffigure.setImage(image)
             ffigure.setUpdatesEnabled(True)
         else:
@@ -167,7 +170,6 @@ class SonarViewer(QtWidgets.QDialog):
         if self.show_first_frame:
             LogObject().print("First frame shown")
             self.MyFigureWidget.resetView()
-            self.MyFigureWidget.applyPixmap()
             self.show_first_frame = False
 
         if isinstance(self.main_window, MainWindow):

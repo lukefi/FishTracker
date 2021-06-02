@@ -8,7 +8,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
     Horizontal zoomig, vertical zooming and preserving aspect ratio can be enabled/disabled individually.
 
     BUG: If aspect ratio preserving is enabled and either of zooming options is disabled,
-         the image is shown only partially when zoomed in.
+         the image is shown only partially when zoomed in. This combination of options
+         is not currently used.
     """
     def __init__(self, maintain_aspect_ratio = False, horizontal = True, vertical = True):
         super().__init__()
@@ -84,15 +85,18 @@ class ZoomableQLabel(QtWidgets.QLabel):
         # Debug window syncronization
         self.mouse_move_event()
 
-    def resetView(self):
+    def setLimits(self, image):
         self.x_min_limit = 0
         self.y_min_limit = 0
-        if self.displayed_image is not None:
-            self.x_max_limit = self.image_width = self.displayed_image.shape[1]
-            self.y_max_limit = self.image_height = self.displayed_image.shape[0]
+        if image is not None:
+            self.x_max_limit = self.image_width = image.shape[1]
+            self.y_max_limit = self.image_height = image.shape[0]
         else:
             self.x_max_limit = 1
             self.y_max_limit = 1
+
+    def resetView(self):
+        self.setLimits(self.displayed_image)
         self.zoom_01 = 0
         self.applyPixmap()
 
@@ -113,8 +117,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.image_height = self.displayed_image.shape[0]
 
             qformat = QtGui.QImage.Format_Indexed8
-            if len(self.displayed_image.shape)==3:
-                if self.displayed_image.shape[2]==4:
+            if len(self.displayed_image.shape) == 3:
+                if self.displayed_image.shape[2] == 4:
                     qformat = QtGui.QImage.Format_RGBA8888
                 else:
                     qformat = QtGui.QImage.Format_RGB888

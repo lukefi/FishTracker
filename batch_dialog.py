@@ -74,6 +74,23 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.main_layout.addLayout(self.path_layout)
 
+        # Test file
+        if fh.getTestFilePath() is not None:
+            self.test_layout = QtWidgets.QHBoxLayout()
+
+            test_tooltip = "Use test file instead of selected files."
+            self.label_test = QtWidgets.QLabel("Test file:")
+            self.label_test.setToolTip(test_tooltip)
+            self.test_layout.addWidget(self.label_test)
+
+            self.check_test = QtWidgets.QCheckBox("")
+            self.check_test.stateChanged.connect(self.setListDependentButtons)
+            self.test_layout.addWidget(self.check_test)
+
+            self.main_layout.addLayout(self.test_layout)
+        else:
+            self.check_test = None
+
         # Modify files buttons
         self.list_btn_layout = QtWidgets.QHBoxLayout()
 
@@ -156,8 +173,10 @@ class BatchDialog(QtWidgets.QDialog):
 
     def setListDependentButtons(self):
         list_not_empty = len(self.files) > 0
+        test_btn = False if self.check_test is None else self.check_test.isChecked()
+
         self.clear_files_btn.setEnabled(list_not_empty)
-        self.start_btn.setEnabled(list_not_empty)
+        self.start_btn.setEnabled(list_not_empty or test_btn)
 
     def clearFiles(self):
         self.files.clear()
@@ -186,7 +205,13 @@ class BatchDialog(QtWidgets.QDialog):
         self.batch_track = BatchTrack(False, self.files, self.save_path, self.n_parallel, True)
         self.batch_track.active_processes_changed_signal.connect(self.setStatusLabel)
         self.batch_track.exit_signal.connect(self.onBatchExit)
-        self.playback_manager.runInThread(self.batch_track.beginTrack)
+
+        if self.check_test is not None:
+            f = lambda: self.batch_track.beginTrack(self.check_test.isChecked())
+            self.playback_manager.runInThread(f)
+        else:
+            self.playback_manager.runInThread(self.batch_track.beginTrack)
+
         self.start_btn.setText("Cancel")
         self.setStatusLabel()
 
@@ -204,6 +229,9 @@ class BatchDialog(QtWidgets.QDialog):
         """
         Called when the system is ready to start a new batch.
         """
+
+        LogObject().print("--- On batch exit ---")
+
         self.start_btn.setText("Start")
         self.start_btn.setEnabled(True)
         self.batch_track = None

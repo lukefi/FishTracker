@@ -72,7 +72,7 @@ class UIManager():
         self.output = OutputViewer()
         #self.output.redirectStdOut()
         #self.output.connectToLogObject()
-        self.output.connectToLogObject(self.formatLogString)
+        self.output.connectToLogObject(self.addTimeStamp)
         self.output.updateLogSignal.connect(self.main_window.updateStatusLog)
 
         # Tabs for the side panel.
@@ -88,7 +88,10 @@ class UIManager():
         self.ui.info_widget.addTab(self.output, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.output), _translate("MainWindow", "Log"))
 
-    def formatLogString(self, str):
+    def addTimeStamp(self, str):
+        """
+        Adds a time stamp to the provided string.
+        """
         return "{} [{}]\n".format(str, datetime.now().time())
 
     def setUpFunctions(self):

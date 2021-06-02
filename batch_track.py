@@ -9,6 +9,7 @@ from datetime import datetime
 from playback_manager import PlaybackManager, TestFigure, Worker
 from detector import Detector
 from tracker import Tracker
+import file_handler as fh
 import track_process as tp
 from output_widget import WriteStream
 from log_object import LogObject
@@ -73,17 +74,33 @@ class BatchTrack(QtCore.QObject):
         worker = Worker(self.communicate)
         self.thread_pool.start(worker)
 
-        for file in self.files:
+        if test:
+            # If using test file (defined in conf.json)
+
             parent_conn, child_conn = mp.Pipe()
+            file = fh.getTestFilePath()
             proc_info = ProcessInfo(id, file, parent_conn)
             self.processes.append(proc_info)
 
-            worker = Worker(self.track, proc_info, child_conn, test)
-            #worker.signals.result.connect(LogObject().print)
+            worker = Worker(self.track, proc_info, child_conn, True)
             self.thread_pool.start(worker)
             LogObject().print("Created Worker for file " + file)
-            id += 1
-            self.n_processes += 1
+            self.n_processes = 1
+            self.total_processes = 1
+
+        else:
+            # Normal use
+
+            for file in self.files:
+                parent_conn, child_conn = mp.Pipe()
+                proc_info = ProcessInfo(id, file, parent_conn)
+                self.processes.append(proc_info)
+
+                worker = Worker(self.track, proc_info, child_conn, False)
+                self.thread_pool.start(worker)
+                LogObject().print("Created Worker for file " + file)
+                id += 1
+                self.n_processes += 1
 
         LogObject().print("Total processes:", self.n_processes)
         #self.communicate()
@@ -117,18 +134,18 @@ class BatchTrack(QtCore.QObject):
         LogObject().print("File {} finished.".format(proc_info.file))
         self.n_processes -= 1
         if self.n_processes <= 0:
-            # Let main thread (running communicate) know the process is about to quit,
-            # sleep for 2 seconds and emit signal.
+            # Let main thread (running communicate) know the process is about to quit
+            # and emit exit signal.
 
             if self.state is not ProcessState.TERMINATING:
                 self.state = ProcessState.FINISHED
                 self.exit_time = time.time()
-                time.sleep(2)
                 self.exit_signal.emit(True)
 
     def terminate(self):
         """
-        Sets system state to TERMINATING, which leads to clean shutdown of the processes.
+        Clears the thread pool and sets system state to TERMINATING,
+        which leads to clean shutdown of the processes.
         """
         self.thread_pool.clear()
         LogObject().print("Terminating")

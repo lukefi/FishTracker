@@ -58,7 +58,8 @@ class OutputViewer(QWidget):
 
     def connectToLogObject(self, format=None):
         """
-        Connect text_edit field to LogObject signal.
+        Connect text_edit field to LogObject signal. A formatting function, which takes a string as input
+        and returns the modified string, can be provided for custom formatting, e.g. for adding a time stamp.
         """
         log = LogObject()
         if format:

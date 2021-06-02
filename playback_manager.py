@@ -79,7 +79,7 @@ class PlaybackManager(QObject):
         path = fh.getTestFilePath()
         if path is not None:
             # Override test file length
-            self.loadFile(path, 1000)
+            self.loadFile(path, 200)
         else:
             self.openFile()
 

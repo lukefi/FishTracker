@@ -126,8 +126,6 @@ class Detector:
 		ten_perc = 0.1 * nof_bg_frames
 		print_limit = 0
 
-		LogObject().print("InitMOG:", QtCore.QThread.currentThreadId())
-
 		for i in range(nof_bg_frames):
 			if i > print_limit:
 				LogObject().print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")

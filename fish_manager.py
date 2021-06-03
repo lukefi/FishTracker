@@ -445,6 +445,30 @@ class FishManager(QtCore.QAbstractTableModel):
         base = "{:.2f}" + delim + "{:.2f}"
         return delim.join(base.format(cx,cy) for cy, cx in corners[0:4])
 
+    def loadFromFile(self, path):
+        with open(path, 'r') as file:
+            self.clear()
+            header = file.readline()
+
+            for line in file:
+                split_line = line.split(';')
+                id = int(split_line[0])
+                frame = int(split_line[1])
+                length = float(split_line[2])
+                direction = SwimDirection[split_line[5]]
+                track = [float(split_line[7]), float(split_line[6]), float(split_line[11]), float(split_line[10]), id]
+
+                if id in self.all_fish:
+                    f = self.all_fish[id]
+                    f.addTrack(track, None, frame)
+                else:
+                    f = FishEntryFromTrack(track, None, frame)
+                    f.length = length
+                    f.direction = direction
+                    self.all_fish[id] = f
+
+            self.trimFishList()
+
 class SwimDirection(IntEnum):
     UP = 0
     DOWN = 1

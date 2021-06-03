@@ -121,6 +121,18 @@ class UIManager():
         self.ui.action_save_tracks.triggered.connect(self.saveTracks)
         self.ui.action_save_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save tracks"))
 
+        self.ui.action_load_detections = QtWidgets.QAction(self.main_window)
+        self.ui.action_load_detections.setObjectName("action_load_detections")
+        self.ui.menu_File.addAction(self.ui.action_load_detections)
+        self.ui.action_load_detections.triggered.connect(self.loadDetections)
+        self.ui.action_load_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Load detections"))
+
+        self.ui.action_load_tracks = QtWidgets.QAction(self.main_window)
+        self.ui.action_load_tracks.setObjectName("action_load_tracks")
+        self.ui.menu_File.addAction(self.ui.action_load_tracks)
+        self.ui.action_load_tracks.triggered.connect(self.loadTracks)
+        self.ui.action_load_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Load tracks"))
+
         self.ui.action_close_file = QtWidgets.QAction(self.main_window)
         self.ui.action_close_file.setObjectName("action_close_file")
         self.ui.menu_File.addAction(self.ui.action_close_file)
@@ -155,6 +167,16 @@ class UIManager():
         path = self.playback.selectSaveFile()
         if path != "" :
             self.fish_manager.saveToFile(path)
+
+    def loadDetections(self):
+        path = self.playback.selectLoadFile()
+        if path != "":
+            self.detector.loadDetectionsFromFile(path)
+
+    def loadTracks(self):
+        path = self.playback.selectLoadFile()
+        if path != "":
+            self.fish_manager.loadFromFile(path)
 
     def runBatch(self):
         dparams = self.detector.parameters.copy()

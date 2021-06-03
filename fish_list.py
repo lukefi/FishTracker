@@ -218,6 +218,7 @@ if __name__ == "__main__":
         fish_manager.testPopulate(500)
         #info_w = InfoWidget(playback_manager, fish_manager)
         fish_list = FishList(fish_manager, playback_manager)
+
         main_window.setCentralWidget(fish_list)
         main_window.show()
         sys.exit(app.exec_())
@@ -229,21 +230,36 @@ if __name__ == "__main__":
             tracker.trackAll(detector.detections)
 
         app = QtWidgets.QApplication(sys.argv)
-        main_window = QtWidgets.QMainWindow()
+        main_window = Window()
         playback_manager = PlaybackManager(app, main_window)
         detector = Detector(playback_manager)
         tracker = Tracker(detector)
-        fish_manager = FishManager(tracker)
+        fish_manager = FishManager(playback_manager, tracker)
         fish_list = FishList(fish_manager, playback_manager)
 
         playback_manager.openTestFile()
         detector.mog_parameters.nof_bg_frames = 500
         detector._show_detections = True
-        playback_manager.mapping_done.append(startDetector)
+        playback_manager.mapping_done.connect(startDetector)
 
         main_window.setCentralWidget(fish_list)
         main_window.show()
         sys.exit(app.exec_())
 
-    uiTest()
+    def loadTest():
+        app = QtWidgets.QApplication(sys.argv)
+        main_window = QtWidgets.QMainWindow()
+        playback_manager = PlaybackManager(app, main_window)
+        fish_manager = FishManager(None, None)
+
+        file = playback_manager.selectLoadFile()
+        fish_manager.loadFromFile(file)
+        fish_list = FishList(fish_manager, playback_manager)
+
+        main_window.setCentralWidget(fish_list)
+        main_window.show()
+        sys.exit(app.exec_())
+
+    #uiTest()
     #dataTest()
+    loadTest()

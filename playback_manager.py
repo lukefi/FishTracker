@@ -68,10 +68,19 @@ class PlaybackManager(QObject):
 
     def selectSaveFile(self, open_path=None):
         """
-        Select save file using QFileDialog
+        Select a file for saving detections or tracking results using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
         file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Open File", open_path)
+        fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
+        return file_path_tuple[0]
+
+    def selectLoadFile(self, open_path=None):
+        """
+        Select a detection or tracking result file to be loaded using QFileDialog
+        """
+        open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
+        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path)
         fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
 

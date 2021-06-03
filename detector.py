@@ -72,8 +72,11 @@ class Detector:
 		# [trigger] Terminate computing process.
 		self.stop_computing = False
 
+		# [flag] Calculate detections on event. Otherwise uses precalculated results.
+		self.compute_on_event = False
+
 		# [flag] Whether detection array can be cleared.
-		self.detections_clearable = True
+		#self.detections_clearable = True
 
 		## [flag] Whether all frames should be calculated.
 		#self.detections_dirty = True
@@ -106,6 +109,7 @@ class Detector:
 		self.mog_ready = False
 		self.initializing = True
 		self.stop_initializing = False
+		self.compute_on_event = True
 		self.state_changed_event()
 
 		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
@@ -173,20 +177,29 @@ class Detector:
 	def compute_from_event(self, tuple):
 		if tuple is None:
 			return
-		ind, frame = tuple
-		self.compute(ind, frame)
+
+		ind, img = tuple
+		if self.compute_on_event:
+			self.compute(ind, img)
+		else:
+			self.data_changed(ind)
 
 	def compute(self, ind, image, get_images=False):
 		images = self.computeBase(ind, image, get_images)
-
-		self.current_ind = ind
-		self.current_len = len(self.detections[ind])
-		self.data_changed_event(self.current_len)
-
+		self.data_changed(ind)
 		if get_images:
 			return images
 
+	def data_changed(self, ind):
+		dets = self.detections[ind]
+		self.current_ind = ind
+		self.current_len = 0 if dets is None else len(self.detections[ind])
+		self.data_changed_event(self.current_len)
+
 	def computeBase(self, ind, image, get_images=False):
+		LogObject().print("Compute")
+
+
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 		
@@ -198,8 +211,6 @@ class Detector:
 
 		# Get foreground mask, without updating the  model (learningRate = 0)
 		fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
-
-		msg = str(self.ts) + ' 9999999999 '
 
 		# self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		fg_mask_cpy = fg_mask_mog
@@ -231,8 +242,8 @@ class Detector:
 					if foo.shape[0] < 2:
 						continue
 			
-					d = Detection(label, foo, self.parameters.detection_size, polar_transform)
-					msg += " " + d.getMessage()
+					d = Detection(label)
+					d.init_from_data(foo, self.parameters.detection_size, polar_transform)
 					detections.append(d)
 
 				if get_images:
@@ -241,7 +252,7 @@ class Detector:
 						image_o_rgb = d.visualize(image_o_rgb, colors, self._show_detection_size)
 
 		self.detections[ind] = detections
-		self.detections_clearable = True
+		#self.detections_clearable = True
 
 		if get_images:
 			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
@@ -249,6 +260,7 @@ class Detector:
 	def computeAll(self):
 		self.computing = True
 		self.stop_computing = False
+		self.compute_on_event = False
 		self.state_changed_event()
 
 		if self.mogParametersDirty():
@@ -276,18 +288,22 @@ class Detector:
 
 		LogObject().print("Detecting: 100 %")
 		self.computing = False
-		self.detections_clearable = True
+		#self.detections_clearable = True
 		self.applied_parameters = self.parameters.copy()
 
-		self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+		self.updateVerticalDetections()
 
 		self.state_changed_event()
 		self.all_computed_event()
 
+	def updateVerticalDetections(self):
+		self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+
 	def abortComputing(self, mog_aborted):
 		self.stop_computing = False
 		self.computing = False
-		self.detections_clearable = True
+		self.compute_on_event = True
+		#self.detections_clearable = True
 		self.state_changed_event()
 		self.applied_parameters = None
 		if mog_aborted:
@@ -297,8 +313,9 @@ class Detector:
 		nof_frames = self.image_provider.getFrameCount()
 		self.detections = [None] * nof_frames
 		self.vertical_detections = []
-		self.detections_clearable = False
+		#self.detections_clearable = False
 		self.applied_parameters = None
+		self.compute_on_event = True
 		self.state_changed_event()
 		
 	def overlayDetections(self, image, detections=None):
@@ -421,6 +438,10 @@ class Detector:
 		return self.parametersDirty() and not self.initializing
 
 	def saveDetectionsToFile(self, path):
+		"""
+		Writes current detections to a file at path. Values are separated by ';'.
+		"""
+
 		# Default formatting
 		f1 = "{:.5f}"
 		lineBase1 = "{};" + "{};{};{};".format(f1,f1,f1)
@@ -436,6 +457,53 @@ class Detector:
 								file.write(d.cornersToString(";"))
 								file.write("\n")
 				LogObject().print("Detections saved to path:", path)
+
+		except PermissionError as e:
+			LogObject().print("Cannot open file {}. Permission denied.".format(path))
+
+	def loadDetectionsFromFile(self, path):
+		"""
+		Loads a file from path. Values are expected to be separated by ';'.
+		"""
+		try:
+			with open(path, 'r') as file:
+				self.clearDetections()
+				nof_frames = self.image_provider.getFrameCount()
+				ignored_dets = 0
+
+				header = file.readline()
+
+				for line in file:
+					split_line = line.split(';')
+					frame = int(split_line[0])
+
+					if frame >= nof_frames:
+						ignored_dets += 1
+						continue
+
+					length = float(split_line[1])
+					distance = float(split_line[2])
+					angle = float(split_line[3])
+
+					c1 = [float(split_line[5]), float(split_line[4])]
+					c2 = [float(split_line[7]), float(split_line[6])]
+					c3 = [float(split_line[9]), float(split_line[8])]
+					c4 = [float(split_line[11]), float(split_line[10])]
+					corners = np.array([c1, c2, c3, c4])
+
+					det = Detection(0)
+					det.init_from_file(corners, length, distance, angle)
+
+					if self.detections[frame] is None:
+						self.detections[frame] = [det]
+					else:
+						self.detections[frame].append(det)
+
+				self.updateVerticalDetections()
+				self.compute_on_event = False
+				if ignored_dets > 0:
+					LogObject().print("Encountered {} detections that were out of range {}.".format(ignored_dets, nof_frames))
+
 
 		except PermissionError as e:
 			LogObject().print("Cannot open file {}. Permission denied.".format(path))
@@ -511,9 +579,9 @@ class DetectorParameters:
 
 
 class Detection:
-	def __init__(self, label, data, detection_size, polar_transform):
+	def __init__(self, label):
 		self.label = label
-		self.data = data
+		self.data = None
 		self.diff = None
 		self.center = None
 		self.corners = None
@@ -521,7 +589,12 @@ class Detection:
 		self.length = 0
 		self.distance = 0
 		self.angle = 0
-		#self.metric_corners = None
+
+	def __repr__(self):
+		return "Detection \"{}\" d:{:.1f}, a:{:.1f}".format(self.label, self.distance, self.angle)
+
+	def init_from_data(self, data, detection_size, polar_transform):
+		self.data = data
 
 		ca = np.cov(data, y=None, rowvar=0, bias=1)
 		v, vect = np.linalg.eig(ca)
@@ -557,28 +630,31 @@ class Detection:
 				self.distance = float(self.distance)
 				self.angle = float(self.angle / np.pi * 180 + 90)
 				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
-					
+
+	def init_from_file(self, corners, length, distance, angle):
+		self.corners = np.array(corners)
+		self.center = np.average(self.corners, axis=0)
+		LogObject().print(self.center)
+		self.length = length
+		self.distance = distance
+		self.angle = angle				
 
 	def visualize(self, image, colors, show_text, show_detection=True):
-		if self.diff is None:
+		if self.corners is None:
 			return image
 
 		# Visualize results	
 		if show_text:
-			#if self.length > 0:
-			#	size_txt = 'Size (cm): ' + str(int(100*self.length))
-			#else:
-			#	size_txt = 'Size (pix): ' + str(int(self.diff[1]*2))
-
 			if self.length > 0:
 				size_txt = 'Size: ' + str(int(100*self.length))
 
 				image = cv2.putText(image, size_txt, (int(self.center[1])-20, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
 		if show_detection:
-			for i in range(self.data.shape[0]):
-				cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
-					(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
+			if self.data is not None:
+				for i in range(self.data.shape[0]):
+					cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
+						(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
 			for i in range(0,3):
 				cv2.line(image, (int(self.corners[i,1]),int(self.corners[i,0])), (int(self.corners[i+1,1]),int(self.corners[i+1,0])),  (255,255,255), 1)
 			cv2.line(image, (int(self.corners[3,1]),int(self.corners[3,0])), (int(self.corners[0,1]),int(self.corners[0,0])),  (255,255,255), 1)
@@ -681,10 +757,13 @@ def playbackTest():
 		detector.initMOG()
 		playback_manager.play()
 
+	#LogObject().disconnectDefault()
+	#LogObject().connect(LogObject().defaultPrint)
+
 	app = QtWidgets.QApplication(sys.argv)
 	main_window = QtWidgets.QMainWindow()
 	playback_manager = PlaybackManager(app, main_window)
-	playback_manager.fps = 1000
+	playback_manager.fps = 10
 	playback_manager.openTestFile()
 	playback_manager.frame_available.connect(forwardImage)
 	detector = Detector(playback_manager)

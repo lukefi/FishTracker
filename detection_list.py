@@ -1,6 +1,7 @@
 ﻿from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
 from detector import Detector
+from log_object import LogObject
 
 class DetectionDataModel(QtCore.QAbstractTableModel):
     def __init__(self, detector):
@@ -99,31 +100,57 @@ if __name__ == "__main__":
     from playback_manager import PlaybackManager
     from fish_manager import FishManager
 
-    app = QtWidgets.QApplication(sys.argv)
-    main_window = QtWidgets.QMainWindow()
-    playback_manager = PlaybackManager(app, main_window)
-    playback_manager.fps = 1
-    playback_manager.openTestFile()
-
-    detector = Detector(playback_manager)
-    detector.mog_parameters.nof_bg_frames = 100
-
-    def startDetector():
+    def startDetector(playback_manager, detector):
         detector.initMOG()
         detector.setShowDetections(True)
         playback_manager.play()
 
-    def handleFrame(tuple):
+    def handleFrame(detector, tuple):
         ind, frame = tuple
         detector.compute(ind, frame)
 
-    playback_manager.mapping_done.connect(startDetector)
-    playback_manager.frame_available.connect(handleFrame)
+    def defaultTest():
+        app = QtWidgets.QApplication(sys.argv)
+        main_window = QtWidgets.QMainWindow()
+        playback_manager = PlaybackManager(app, main_window)
+        playback_manager.fps = 1
+        playback_manager.openTestFile()
 
-    data_model = DetectionDataModel(detector)
-    detection_list = DetectionList(data_model)
-    main_window.setCentralWidget(detection_list)
-    main_window.show()
-    sys.exit(app.exec_())
+        detector = Detector(playback_manager)
+        detector.mog_parameters.nof_bg_frames = 100
 
+        playback_manager.mapping_done.connect(lambda: startDetector(playback_manager, detector))
+        playback_manager.frame_available.connect(lambda t: handleFrame(detector, t))
 
+        data_model = DetectionDataModel(detector)
+        detection_list = DetectionList(data_model)
+        main_window.setCentralWidget(detection_list)
+        main_window.show()
+        sys.exit(app.exec_())
+
+    def loadTest():
+        app = QtWidgets.QApplication(sys.argv)
+        main_window = QtWidgets.QMainWindow()
+        playback_manager = PlaybackManager(app, main_window)
+        playback_manager.fps = 1
+
+        detector = Detector(playback_manager)
+        detector.mog_parameters.nof_bg_frames = 100
+
+        file = playback_manager.selectLoadFile()
+
+        playback_manager.openTestFile()
+        playback_manager.mapping_done.connect(lambda: startDetector(playback_manager, detector))
+
+        detector.loadDetectionsFromFile(file)
+        LogObject().print([d for d in detector.detections if d is not None])
+       
+
+        data_model = DetectionDataModel(detector)
+        detection_list = DetectionList(data_model)
+        main_window.setCentralWidget(detection_list)
+        main_window.show()
+        sys.exit(app.exec_())
+
+    #defaultTest()
+    loadTest()

@@ -21,6 +21,17 @@ def nothing(x):
 def round_up_to_odd(f):
     return np.ceil(f) // 2 * 2 + 1
 
+PARAMETER_TYPES = {
+            "detection_size": int,
+	        "mog_var_thresh": int,
+	        "min_fg_pixels": int,
+	        "median_size": int,
+	        "nof_bg_frames": int,
+	        "learning_rate": float,
+	        "dbscan_eps": int,
+	        "dbscan_min_samples": int
+        }
+
 class Detector:
 
 	def __init__(self, image_provider):
@@ -90,18 +101,8 @@ class Detector:
 	def resetParameters(self):
 		self.mog_parameters = MOGParameters()
 		self.parameters = DetectorParameters(mog_parameters=self.mog_parameters)
-		#self.detection_size = 10
-		#self.mog_var_thresh = 11
-		#self.min_fg_pixels = 25
-		#self.median_size = 3
-		#self.nof_bg_frames = 1000
-		#self.learning_rate = 0.01
 
-		#self.dbscan_eps = 10
-		#self.dbscan_min_samples = 10
-
-
-	def initMOG(self):
+	def initMOG(self, clear_detections=True):
 		LogObject().print("Init mog")
 		if hasattr(self.image_provider, "pausePolarLoading"):
 			self.image_provider.pausePolarLoading(True)
@@ -119,7 +120,9 @@ class Detector:
 
 		nof_frames = self.image_provider.getFrameCount()
 		nof_bg_frames = min(nof_frames, self.mog_parameters.nof_bg_frames)
-		self.clearDetections(True)
+
+		if clear_detections:
+			self.clearDetections()
 
 		# Create background model from fixed number of frames.
 		# Count step based on number of frames
@@ -196,10 +199,13 @@ class Detector:
 		self.current_len = 0 if dets is None else len(self.detections[ind])
 		self.data_changed_event(self.current_len)
 
+	def getPolarTransform(self):
+		if hasattr(self.image_provider, "playback_thread"):
+			return self.image_provider.playback_thread.polar_transform
+		else:
+			return None
+
 	def computeBase(self, ind, image, get_images=False):
-		LogObject().print("Compute")
-
-
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 		
@@ -232,10 +238,7 @@ class Detector:
 
 			if labels.shape[0] > 0:
 
-				if hasattr(self.image_provider, "playback_thread"):
-					polar_transform = self.image_provider.playback_thread.polar_transform
-				else:
-					polar_transform = None
+				polar_transform = self.getPolarTransform()
 
 				for label in np.unique(labels):
 					foo = data[labels == label]
@@ -297,6 +300,7 @@ class Detector:
 		self.all_computed_event()
 
 	def updateVerticalDetections(self):
+		LogObject().print("Updated")
 		self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
 
 	def abortComputing(self, mog_aborted):
@@ -309,7 +313,8 @@ class Detector:
 		if mog_aborted:
 			self.applied_mog_parameters = None
 
-	def clearDetections(self, force=False):
+	def clearDetections(self):
+		LogObject().print("Cleared")
 		nof_frames = self.image_provider.getFrameCount()
 		self.detections = [None] * nof_frames
 		self.vertical_detections = []
@@ -507,6 +512,52 @@ class Detector:
 
 		except PermissionError as e:
 			LogObject().print("Cannot open file {}. Permission denied.".format(path))
+
+	def getSaveDictionary(self):
+		"""
+		Returns a dictionary of detection data to be saved in SaveManager.
+		"""
+		detections = {}
+		for frame, dets in enumerate(self.detections):
+			if dets is None:
+				continue
+
+			dets_in_frame = [d.convertToWritable() for d in dets if d.corners is not None]
+			if len(dets_in_frame) > 0:
+				detections[str(frame)] = dets_in_frame
+
+		return detections
+
+	def applySaveDictionary(self, data):
+		"""
+		Load detections from data provided by SaveManager.
+		"""
+		#self.clearDetections()
+		#TODO: get polar transform
+		polar_transform = self.getPolarTransform()
+
+		for str_frame, frame_dets_data in data.items():
+			frame = int(str_frame)
+			frame_dets = []
+			for det_data in frame_dets_data:
+				label = det_data[0]
+				det_data = det_data[1]
+				det = Detection(int(label))
+				det.init_from_data(det_data, self.parameters.detection_size, polar_transform)
+				frame_dets.append(det)
+
+			self.detections[frame] = frame_dets
+
+		self.applied_parameters = self.parameters.copy()
+		self.mog_parameters = self.parameters.mog_parameters
+		self.applied_mog_parameters = self.mog_parameters.copy()
+
+		self.updateVerticalDetections()
+		#print("---", self.vertical_detections)
+		self.compute_on_event = False
+		self.state_changed_event()
+		self.all_computed_event()
+			
 			
 
 class MOGParameters:
@@ -576,6 +627,22 @@ class DetectorParameters:
 	        "dbscan_min_samples": self.dbscan_min_samples
         }
 
+	def setParameterDict(self, dict):
+		for key, value in dict.items():
+			if hasattr(self, key) and key in PARAMETER_TYPES:
+				try:
+					setattr(self, key, PARAMETER_TYPES[key](value))
+				except ValueError as e:
+					LogObject().print("Error: Invalid value in detector parameters file,", e)
+			elif hasattr(self.mog_parameters, key) and key in PARAMETER_TYPES:
+				try:
+					setattr(self.mog_parameters, key, PARAMETER_TYPES[key](value))
+				except ValueError as e:
+					LogObject().print("Error: Invalid value in detector parameters file,", e)
+			else:
+				LogObject().print("Error: Invalid parameters: {}: {}".format(key, value))
+
+
 
 
 class Detection:
@@ -594,6 +661,10 @@ class Detection:
 		return "Detection \"{}\" d:{:.1f}, a:{:.1f}".format(self.label, self.distance, self.angle)
 
 	def init_from_data(self, data, detection_size, polar_transform):
+		"""
+		Initialize detection parameters from the pixel data from the clusterer / detection algorithm. Saved pixel data
+		can also be used to (re)initialize the detection.
+		"""
 		self.data = data
 
 		ca = np.cov(data, y=None, rowvar=0, bias=1)
@@ -629,9 +700,12 @@ class Detection:
 				self.distance, self.angle = polar_transform.cart2polMetric(self.center[0], self.center[1], True)
 				self.distance = float(self.distance)
 				self.angle = float(self.angle / np.pi * 180 + 90)
-				#self.metric_corners = np.asarray([polar_transform.pix2metCI(corner[0], corner[1]) for corner in self.corners])
 
 	def init_from_file(self, corners, length, distance, angle):
+		"""
+		Initialize detection parameters from a csv file. Data is not stored when exporting a csv file,
+		which means it cannot be recovered here. This mainly affects the visualization of the detection.
+		"""
 		self.corners = np.array(corners)
 		self.center = np.average(self.corners, axis=0)
 		LogObject().print(self.center)
@@ -674,6 +748,12 @@ class Detection:
 
 		base = "{:.2f}" + delim + "{:.2f}"
 		return delim.join(base.format(cx,cy) for cy, cx in self.corners[0:4])
+
+	def convertToWritable(self):
+		"""
+		Returns data in applicable format to be used by SaveManager
+		"""
+		return [int(self.label), list(map(lambda x: [int(x[0]), int(x[1])], self.data))]
 
 
 class DetectorDisplay:

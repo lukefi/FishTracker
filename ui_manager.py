@@ -20,9 +20,10 @@ from sonar_view3 import Ui_MainWindow
 from output_widget import OutputViewer
 from log_object import LogObject
 from batch_dialog import BatchDialog
+from save_manager import SaveManager
 
 class UIManager():
-    def __init__(self, main_window, playback_manager, detector, tracker, fish_manager):
+    def __init__(self, main_window, playback_manager, detector, tracker, fish_manager, save_manager):
         self.widgets_initialized = False
         self.main_window = main_window
 
@@ -30,6 +31,7 @@ class UIManager():
         self.detector = detector
         self.tracker = tracker
         self.fish_manager = fish_manager
+        self.save_manager = save_manager
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(main_window)
@@ -64,10 +66,13 @@ class UIManager():
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
+        self.save_manager.file_loaded_event.connect(self.detector_parameters.refreshValues)
+
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 
         self.tracker_parameters = TrackerParametersView(self.playback, self.tracker, self.detector)
+        self.save_manager.file_loaded_event.connect(self.tracker_parameters.refreshValues)
 
         self.output = OutputViewer()
         #self.output.redirectStdOut()
@@ -95,6 +100,8 @@ class UIManager():
         return "{} [{}]\n".format(str, datetime.now().time())
 
     def setUpFunctions(self):
+        self.ui.menu_File.aboutToShow.connect(self.menuFileAboutToShow)
+
         self.ui.action_Open.setShortcut('Ctrl+O')
         self.ui.action_Open.triggered.connect(self.openFile)
 
@@ -109,29 +116,49 @@ class UIManager():
             self.ui.action_OpenTest.triggered.connect(self.openTestFile)
             self.ui.action_OpenTest.setText(QtCore.QCoreApplication.translate("MainWindow", "&Open test file"))
 
-        self.ui.action_save_detections = QtWidgets.QAction(self.main_window)
-        self.ui.action_save_detections.setObjectName("action_save_detections")
-        self.ui.menu_File.addAction(self.ui.action_save_detections)
-        self.ui.action_save_detections.triggered.connect(self.saveDetections)
-        self.ui.action_save_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save detections"))
+        self.ui.action_save_as = QtWidgets.QAction(self.main_window)
+        self.ui.action_save_as.setObjectName("action_save_as")
+        self.ui.menu_File.addAction(self.ui.action_save_as)
+        self.ui.action_save_as.triggered.connect(self.saveAs)
+        self.ui.action_save_as.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save as..."))
+        self.ui.action_save_as.setShortcut('Ctrl+Shift+S')
 
-        self.ui.action_save_tracks = QtWidgets.QAction(self.main_window)
-        self.ui.action_save_tracks.setObjectName("action_save_tracks")
-        self.ui.menu_File.addAction(self.ui.action_save_tracks)
-        self.ui.action_save_tracks.triggered.connect(self.saveTracks)
-        self.ui.action_save_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save tracks"))
+        self.ui.action_save = QtWidgets.QAction(self.main_window)
+        self.ui.action_save.setObjectName("action_save")
+        self.ui.menu_File.addAction(self.ui.action_save)
+        self.ui.action_save.triggered.connect(self.save)
+        self.ui.action_save.setText(QtCore.QCoreApplication.translate("MainWindow", "&Save..."))
+        self.ui.action_save.setShortcut('Ctrl+S')
 
-        self.ui.action_load_detections = QtWidgets.QAction(self.main_window)
-        self.ui.action_load_detections.setObjectName("action_load_detections")
-        self.ui.menu_File.addAction(self.ui.action_load_detections)
-        self.ui.action_load_detections.triggered.connect(self.loadDetections)
-        self.ui.action_load_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Load detections"))
+        self.ui.action_load = QtWidgets.QAction(self.main_window)
+        self.ui.action_load.setObjectName("action_load")
+        self.ui.menu_File.addAction(self.ui.action_load)
+        self.ui.action_load.triggered.connect(self.load)
+        self.ui.action_load.setText(QtCore.QCoreApplication.translate("MainWindow", "&Load..."))
 
-        self.ui.action_load_tracks = QtWidgets.QAction(self.main_window)
-        self.ui.action_load_tracks.setObjectName("action_load_tracks")
-        self.ui.menu_File.addAction(self.ui.action_load_tracks)
-        self.ui.action_load_tracks.triggered.connect(self.loadTracks)
-        self.ui.action_load_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Load tracks"))
+        self.ui.action_export_detections = QtWidgets.QAction(self.main_window)
+        self.ui.action_export_detections.setObjectName("action_export_detections")
+        self.ui.menu_File.addAction(self.ui.action_export_detections)
+        self.ui.action_export_detections.triggered.connect(self.exportDetections)
+        self.ui.action_export_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Export detections..."))
+
+        self.ui.action_export_tracks = QtWidgets.QAction(self.main_window)
+        self.ui.action_export_tracks.setObjectName("action_export_tracks")
+        self.ui.menu_File.addAction(self.ui.action_export_tracks)
+        self.ui.action_export_tracks.triggered.connect(self.exportTracks)
+        self.ui.action_export_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Export tracks..."))
+
+        self.ui.action_import_detections = QtWidgets.QAction(self.main_window)
+        self.ui.action_import_detections.setObjectName("action_import_detections")
+        self.ui.menu_File.addAction(self.ui.action_import_detections)
+        self.ui.action_import_detections.triggered.connect(self.importDetections)
+        self.ui.action_import_detections.setText(QtCore.QCoreApplication.translate("MainWindow", "&Import detections..."))
+
+        self.ui.action_import_tracks = QtWidgets.QAction(self.main_window)
+        self.ui.action_import_tracks.setObjectName("action_import_tracks")
+        self.ui.menu_File.addAction(self.ui.action_import_tracks)
+        self.ui.action_import_tracks.triggered.connect(self.importTracks)
+        self.ui.action_import_tracks.setText(QtCore.QCoreApplication.translate("MainWindow", "&Import tracks..."))
 
         self.ui.action_close_file = QtWidgets.QAction(self.main_window)
         self.ui.action_close_file.setObjectName("action_close_file")
@@ -158,22 +185,40 @@ class UIManager():
     def closeFile(self):
         self.playback.closeFile()
 
-    def saveDetections(self):
+    def saveAs(self):
+        path = self.playback.selectSaveFile(None, "FishTracker Files (*.fish)")
+        if path != "" :
+            self.save_manager.saveFile(path, True)
+
+    def save(self):
+        path = None
+        if self.save_manager.fast_save_enabled:
+            path = self.save_manager.previous_path
+            self.save_manager.saveFile(path, True)
+        else:
+            self.saveAs()
+
+    def load(self):
+        path = self.playback.selectLoadFile(None, "FishTracker Files (*.fish)")
+        if path != "" :
+            self.save_manager.loadFile(path)
+
+    def exportDetections(self):
         path = self.playback.selectSaveFile()
         if path != "" :
             self.detector.saveDetectionsToFile(path)
 
-    def saveTracks(self):
+    def exportTracks(self):
         path = self.playback.selectSaveFile()
         if path != "" :
             self.fish_manager.saveToFile(path)
 
-    def loadDetections(self):
+    def importDetections(self):
         path = self.playback.selectLoadFile()
         if path != "":
             self.detector.loadDetectionsFromFile(path)
 
-    def loadTracks(self):
+    def importTracks(self):
         path = self.playback.selectLoadFile()
         if path != "":
             self.fish_manager.loadFromFile(path)
@@ -184,6 +229,17 @@ class UIManager():
         dialog = BatchDialog(self.playback, dparams, tparams)
         dialog.exec_()
 
+    def menuFileAboutToShow(self):
+        file_open = self.playback.sonar is not None
+        print(file_open)
+        self.ui.action_save_as.setEnabled(file_open)
+        self.ui.action_save.setEnabled(file_open)
+        self.ui.action_export_detections.setEnabled(file_open)
+        self.ui.action_export_tracks.setEnabled(file_open)
+        self.ui.action_import_detections.setEnabled(file_open)
+        self.ui.action_import_tracks.setEnabled(file_open)
+        self.ui.action_close_file.setEnabled(file_open)
+
 
 def launch_ui():
     app = QtWidgets.QApplication(sys.argv)
@@ -192,15 +248,16 @@ def launch_ui():
     detector = Detector(playback_manager)
     tracker = Tracker(detector)
     fish_manager = FishManager(playback_manager, tracker)
+    save_manager = SaveManager(playback_manager, detector, tracker, fish_manager)
 
     detector.all_computed_event.append(playback_manager.refreshFrame)
     tracker.all_computed_signal.connect(playback_manager.refreshFrame)
-    playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(detector.initMOG))
+    playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))
     playback_manager.frame_available_early.connect(detector.compute_from_event)
     playback_manager.file_opened.connect(lambda x: fish_manager.clear())
     playback_manager.file_opened.connect(lambda x: detector.clearDetections())
 
-    ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager)
+    ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager, save_manager)
     sys.exit(app.exec_())
 
 

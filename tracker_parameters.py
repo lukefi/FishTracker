@@ -10,11 +10,6 @@ import os.path
 import numpy as np
 
 PARAMETERS_PATH = "tracker_parameters.json"
-PARAMETER_TYPES = {
-            "max_age": int,
-	        "min_hits": int,
-            "search_radius": int
-        }
 
 class TrackerParametersView(QWidget):
     def __init__(self, playback_manager, tracker, detector):
@@ -69,6 +64,26 @@ class TrackerParametersView(QWidget):
         self.search_radius_slider = LabeledSlider("Search radius", self.form_layout, [self.tracker.setSearchRadius], self.tracker.parameters.search_radius, 1, 100, self)
         self.vertical_layout.addLayout(self.form_layout)
 
+        self.vertical_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.vertical_layout.addItem(self.vertical_spacer)
+
+        self.track_all_btn = QPushButton()
+        self.track_all_btn.setObjectName("trackAllButton")
+        self.track_all_btn.setText("Track all")
+        self.track_all_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
+        self.track_all_btn.clicked.connect(self.trackAll)
+        self.track_all_btn.setMinimumWidth(150)
+
+        self.track_button_layout = QHBoxLayout()
+        self.track_button_layout.setObjectName("buttonLayout")
+        self.track_button_layout.setSpacing(7)
+        self.track_button_layout.setContentsMargins(0,0,0,0)
+
+        self.track_button_layout.addStretch()
+        self.track_button_layout.addWidget(self.track_all_btn)
+
+        self.vertical_layout.addLayout(self.track_button_layout)
+
         self.vertical_layout.addStretch()
 
         self.save_btn = QPushButton()
@@ -95,17 +110,10 @@ class TrackerParametersView(QWidget):
         self.button_layout.setSpacing(7)
         self.button_layout.setContentsMargins(0,0,0,0)
 
-        self.track_all_btn = QPushButton()
-        self.track_all_btn.setObjectName("trackAllButton")
-        self.track_all_btn.setText("Track all")
-        self.track_all_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
-        self.track_all_btn.clicked.connect(self.trackAll)
-
-        self.button_layout.addWidget(self.track_all_btn)
-        self.button_layout.addStretch()
         self.button_layout.addWidget(self.save_btn)
         self.button_layout.addWidget(self.load_btn)
         self.button_layout.addWidget(self.reset_btn)
+        self.button_layout.addStretch()
 
         self.vertical_layout.addLayout(self.button_layout)
 
@@ -133,22 +141,7 @@ class TrackerParametersView(QWidget):
             print("Error: Invalid tracker parameters file:", e)
             return
 
-
-        params = self.tracker.parameters
-        for key, value in dict.items():
-            if not hasattr(params, key):
-                print("Error: Invalid parameters: {}: {}".format(key, value))
-                continue
-
-            if not key in PARAMETER_TYPES:
-                print("Error: Key [{}] not in PARAMETER_TYPES".format(key, value))
-                continue
-
-            try:
-                setattr(params, key, PARAMETER_TYPES[key](value))
-            except ValueError as e:
-                print("Error: Invalid value in tracker parameters file,", e)
-
+        self.tracker.parameters.setParameterDict(dict)
         self.refreshValues()
 
     def refreshValues(self):

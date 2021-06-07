@@ -5,6 +5,12 @@ from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
 from log_object import LogObject
 
+PARAMETER_TYPES = {
+            "max_age": int,
+	        "min_hits": int,
+            "search_radius": int
+        }
+
 class Tracker(QtCore.QObject):
     # When new computation is started
     init_signal = QtCore.pyqtSignal()
@@ -104,7 +110,7 @@ class Tracker(QtCore.QObject):
         else:
             tracks = self.mot_tracker.update()
 
-        return [(tr, detections[int(tr[7])]) if tr[7] > 0 else (tr, None) for tr in tracks]
+        return [(tr, detections[int(tr[7])]) if tr[7] >= 0 else (tr, None) for tr in tracks]
 
     def abortComputing(self, detector_aborted):
         self.tracking = False
@@ -196,6 +202,21 @@ class TrackerParameters:
 	        "min_hits": self.min_hits,
             "search_radius": self.search_radius
         }
+
+    def setParameterDict(self, dict):
+        for key, value in dict.items():
+            if not hasattr(self, key):
+                print("Error: Invalid parameters: {}: {}".format(key, value))
+                continue
+
+            if not key in PARAMETER_TYPES:
+                print("Error: Key [{}] not in PARAMETER_TYPES".format(key, value))
+                continue
+
+            try:
+                setattr(self, key, PARAMETER_TYPES[key](value))
+            except ValueError as e:
+                print("Error: Invalid value in tracker parameters file,", e)
 
 
 if __name__ == "__main__":

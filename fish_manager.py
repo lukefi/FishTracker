@@ -469,6 +469,60 @@ class FishManager(QtCore.QAbstractTableModel):
 
             self.trimFishList()
 
+    def convertToWritable(self, frame, label, track):
+        return [frame, label, list(map(float, track))]
+
+
+    def getSaveDictionary(self):
+        """
+		Returns a dictionary of fish to be saved in SaveManager.
+		"""
+        fish = {}
+        for f in self.all_fish.values():
+            fish_tracks = [self.convertToWritable(frame, int(det.label), track[0:4]) if det is not None else
+                           self.convertToWritable(frame, None, track[0:4])
+                           for frame, (track, det) in f.tracks.items()]
+            test = fish_tracks[0]
+            fish[str(f.id)] = fish_tracks
+
+        return fish
+
+    def applySaveDictionary(self, data, dets):
+        """
+		Load fish entries from data provided by SaveManager.
+		"""
+        self.clear()
+        for id, f_data in data.items():
+            f = None
+            for frame, det_label, track in f_data:
+                if f is None:
+                    f = FishEntry(id, frame, frame)
+
+                if det_label is not None:
+                    # Goes through detections in the same frame and tries to assign the
+                    # corresponding detection based on the label.
+
+                    frame_dets = dets[frame]
+                    match_found = False
+                    for fd in frame_dets:
+                        if fd.label == det_label:
+                            # Adds track with a matching detection to the FishEntry
+
+                            f.addTrack(track, fd, frame)
+                            match_found = True
+                            break
+
+                    if not match_found:
+                        LogObject().print("Warning: Match not found in frame {} for label {}".format(frame, det_label))
+                else:
+                    f.addTrack(track, None, frame)
+
+            self.all_fish[id] = f
+
+        self.trimFishList()
+
+
+
 class SwimDirection(IntEnum):
     UP = 0
     DOWN = 1
@@ -541,7 +595,9 @@ class FishEntry():
             if frame not in self.tracks:
                 self.tracks[frame] = track
             else:
-                LogObject().print("TODO: Overlapping tracks.")
+                # TODO: Overlapping tracks.
+                # Currently only self.tracks are kept when tracks overlap each other.
+                pass
 
     def split(self, frame, new_id):
         f = FishEntry(new_id, frame, self.frame_out)

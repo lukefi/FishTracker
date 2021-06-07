@@ -48,39 +48,39 @@ class PlaybackManager(QObject):
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def openFile(self, open_path=None):
+    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf)"):
         """
         Select .aris file using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestDirectory()
-        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path, "Sonar Files (*.aris *.ddf)")
+        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path, selected_filter)
         fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
         self.loadFile(file_path_tuple[0])
 
-    def selectSaveDirectory(self, open_path=None):
+    def selectSaveDirectory(self, open_path=None, selected_filter=""):
         """
         Select save directory using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
-        path = QFileDialog.getExistingDirectory(self.main_window, "Open File", open_path)
+        path = QFileDialog.getExistingDirectory(self.main_window, "Select directory", open_path, selected_filter)
         fh.setLatestSaveDirectory(path)
         return path
 
-    def selectSaveFile(self, open_path=None):
+    def selectSaveFile(self, open_path=None, selected_filter=""):
         """
         Select a file for saving detections or tracking results using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
-        file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Open File", open_path)
+        file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Save file", open_path, selected_filter)
         fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
 
-    def selectLoadFile(self, open_path=None):
+    def selectLoadFile(self, open_path=None, selected_filter=""):
         """
         Select a detection or tracking result file to be loaded using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
-        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path)
+        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Load File", open_path, selected_filter)
         fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
 
@@ -88,7 +88,7 @@ class PlaybackManager(QObject):
         path = fh.getTestFilePath()
         if path is not None:
             # Override test file length
-            self.loadFile(path, 200)
+            self.loadFile(path, 1000)
         else:
             self.openFile()
 
@@ -128,6 +128,28 @@ class PlaybackManager(QObject):
         self.file_opened.emit(self.sonar)
         self.startFrameTimer()
 
+    def checkLoadedFile(self, path, secondary_path="", override_open=True):
+        """
+        Checks if file with matching base name is already open. If not,
+        tries to open file at path, then at secondary_path and if neither exist,
+        opens a file dialog for selecting the correct .aris file.
+        """
+        if os.path.basename(self.path) == os.path.basename(path):
+            return True
+        
+        if override_open:
+            if os.path.exists(path):
+                self.loadFile(path)
+                return False
+            elif secondary_path != "" and os.path.exists(secondary_path):
+                self.loadFile(secondary_path)
+                return False
+            else:
+                self.openFile()
+                return False
+
+
+
     def frame_available_f(self, value):
         """
         Forwards signal form PlaybackThread to the two signals below.
@@ -145,6 +167,7 @@ class PlaybackManager(QObject):
 
         self.sonar = None
         self.file_closed.emit()
+        self.path = ""
         self.setTitle()
 
         #self.polar_transform = None

@@ -92,6 +92,6 @@ class Ui_MainWindow(object):
         self.info_widget.setTabText(self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.menu_Run.setTitle(_translate("MainWindow", "&Run"))
-        self.action_Open.setText(_translate("MainWindow", "&Open"))
+        self.action_Open.setText(_translate("MainWindow", "&Open..."))
         self.action_Batch.setText(_translate("MainWindow", "&Batch"))
 

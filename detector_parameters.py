@@ -7,16 +7,6 @@ import os.path
 from log_object import LogObject
 
 PARAMETERS_PATH = "detector_parameters.json"
-PARAMETER_TYPES = {
-            "detection_size": int,
-	        "mog_var_thresh": int,
-	        "min_fg_pixels": int,
-	        "median_size": int,
-	        "nof_bg_frames": int,
-	        "learning_rate": float,
-	        "dbscan_eps": int,
-	        "dbscan_min_samples": int
-        }
 
 class LabeledSlider:
     def __init__(self, label, form_layout, connected_functions=[], default_value=0, min_value=0, max_value=1, parent=None, mapping=None, reverse_mapping=None, formatting = "{}"):
@@ -81,18 +71,10 @@ class DetectorParametersView(QWidget):
         self.detector = detector
         self.sonar_processor = sonar_processor
 
-        self.image_controls_label = QLabel(self)
-        self.image_controls_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.image_controls_label.setText("Detector options")
-
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setSpacing(5)
         self.verticalLayout.setContentsMargins(7,7,7,7)
-
-        self.verticalLayout.addWidget(self.image_controls_label)
-
-        self.form_layout = QFormLayout()
 
         def addLine(label, initial_value, validator, connected, layout):
             line = QLineEdit()
@@ -106,17 +88,6 @@ class DetectorParametersView(QWidget):
 
         refresh_lambda = lambda x: playback_manager.refreshFrame()
 
-        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize, refresh_lambda], self.form_layout)
-        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels, refresh_lambda], self.form_layout)
-        self.median_size_slider = LabeledSlider("Median size", self.form_layout, [detector.setMedianSize, refresh_lambda], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
-        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps, refresh_lambda], self.form_layout)
-        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples, refresh_lambda], self.form_layout)
-
-        self.verticalLayout.addLayout(self.form_layout)
-
-        self.verticalSpacer = QSpacerItem(0, 40, QSizePolicy.Minimum, QSizePolicy.Maximum)
-        self.verticalLayout.addItem(self.verticalSpacer)
-
         self.init_label = QLabel(self)
         self.init_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.init_label.setText("Initialization")
@@ -129,6 +100,64 @@ class DetectorParametersView(QWidget):
         self.learning_rate_line = addLine("Learning rate", 0.01, QDoubleValidator(0.001, 0.1, 3), [detector.setLearningRate, refresh_lambda], self.form_layout2)
 
         self.verticalLayout.addLayout(self.form_layout2)
+
+        self.verticalSpacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalLayout.addItem(self.verticalSpacer1)
+
+        self.recalculate_mog_btn = QPushButton()
+        self.recalculate_mog_btn.setObjectName("recalculateMOGButton")
+        self.recalculate_mog_btn.setText("Apply Values")
+        self.recalculate_mog_btn.setToolTip("Initialize the detector with given parameters")
+        self.recalculate_mog_btn.clicked.connect(self.recalculateMOG)
+        self.recalculate_mog_btn.setMinimumWidth(150)
+
+        self.init_button_layout = QHBoxLayout()
+        self.init_button_layout.setObjectName("buttonLayout")
+        self.init_button_layout.setSpacing(7)
+        self.init_button_layout.setContentsMargins(0,0,0,0)
+
+        self.init_button_layout.addStretch()
+        self.init_button_layout.addWidget(self.recalculate_mog_btn)
+
+        self.verticalLayout.addLayout(self.init_button_layout)
+
+        self.verticalSpacer2 = QSpacerItem(0, 40, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalLayout.addItem(self.verticalSpacer2)
+
+        self.image_controls_label = QLabel(self)
+        self.image_controls_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.image_controls_label.setText("Detector options")
+        self.verticalLayout.addWidget(self.image_controls_label)
+
+        self.form_layout = QFormLayout()
+
+        self.detection_size_line = addLine("Detection size", 10, QIntValidator(0, 20), [detector.setDetectionSize, refresh_lambda], self.form_layout)
+        self.min_fg_pixels_line  = addLine("Min foreground pixels", 25, QIntValidator(0, 50), [detector.setMinFGPixels, refresh_lambda], self.form_layout)
+        self.median_size_slider = LabeledSlider("Median size", self.form_layout, [detector.setMedianSize, refresh_lambda], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
+        self.dbscan_eps_line = addLine("Clustering epsilon", 10, QIntValidator(0, 20), [detector.setDBScanEps, refresh_lambda], self.form_layout)
+        self.dbscan_min_samples_line = addLine("Clustering min samples", 10, QIntValidator(0, 20), [detector.setDBScanMinSamples, refresh_lambda], self.form_layout)
+
+        self.verticalLayout.addLayout(self.form_layout)
+
+        self.verticalSpacer3 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalLayout.addItem(self.verticalSpacer3)
+
+        self.calculate_all_btn = QPushButton()
+        self.calculate_all_btn.setObjectName("calculateAllButton")
+        self.calculate_all_btn.setText("Calculate All")
+        self.calculate_all_btn.setToolTip("Start a process that initializes the detector and detects fish in all the frames")
+        self.calculate_all_btn.clicked.connect(self.calculateAll)
+        self.calculate_all_btn.setMinimumWidth(150)
+
+        self.calc_button_layout = QHBoxLayout()
+        self.calc_button_layout.setObjectName("buttonLayout")
+        self.calc_button_layout.setSpacing(7)
+        self.calc_button_layout.setContentsMargins(0,0,0,0)
+
+        self.calc_button_layout.addStretch()
+        self.calc_button_layout.addWidget(self.calculate_all_btn)
+
+        self.verticalLayout.addLayout(self.calc_button_layout)
 
         #self.detection_size = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Detection size", 10, 0, 20, self)
         #self.mog_var_thresh = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "MOG var threshold", 11, 0, 20, self)
@@ -170,28 +199,6 @@ class DetectorParametersView(QWidget):
 
         self.verticalLayout.addLayout(self.button_layout)
 
-        self.recalculate_mog_btn = QPushButton()
-        self.recalculate_mog_btn.setObjectName("recalculateMOGButton")
-        self.recalculate_mog_btn.setText("Apply Values")
-        self.recalculate_mog_btn.setToolTip("Initialize the detector with given parameters")
-        self.recalculate_mog_btn.clicked.connect(self.recalculateMOG)
-
-        self.calculate_all_btn = QPushButton()
-        self.calculate_all_btn.setObjectName("calculateAllButton")
-        self.calculate_all_btn.setText("Calculate All")
-        self.calculate_all_btn.setToolTip("Start a process that initializes the detector and detects fish in all the frames")
-        self.calculate_all_btn.clicked.connect(self.calculateAll)
-
-        self.second_button_layout = QHBoxLayout()
-        self.second_button_layout.setObjectName("buttonLayout")
-        self.second_button_layout.setSpacing(7)
-        self.second_button_layout.setContentsMargins(0,0,0,0)
-
-        self.second_button_layout.addWidget(self.recalculate_mog_btn)
-        self.second_button_layout.addWidget(self.calculate_all_btn)
-
-        self.verticalLayout.addLayout(self.second_button_layout)
-
         self.setLayout(self.verticalLayout)
 
         self.loadJSON()
@@ -223,23 +230,7 @@ class DetectorParametersView(QWidget):
             LogObject().print("Error: Invalid detector parameters file:", e)
             return
 
-
-        params = self.detector.parameters
-        mog_params = self.detector.mog_parameters
-        for key, value in dict.items():
-            if hasattr(params, key) and key in PARAMETER_TYPES:
-                try:
-                    setattr(params, key, PARAMETER_TYPES[key](value))
-                except ValueError as e:
-                    LogObject().print("Error: Invalid value in detector parameters file,", e)
-            elif hasattr(mog_params, key) and key in PARAMETER_TYPES:
-                try:
-                    setattr(mog_params, key, PARAMETER_TYPES[key](value))
-                except ValueError as e:
-                    LogObject().print("Error: Invalid value in detector parameters file,", e)
-            else:
-                LogObject().print("Error: Invalid parameters: {}: {}".format(key, value))
-
+        self.detector.parameters.setParameterDict(dict)
         self.refreshValues()
 
     def refreshValues(self):

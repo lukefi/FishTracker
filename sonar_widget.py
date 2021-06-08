@@ -490,9 +490,8 @@ class SonarViewer(QtWidgets.QDialog):
         if not isinstance(self.main_window, MainWindow):
             return
 
-        output = self.playback_manager.getBeamDistance(x, y)
-        if output is not None:
-            dist, angle = output
+        if self.playback_manager.isMappingDone():
+            dist, angle = self.playback_manager.getBeamDistance(x, y)
             angle = angle / np.pi * 180 + 90
             txt = "Distance: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
             self.main_window.FStatusBarMousePos.setText(txt)

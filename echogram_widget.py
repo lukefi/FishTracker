@@ -62,15 +62,18 @@ class EchoFigure(ZoomableQLabel):
 
     def overlayDetections(self, painter, squeezed, color):
         try:
+            height = self.size().height()
+
             painter.setPen(color)
             painter.setOpacity(self.detection_opacity)
-            v_mult = self.parent.getDetectionScale()
+            v_mult, v_min = self.parent.getScaleLinearModel()
+
             for i in range(len(squeezed)):
                 heights = squeezed[i]
                 h_pos_0 = self.frame2xPos(i / self.frame_count)
                 h_pos_1 = self.frame2xPos((i + 1) / self.frame_count)
                 for h in heights:
-                    v_pos = h * v_mult
+                    v_pos = height - (h - v_min) * v_mult
                     painter.drawLine(h_pos_0, v_pos, h_pos_1, v_pos)
         except ZeroDivisionError:
             pass
@@ -148,15 +151,31 @@ class EchogramViewer(QtWidgets.QWidget):
     def getDetections(self):
         return self.detector.vertical_detections
 
-    def getDetectionScale(self):
-        return self.figure.window_height / self.detector.image_height
+    def getScaleLinearModel(self):
+        """
+        Returns parameters to a linear model, with which metric distances can be converted
+        into vertical position on the displayed image.
+        """
+        if self.playback_manager.isMappingDone():
+            min_d, max_d = self.playback_manager.getRadiusLimits()
+            mult = self.figure.window_height / (max_d - min_d)
+            return mult, min_d
+        else:
+            return 1, 0
 
     @QtCore.pyqtSlot()
     def squeezeFish(self):
         self.squeezed_fish = [[] for fr in range(self.playback_manager.getFrameCount())]
+        if not self.playback_manager.isMappingDone():
+            return
+
         for fish in self.fish_manager.fish_list:
             for key, (tr, _) in fish.tracks.items():
-                self.squeezed_fish[key].append((tr[0] + tr[2]) / 2)
+                avg_y = (tr[0] + tr[2]) / 2
+                avg_x = (tr[1] + tr[3]) / 2
+
+                distance, _ = self.playback_manager.getBeamDistance(avg_x, avg_y, True)
+                self.squeezed_fish[key].append(distance)
         self.figure.update()
 
 class Echogram():
@@ -198,23 +217,31 @@ if __name__ == "__main__":
             self.center = (y, x)
 
     class TestDetector():
-        def __init__(self, frameCount, height):
-            self.frameCount = frameCount
-            self.detections = []
-            self.image_height = height
+        def __init__(self, playback_manager):
+            self.playback_manager = playback_manager
+            self.frameCount = self.playback_manager.getFrameCount()
+            self.image_height = playback_manager.sonar.samplesPerBeam
             self.detections_clearable = True
             self._show_echogram_detections = True
-            for i in range(frameCount):
-                count = np.random.randint(0, 5)
-                if count > 0:
-                    self.detections.append([TestDetection(0, np.random.randint(0,height)) for j in range(count)])
-                else:
-                    self.detections.append(None)
-
-            self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+            self.detections = []
+            self.vertical_detections = []
 
         def parametersDirty(self):
             return False
+
+        def onMappingDone(self):
+            min_r, max_r = self.playback_manager.getRadiusLimits()
+            min_r += 0.01
+
+            for i in range(self.frameCount):
+                count = np.random.randint(0, 5)
+                if count > 0:
+                    self.detections.append([TestDetection(0, np.random.uniform(min_r,max_r)) for j in range(count)] + [TestDetection(0, min_r), TestDetection(0, max_r)])
+                else:
+                    #self.detections.append(None)
+                    self.detections.append([TestDetection(0, min_r), TestDetection(0, max_r)])
+
+            self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
 
     class TestFishManager(QtCore.QAbstractTableModel):
 
@@ -230,7 +257,9 @@ if __name__ == "__main__":
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
     playback_manager.openTestFile()
-    detector = TestDetector(playback_manager.getFrameCount(), playback_manager.sonar.samplesPerBeam)
+    detector = TestDetector(playback_manager)
+    playback_manager.mapping_done.connect(detector.onMappingDone)
+
     fish_manager = TestFishManager()
     echogram = EchogramViewer(playback_manager, detector, fish_manager)
     echogram.onFileOpen(playback_manager.sonar)

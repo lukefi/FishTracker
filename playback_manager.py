@@ -320,11 +320,19 @@ class PlaybackManager(QObject):
         else:
             return "No File Loaded"
 
-    def getBeamDistance(self, x, y):
-        if self.playback_thread and self.playback_thread.polar_transform:
-            return self.playback_thread.polar_transform.cart2polMetric(y, x, True)
-        else:
-            return None
+    def getRadiusLimits(self):
+        return self.playback_thread.polar_transform.radius_limits
+
+    def getBeamDistance(self, x, y, invert=True):
+        """
+        Transforms cartesian coordinates to polar coordinates in metric units,
+        using the current PolarTransform.
+        
+        Note: Use isMappingDone to check if this function can be used.
+
+        Returns: (distance, angle)
+        """
+        return self.playback_thread.polar_transform.cart2polMetric(y, x, invert)
 
     def isPlaying(self):
         return self.playback_thread is not None and self.playback_thread.is_playing

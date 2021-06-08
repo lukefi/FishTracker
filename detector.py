@@ -301,7 +301,7 @@ class Detector:
 
 	def updateVerticalDetections(self):
 		LogObject().print("Updated")
-		self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
+		self.vertical_detections = [[d.distance for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
 
 	def abortComputing(self, mog_aborted):
 		self.stop_computing = False

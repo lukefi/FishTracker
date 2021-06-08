@@ -289,9 +289,32 @@ def loadJSON(jsonFilePath):
     except:
         return None
 
+def loadConf():
+    try:
+        with open(CONF_PATH, "r") as file:
+            conf = json.load(file)
+            return conf
+    except FileNotFoundError:
+        return createDefaultConfFile()
+
+def writeConf(conf):
+    with open(CONF_PATH, 'w') as f:
+        json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+
+def createDefaultConfFile():
+    conf = {
+        "latest_directory": str(os.path.expanduser("~")),
+        "latest_save_directory": str(os.path.expanduser("~")),
+        "parallel_processes": 1,
+        "sonar_height": 1000,
+        "test_file_path": ""
+        }
+    writeConf(conf)
+    return conf
+
 def getTestFilePath():
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         if os.path.exists(conf["test_file_path"]):
             return conf["test_file_path"]
         else:
@@ -302,7 +325,7 @@ def getTestFilePath():
 
 def getLatestDirectory():
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         if os.path.exists(conf["latest_directory"]):
             return conf["latest_directory"]
         else:
@@ -315,16 +338,15 @@ def setLatestDirectory(path):
     if path is None or path == "":
         return
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         conf["latest_directory"] = path
-        with open(CONF_PATH, 'w') as f:
-            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+        writeConf(conf)
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 
 def getLatestSaveDirectory():
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         if os.path.exists(conf["latest_save_directory"]):
             return conf["latest_save_directory"]
         else:
@@ -337,16 +359,15 @@ def setLatestSaveDirectory(path):
     if path is None or path == "":
         return
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         conf["latest_save_directory"] = path
-        with open(CONF_PATH, 'w') as f:
-            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+        writeConf(conf)
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 
 def getSonarHeight():
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         return int(conf["sonar_height"])
     except:
         print("Reading sonar height failed", sys.exc_info()[1])
@@ -354,16 +375,15 @@ def getSonarHeight():
 
 def setSonarHeight(value):
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         conf["sonar_height"] = int(value)
-        with open(CONF_PATH, 'w') as f:
-            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+        writeConf(conf)
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 
 def getParallelProcesses():
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         return int(conf["parallel_processes"])
     except:
         print("Reading parallel process count failed", sys.exc_info()[1])
@@ -371,10 +391,9 @@ def getParallelProcesses():
 
 def setParallelProcesses(value):
     try:
-        conf = loadJSON(CONF_PATH)
+        conf = loadConf()
         conf["parallel_processes"] = int(value)
-        with open(CONF_PATH, 'w') as f:
-            json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+        writeConf(conf)
     except:
         print("Writing conf file failed:", sys.exc_info()[1])
 

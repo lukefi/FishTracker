@@ -1,13 +1,15 @@
 *.sln
 *.pyproj
 *.aris
+*.fish
+conf.json
+
 .vs
 .idea
 LocalTests/
 out/
 build/
 dist/
-save_test.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

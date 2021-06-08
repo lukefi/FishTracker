@@ -320,7 +320,10 @@ class FishManager(QtCore.QAbstractTableModel):
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def toggleUpDownInversion(self):
-        self.up_down_inverted = not self.up_down_inverted
+        self.setUpDownInversion(not self.up_down_inverted)
+
+    def setUpDownInversion(self, value):
+        self.up_down_inverted = value
         for fish in self.all_fish.values():
             fish.setDirection(self.up_down_inverted)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())

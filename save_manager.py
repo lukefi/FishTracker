@@ -80,11 +80,14 @@ class SaveManager(QtCore.QObject):
 
 		data = { "file type": "FishTracking", "version": "0.1" }
 		data["path"] = os.path.abspath(self.playback_manager.path)
+		data["inverted upstream"] = self.fish_manager.up_down_inverted
 		data["detector"] = dp_dict
 		data["tracker"] = tp_dict
 		data["detections"] = detections
 		data["fish"] = fish
+		self.saveData(data, binary)
 
+	def saveData(self, data, binary):
 		if binary:
 			packed = msgpack.packb(data)
 			with open(path, "wb") as data_file:
@@ -124,15 +127,24 @@ class SaveManager(QtCore.QObject):
 		return True
 
 	def loadData(self, data, path):
-		file_path = os.path.abspath(data["path"])
-		secondary_path = os.path.abspath(os.path.join(os.path.dirname(path), os.path.basename(file_path)))
-		self.playback_manager.checkLoadedFile(file_path, secondary_path, True)
+		try:
+			file_path = os.path.abspath(data["path"])
+			secondary_path = os.path.abspath(os.path.join(os.path.dirname(path), os.path.basename(file_path)))
+			self.playback_manager.checkLoadedFile(file_path, secondary_path, True)
+			self.fish_manager.setUpDownInversion(data["inverted upstream"])
 
-		self.detector.parameters.setParameterDict(data["detector"])
-		self.tracker.parameters.setParameterDict(data["tracker"])
-		self.detector.applySaveDictionary(data["detections"])
-		dets = self.detector.detections
-		self.fish_manager.applySaveDictionary(data["fish"], dets)
+			self.detector.parameters.setParameterDict(data["detector"])
+			self.tracker.parameters.setParameterDict(data["tracker"])
+			self.detector.applySaveDictionary(data["detections"])
+			dets = self.detector.detections
+			self.fish_manager.applySaveDictionary(data["fish"], dets)
+
+		except ValueError as e:
+			LogObject().print("Error: Invalid value(s) in save file,", e)
+			self.playback_manager.closeFile()
+		except KeyError as e:
+			LogObject().print("Error: Invalid key(s) in save file,", e)
+			self.playback_manager.closeFile()
 
 	def onFileClosed(self):
 		self.previous_path = None
@@ -161,7 +173,6 @@ if __name__ == "__main__":
 		fish_manager.updateContentsSignal.connect(lambda: save_manager.saveFile(path, True))
 
 		playback_manager.openTestFile()
-		detector.mog_parameters.nof_bg_frames = 500
 		detector._show_detections = True
 		playback_manager.mapping_done.connect(startDetector)
 
@@ -182,7 +193,7 @@ if __name__ == "__main__":
 		main_window.show()
 		sys.exit(app.exec_())
 
-	#saveTest()
-	loadTest()
+	saveTest()
+	#loadTest()
 
 

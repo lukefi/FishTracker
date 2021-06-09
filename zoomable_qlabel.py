@@ -85,18 +85,19 @@ class ZoomableQLabel(QtWidgets.QLabel):
         # Debug window syncronization
         self.mouse_move_event()
 
-    def setLimits(self, image):
+    def setLimits(self, shape):
         self.x_min_limit = 0
         self.y_min_limit = 0
-        if image is not None:
-            self.x_max_limit = self.image_width = image.shape[1]
-            self.y_max_limit = self.image_height = image.shape[0]
+        if shape is not None:
+            self.x_max_limit = self.image_width = shape[1]
+            self.y_max_limit = self.image_height = shape[0]
         else:
             self.x_max_limit = 1
             self.y_max_limit = 1
+        print("W1:", self.image_width)
 
     def resetView(self):
-        self.setLimits(self.displayed_image)
+        self.setLimits(self.displayed_image.shape if self.displayed_image is not None else None)
         self.zoom_01 = 0
         self.applyPixmap()
 
@@ -109,12 +110,13 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     def applyPixmap(self):
         sz = self.size()
-        self.window_width = window_width = max(1, sz.width())
+        self.window_width = max(1, sz.width())
         self.window_height = max(1, sz.height())
 
         if self.displayed_image is not None:
             self.image_width = self.displayed_image.shape[1]
             self.image_height = self.displayed_image.shape[0]
+            print("W2:", self.image_width)
 
             qformat = QtGui.QImage.Format_Indexed8
             if len(self.displayed_image.shape) == 3:

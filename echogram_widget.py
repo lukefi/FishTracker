@@ -20,10 +20,10 @@ class EchoFigure(ZoomableQLabel):
         self.detection_opacity = 1
 
         self.update_lines = False
-        self.max_height = 1000
+        self.max_height = 500
         self.detection_lines = []
         self.track_lines = {}
-
+        self.detection_pixmap = None
 
     def frame2xPos(self, value):
         try:
@@ -41,7 +41,6 @@ class EchoFigure(ZoomableQLabel):
             return 0
 
     def paintEvent(self, event):
-        print("Paint")
         super().paintEvent(event)
 
         try:
@@ -54,10 +53,12 @@ class EchoFigure(ZoomableQLabel):
         painter = QtGui.QPainter(self)
 
         if self.parent.detector._show_echogram_detections:
-            if self.update_lines:
-                self.updateDetectionLines(self.parent.getDetections())
+            #if self.update_lines:
+            #    #self.updateDetectionLines(self.parent.getDetections())
+            #    self.updateDetectionImage(self.parent.getDetections())
             #self.overlayDetections(painter, self.parent.getDetections(), QtCore.Qt.red)
-            self.overlayLines(painter, self.detection_lines, QtCore.Qt.red)
+            #self.overlayLines(painter, self.detection_lines, QtCore.Qt.red)
+            self.overlayPixmap(painter, self.detection_pixmap)
 
         if self.parent.fish_manager.show_echogram_fish:
             if self.update_lines:
@@ -99,6 +100,12 @@ class EchoFigure(ZoomableQLabel):
         for lines in line_list:
             painter.drawLines(lines)
 
+    def overlayPixmap(self, painter, pixmap):
+        if pixmap is not None:
+            target = QtCore.QRectF(0, 0, self.window_width, self.window_height)
+            source = QtCore.QRectF(0, 0, self.window_width, self.window_height)
+            painter.drawPixmap(target, pixmap, source)
+
     def updateDetectionLines(self, vertical_detections):
         self.detection_lines = []
         try:
@@ -114,6 +121,43 @@ class EchoFigure(ZoomableQLabel):
             print([[(l.p1(), l.p2()) for l in list] for list in self.detection_lines[0:10]])
         except ZeroDivisionError:
             pass
+
+    def updateDetectionImage(self, vertical_detections):
+        """
+        Precalculates an image (QPixmap) containing the detection lines of each detection.
+        The calculated image can then be used repeatedly to overlay the detections to
+        the echogram view.
+
+        The image is calculated based on the current position and zoom level of the echogram view,
+        meaning any detections outside the current view will not be included.
+        """
+        self.detection_pixmap = QtGui.QPixmap(self.window_width, self.window_height)
+        self.detection_pixmap.fill(QtGui.QColor(0,0,0,0))
+
+        painter = QtGui.QPainter(self.detection_pixmap)
+        painter.setPen(QtCore.Qt.red)
+        painter.setOpacity(self.detection_opacity)
+
+        v_mult, v_min = self.parent.getScaleLinearModel(self.window_height)
+        #h_pos_0 = self.frame2xPos(0)
+        h_pos_0 = 0
+
+        print(self.frame_count, self.window_width, self.x_min_limit, self.x_max_limit)
+        show_frame_count = self.x_max_limit - self.x_min_limit
+
+        try:
+            for i, heights in enumerate(vertical_detections[self.x_min_limit:self.x_max_limit]):
+                #ind = i + self.x_min_limit + 1
+                #h_pos_1 = self.frame2xPos(ind / self.frame_count)
+
+                h_pos_1 = (i + 1) / show_frame_count * self.window_width
+                for height in heights:
+                    v_pos = self.window_height - (height - v_min) * v_mult
+                    painter.drawLine(h_pos_0, v_pos, h_pos_1, v_pos)
+                h_pos_0 = h_pos_1
+        except ZeroDivisionError:
+            pass
+
 
     def updateFishLines(self, vertical_fish):
         pass
@@ -139,11 +183,11 @@ class EchogramViewer(QtWidgets.QWidget):
     """
     def __init__(self, playback_manager, detector, fish_manager):
         super().__init__()
-        self.setMaximumHeight(500)
+        #self.setMaximumHeight(500)
 
         self.playback_manager = playback_manager
         self.detector = detector
-        self.detector.all_computed_event.append(self.updateDetectionLines)
+        self.detector.all_computed_event.append(self.updateDetectionImage)
         self.fish_manager = fish_manager
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -153,10 +197,11 @@ class EchogramViewer(QtWidgets.QWidget):
         self.fish_manager.updateContentsSignal.connect(self.squeezeFish)
 
         self.figure = EchoFigure(self)
+        self.figure.afterUserInputSignal.connect(self.updateDetectionImage)
         self.horizontalLayout.addWidget(self.figure)
         self.playback_manager.file_opened.connect(self.onFileOpen)
         self.playback_manager.frame_available.connect(self.onImageAvailable)
-        self.playback_manager.polars_loaded.connect(self.imageReady)
+        self.playback_manager.polars_loaded.connect(self.processEchogram)
         self.playback_manager.file_closed.connect(self.onFileClose)
 
         self.setLayout(self.horizontalLayout)
@@ -185,7 +230,7 @@ class EchogramViewer(QtWidgets.QWidget):
             self.echogram.clear()
             self.echogram = None
 
-    def imageReady(self):
+    def processEchogram(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
         self.figure.setImage(self.echogram.getDisplayedImage())
         self.figure.resetView()
@@ -195,7 +240,7 @@ class EchogramViewer(QtWidgets.QWidget):
 
     def getScaleLinearModel(self, height):
         """
-        Returns parameters to a linear model, with which metric distances can be converted
+        Returns parameters to a linear model, which can be used to convert metric distances
         into vertical position on the displayed image.
         """
         if self.playback_manager.isMappingDone():
@@ -220,10 +265,13 @@ class EchogramViewer(QtWidgets.QWidget):
                 self.squeezed_fish[key].append(distance)
         self.figure.update()
 
-    def updateDetectionLines(self):
-        print("Update detection lines")
-        self.figure.update_lines = True
-        self.figure.max_height = self.maximumHeight()
+    def updateDetectionImage(self):
+        print("Update detection image")
+        self.figure.updateDetectionImage(self.detector.vertical_detections)
+        self.figure.update()
+
+        #self.figure.update_lines = True
+        #self.figure.max_height = self.maximumHeight()
         #self.figure.updateDetectionLines(self.detector.vertical_detections)
 
 class Echogram():
@@ -243,7 +291,7 @@ class Echogram():
             max_v = np.max(self.data)
             self.data = (255 / (max_v - min_v) * (self.data - min_v)).astype(np.uint8)
         except np.AxisError as e:
-            LogObject().print("Echogram process buffer error:", e)
+            LogObject().print("Echogram processing error:", e)
             self.data = None
 
     def clear(self):

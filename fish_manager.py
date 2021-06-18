@@ -12,6 +12,10 @@ from log_object import LogObject
 fish_headers = ["ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
 fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
 
+N_COLORS = 16
+color_palette = sns.color_palette('bright', N_COLORS)
+pyqt_palette = [QtGui.QColor.fromRgbF(*c) for c in color_palette]
+
 # Implements functionality to store and manage the tracked fish items.
 # Items can be edited with the functions defined here through e.g. fish_list.py.
 class FishManager(QtCore.QAbstractTableModel):
@@ -97,6 +101,8 @@ class FishManager(QtCore.QAbstractTableModel):
             self.endRemoveRows()
         else:
             self.fish_list = fl
+
+        self.updateFishColors()
         self.refreshLayout()
 
     def clear(self):
@@ -295,6 +301,12 @@ class FishManager(QtCore.QAbstractTableModel):
             fish.setLengthByPercentile(self.length_percentile)
             fish.setDirection(self.up_down_inverted)
         self.trimFishList()
+
+    def updateFishColors(self):
+        color_ind = 0
+        for id, fish in self.all_fish.items():
+            fish.color_ind = color_ind
+            color_ind = (color_ind + 1) % N_COLORS
 
 
     def isDropdown(self, index):
@@ -551,6 +563,8 @@ class FishEntry():
         # lengths: Sorted list [lengths of detections]
         self.lengths = []
         self.length_overwritten = False
+
+        self.color_ind = 0
 
     def __repr__(self):
         return "Fish {}: {:.1f} {}".format(self.id, self.length, self.direction.name)

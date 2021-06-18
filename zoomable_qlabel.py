@@ -14,7 +14,7 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     # A signal that is emitted after a given amount of time has passed
     # since the last user input.
-    afterUserInputSignal = QtCore.pyqtSignal()
+    userInputSignal = QtCore.pyqtSignal()
 
     def __init__(self, maintain_aspect_ratio = False, horizontal = True, vertical = True):
         super().__init__()
@@ -47,8 +47,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
         self.drag_data = None
 
-        self.input_timer = None
-        self.input_timer_delay = 300
+        #self.input_timer = None
+        #self.input_timer_delay = 300
 
         # Debug window syncronization
         self.mouse_move_event = Event()
@@ -60,7 +60,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
     def resizeEvent(self, event):
         self.updateWindowZoom()
         self.applyPixmap()
-        self.onInput()
+        self.userInputSignal.emit()
+        #self.onInput()
 
     def wheelEvent(self, event):
         if self.drag_data is None:
@@ -70,7 +71,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.zoom_01 = max(0, min(self.zoom_01 + event.angleDelta().y() * self.zoom_step, 1))
             self.applyWindowZoom(event.x(), event.y())
             self.applyPixmap()
-            self.onInput()
+            self.userInputSignal.emit()
+            #self.onInput()
 
             self.mouse_move_event()
 
@@ -88,7 +90,8 @@ class ZoomableQLabel(QtWidgets.QLabel):
             if event.buttons() == QtCore.Qt.RightButton:
                 self.applyWindowDrag(event.x(), event.y(), self.drag_data)
                 self.applyPixmap()
-                self.onInput()
+                self.userInputSignal.emit()
+                #self.onInput()
                 
             else:
                 self.drag_data = None
@@ -243,19 +246,19 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.y_min_limit = 0
             self.y_max_limit = self.image_height
 
-    def onInput(self):
-        """
-        Starts a new timer that emits the afterUserInputSignal when set amount of time has passed.
-        If an old timer exists, it is stopped first to avoid emitting repeated signals.
-        """
-        if self.input_timer:
-            self.input_timer.stop()
-            self.input_timer.deleteLater()
+    #def onInput(self):
+    #    """
+    #    Starts a new timer that emits the afterUserInputSignal when set amount of time has passed.
+    #    If an old timer exists, it is stopped first to avoid emitting repeated signals.
+    #    """
+    #    if self.input_timer:
+    #        self.input_timer.stop()
+    #        self.input_timer.deleteLater()
         
-        self.input_timer = QtCore.QTimer()
-        self.input_timer.timeout.connect(self.afterUserInputSignal.emit)
-        self.input_timer.setSingleShot(True)
-        self.input_timer.start(self.input_timer_delay)
+    #    self.input_timer = QtCore.QTimer()
+    #    self.input_timer.timeout.connect(self.afterUserInputSignal.emit)
+    #    self.input_timer.setSingleShot(True)
+    #    self.input_timer.start(self.input_timer_delay)
         
 
     # Transform functions to transform coordinates from one system to other are defined below.
@@ -318,9 +321,13 @@ class DebugZQLabel(QtWidgets.QLabel):
         self.z_qlabel.mouse_move_event.append(self.update)
         self.setAlignment(QtCore.Qt.AlignCenter)
         self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.figurePixmap = None
 
     def updatePixmap(self):
         sz = self.size()
+        if self.z_qlabel.displayed_image is None:
+            return
+
         img = cv2.resize(self.z_qlabel.displayed_image, (sz.width(), sz.height()))
 
         qformat = QtGui.QImage.Format_Indexed8
@@ -338,6 +345,9 @@ class DebugZQLabel(QtWidgets.QLabel):
         self.updatePixmap()
 
     def paintEvent(self, event):
+        if self.figurePixmap is None:
+            return
+
         painter = QtGui.QPainter(self)
         painter.drawPixmap(self.rect(), self.figurePixmap)
 
@@ -369,7 +379,7 @@ if __name__ == "__main__":
     z_label = ZoomableQLabel(True, True, True)
     z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
     z_label.resetView()
-    z_label.afterUserInputSignal.connect(lambda: print("Input timeout"))
+    #z_label.afterUserInputSignal.connect(lambda: print("Input timeout"))
     main_window.setCentralWidget(z_label)
     main_window.show()
     main_window.setWindowTitle("Main window")

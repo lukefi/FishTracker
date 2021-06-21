@@ -19,19 +19,27 @@ class FishList(QtWidgets.QWidget):
         #self.scroll = QtWidgets.QScrollArea(self)
         #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
-        #self.fish_manager.layoutChanged.connect(self.checkDropdowns)
+        self.fish_manager.layoutChanged.connect(self.checkDropdowns)
 
         self.table = QtWidgets.QTableView(self)
         self.table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.table.setModel(fish_manager)
         self.table.setSortingEnabled(True)
-        self.table.sortByColumn(0, QtCore.Qt.AscendingOrder);
+        self.table.sortByColumn(1, QtCore.Qt.AscendingOrder);
         self.table.setItemDelegate(DropdownDelegate())
         self.table.setStyleSheet("QTableView\n"
                                  "{\n"
                                  "border: none;\n"
                                  "}\n"
                                  "")
+        self.table.setColumnWidth(0, 40)
+        self.table.setColumnWidth(1, 60)
+        self.table.setColumnWidth(2, 80)
+        self.table.setColumnWidth(3, 80)
+        self.table.setColumnWidth(4, 80)
+        self.table.setColumnWidth(5, 80)
+        self.table.setColumnWidth(6, 80)
+        self.table.setColumnWidth(7, 80)
 
         ### Enables easier interaction with dropdown fields.
         ### Can be disabled if turns out to break things.
@@ -188,7 +196,6 @@ class FishList(QtWidgets.QWidget):
         self.fish_manager.clearMeasurements(rows)
 
     def checkDropdowns(self):
-        print("Check dropdowns")
         for row in range(self.fish_manager.rowCount()):
             self.setPersistentDropdown(row)
 
@@ -260,6 +267,6 @@ if __name__ == "__main__":
         main_window.show()
         sys.exit(app.exec_())
 
-    #uiTest()
+    uiTest()
     #dataTest()
-    loadTest()
+    #loadTest()

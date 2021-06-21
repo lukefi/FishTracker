@@ -9,8 +9,8 @@ from enum import IntEnum
 from tracker import Tracker
 from log_object import LogObject
 
-fish_headers = ["ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
-fish_sort_keys = [lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
+fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
+fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
 
 N_COLORS = 16
 color_palette = sns.color_palette('bright', N_COLORS)
@@ -36,7 +36,8 @@ class FishManager(QtCore.QAbstractTableModel):
         self.fish_list = []
 
         # Index for fish_sort_keys array, that contains lambda functions to sort the currently shown array.
-        self.sort_ind = 0
+        # Default: ID
+        self.sort_ind = 1
 
         # Sort direction, ascending or descending
         self.sort_order = QtCore.Qt.DescendingOrder
@@ -125,18 +126,20 @@ class FishManager(QtCore.QAbstractTableModel):
                 return QtCore.QVariant()
 
             if col == 0:
+                return self.fish_list[row].color_ind
+            if col == 1:
                 return self.fish_list[row].id
-            elif col == 1:
-                return self.fish_list[row].length
             elif col == 2:
-                return self.fish_list[row].direction.name
+                return self.fish_list[row].length
             elif col == 3:
-                return self.fish_list[row].frame_in
+                return self.fish_list[row].direction.name
             elif col == 4:
-                return self.fish_list[row].frame_out
+                return self.fish_list[row].frame_in
             elif col == 5:
-                return self.fish_list[row].duration
+                return self.fish_list[row].frame_out
             elif col == 6:
+                return self.fish_list[row].duration
+            elif col == 7:
                 return len(self.fish_list[row].tracks)
             else:
                 return QtCore.QVariant()
@@ -147,7 +150,7 @@ class FishManager(QtCore.QAbstractTableModel):
         return len(self.fish_list)
 
     def columnCount(self, index=None):
-        return 7;
+        return 8;
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
@@ -255,7 +258,7 @@ class FishManager(QtCore.QAbstractTableModel):
             row = index.row()
             fish = self.fish_list[row]
 
-            if col == 0:
+            if col == 1:
                 id, success = intTryParse(value)
                 if success:
                     if id not in self.all_fish:
@@ -263,13 +266,13 @@ class FishManager(QtCore.QAbstractTableModel):
                         fish.id = id
                         self.trimFishList()
                         return True
-            elif col == 1:
+            elif col == 2:
                 length, success = floatTryParse(value)
                 if success:
                     fish.length = length
                     self.dataChanged.emit(index, index)
                     return True
-            elif col == 2:
+            elif col == 3:
                 try:
                     fish.direction = SwimDirection[value]
                     self.dataChanged.emit(index, index)
@@ -308,9 +311,11 @@ class FishManager(QtCore.QAbstractTableModel):
             fish.color_ind = color_ind
             color_ind = (color_ind + 1) % N_COLORS
 
+    def isColor(self, index):
+        return index.column() == 0
 
     def isDropdown(self, index):
-        return index.column() == 2
+        return index.column() == 3
 
     def dropdown_options(self):
         return [sd.name for sd in list(SwimDirection)]

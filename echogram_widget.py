@@ -20,7 +20,6 @@ class EchoFigure(ZoomableQLabel):
         self.frame_count = 0
         self.detection_opacity = 1
 
-        self.update_lines = False
         self.max_height = 500
         self.detection_lines = []
         self.track_lines = {}
@@ -32,7 +31,12 @@ class EchoFigure(ZoomableQLabel):
         self.shown_height = 1
         self.shown_zoom = 0
 
+        self.debug_lines = False
+
     def frame2xPos(self, value):
+        """
+        Coverts a frame index to a position on the window.
+        """
         try:
             return (value * self.image_width - self.x_min_limit) / (self.x_max_limit - self.x_min_limit) * self.window_width
         except ZeroDivisionError as e:
@@ -40,6 +44,9 @@ class EchoFigure(ZoomableQLabel):
             return 0
 
     def xPos2Frame(self, value):
+        """
+        Coverts a position on the window to a frame index.
+        """
         try:
             return (value * (self.x_max_limit - self.x_min_limit)/self.window_width + self.x_min_limit) / self.image_width
         except ZeroDivisionError as e:
@@ -47,6 +54,10 @@ class EchoFigure(ZoomableQLabel):
             return 0
 
     def paintEvent(self, event):
+        """
+        Draws the playhead and overlays detections and tracks.
+        The drawing of the echogram image is handled in the ZoomableQLabel class.
+        """
         super().paintEvent(event)
 
         try:
@@ -61,50 +72,17 @@ class EchoFigure(ZoomableQLabel):
         if self.parent.detector._show_echogram_detections or self.parent.fish_manager.show_echogram_fish:
             self.overlayPixmap(painter, self.detection_pixmap)
 
-        #if self.parent.fish_manager.show_echogram_fish:
-        #    if self.update_lines:
-        #        self.updateFishLines(self.parent.squeezed_fish)
-        #    self.overlayDetections(painter, self.parent.squeezed_fish, QtCore.Qt.green)
-
+        # Draw current frame indicator / playhead
         if h_pos_0 < self.window_width:
             painter.setPen(QtCore.Qt.white)
             painter.setBrush(QtCore.Qt.white)
             painter.setOpacity(0.3)
             painter.drawRect(h_pos_0, 0, h_pos_1-h_pos_0, self.window_height)
 
-        self.update_lines = False
-
-    def getQLine(self, v_pos, h_pos_0, h_pos_1):
-        return QtCore.QLineF(h_pos_0, v_pos, h_pos_1, v_pos)
-
-    def overlayDetections(self, painter, squeezed, color):
-        try:
-            painter.setPen(color)
-            painter.setOpacity(self.detection_opacity)
-            v_mult, v_min = self.parent.getScaleLinearModel(self.window_height)
-
-            for i in range(len(squeezed)):
-                heights = squeezed[i]
-                h_pos_0 = self.frame2xPos(i / self.frame_count)
-                h_pos_1 = self.frame2xPos((i + 1) / self.frame_count)
-                lines = [self.getQLine(self.window_height - (height - v_min) * v_mult, h_pos_0, h_pos_1) for height in heights]
-                painter.drawLines(lines)
-                #for h in heights:
-                #    v_pos = self.window_height - (h - v_min) * v_mult
-                #    painter.drawLine(h_pos_0, v_pos, h_pos_1, v_pos)
-        except ZeroDivisionError:
-            pass
-
-    def overlayLines(self, painter, line_list, color):
-        painter.setPen(color)
-        painter.setOpacity(self.detection_opacity)
-        for lines in line_list:
-            painter.drawLines(lines)
-
     def overlayPixmap(self, painter, pixmap):
         """
         Overlays given pixmap on top of the drawn image.
-        The given pixmap is cropped to fit the current zoom level or
+        The given pixmap is either cropped to fit the current zoom level or
         scaled down so that the overlayed image aligns with the underlying one.
 
         This enables reusing precalculating images until the image is refreshed.
@@ -132,23 +110,10 @@ class EchoFigure(ZoomableQLabel):
 
             painter.drawPixmap(target, pixmap, source)
 
-            painter.setPen(QtCore.Qt.green)
-            painter.drawLine(QtCore.QLineF(target_L, 0, target_L, self.window_height))
-            painter.drawLine(QtCore.QLineF(self.window_width - target_R, 0, self.window_width - target_R, self.window_height))
-
-    def updateDetectionLines(self, vertical_detections):
-        self.detection_lines = []
-        try:
-            v_mult, v_min = self.parent.getScaleLinearModel(self.max_height)
-            h_pos_0 = self.frame2xPos(0)
-
-            for i, heights in enumerate(vertical_detections):
-                h_pos_1 = self.frame2xPos((i + 1) / self.frame_count)
-                lines = [self.getQLine(self.max_height - (height - v_min) * v_mult, h_pos_0, h_pos_1) for height in heights]
-                self.detection_lines.append(lines)
-                h_pos_0 = h_pos_1
-        except ZeroDivisionError:
-            pass
+            if self.debug_lines:
+                painter.setPen(QtCore.Qt.green)
+                painter.drawLine(QtCore.QLineF(target_L, 0, target_L, self.window_height))
+                painter.drawLine(QtCore.QLineF(self.window_width - target_R, 0, self.window_width - target_R, self.window_height))
 
     def updateOverlayedImage(self, vertical_detections, vertical_tracks):
         """
@@ -215,10 +180,6 @@ class EchoFigure(ZoomableQLabel):
         except ZeroDivisionError:
             pass
 
-
-    def updateFishLines(self, vertical_fish):
-        pass
-
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         if self.displayed_image is not None and event.button() == QtCore.Qt.LeftButton:
@@ -244,7 +205,7 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.playback_manager = playback_manager
         self.detector = detector
-        self.detector.all_computed_event.append(self.updateDetectionImage)
+        self.detector.all_computed_event.append(self.updateOverlayedImage)
         self.fish_manager = fish_manager
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -252,6 +213,7 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.squeezed_fish = []
         self.fish_manager.updateContentsSignal.connect(self.squeezeFish)
+        self.fish_manager.updateContentsSignal.connect(self.setInputUpdateTimer)
 
         self.figure = EchoFigure(self)
         self.figure.userInputSignal.connect(self.setInputUpdateTimer)
@@ -294,7 +256,7 @@ class EchogramViewer(QtWidgets.QWidget):
             self.update_timer.deleteLater()
         
         self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.updateDetectionImage)
+        self.update_timer.timeout.connect(self.updateOverlayedImage)
         self.update_timer.setSingleShot(True)
         self.update_timer.start(self.update_timer_delay)
 
@@ -334,6 +296,10 @@ class EchogramViewer(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot()
     def squeezeFish(self):
+        """
+        Iterates through FishManagers fish_list array to update the list of "squeezed" fish
+        that are displayed on the echogram.
+        """
         self.squeezed_fish = [[] for fr in range(self.playback_manager.getFrameCount())]
         if not self.playback_manager.isMappingDone():
             return
@@ -347,13 +313,9 @@ class EchogramViewer(QtWidgets.QWidget):
                 self.squeezed_fish[key].append((distance, fish.color_ind))
         self.figure.update()
 
-    def updateDetectionImage(self):
+    def updateOverlayedImage(self):
         self.figure.updateOverlayedImage(self.detector.vertical_detections, self.squeezed_fish)
         self.figure.update()
-
-        #self.figure.update_lines = True
-        #self.figure.max_height = self.maximumHeight()
-        #self.figure.updateDetectionLines(self.detector.vertical_detections)
 
 class Echogram():
     """
@@ -385,7 +347,6 @@ class DebugEchoFigure(DebugZQLabel):
     def __init__(self, echo_figure):
         super().__init__(echo_figure)
         self.echo_figure = echo_figure
-        #self.echo_figure.afterUserInputSignal.connect(self.update)
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -393,29 +354,14 @@ class DebugEchoFigure(DebugZQLabel):
         width = self.size().width()
         height = self.size().height()
 
-        current_frames = self.echo_figure.x_max_limit - self.echo_figure.x_min_limit
-        shown_frames = self.echo_figure.shown_x_max_limit - self.echo_figure.shown_x_min_limit
-
-        source_L = max(0, self.echo_figure.x_min_limit - self.echo_figure.shown_x_min_limit)
-        source_L = int(source_L / shown_frames * width)
-
-        source_R = max(0, self.echo_figure.shown_x_max_limit - self.echo_figure.x_max_limit)
-        source_R = int(source_R / shown_frames * width)
-
-        #target_L = max(0, self.echo_figure.shown_x_min_limit - self.echo_figure.x_min_limit)
-        #target_L = int(target_L / current_frames * self.echo_figure.window_width)
-
-        #target_R = max(0, self.echo_figure.x_max_limit - self.echo_figure.shown_x_max_limit)
-        #target_R = int(target_R / current_frames * self.echo_figure.window_width)
-
-
-        #source = QtCore.QRectF(source_L, 0, self.echo_figure.shown_width - source_R, self.echo_figure.shown_height)
-        #target = QtCore.QRectF(target_L, 0, self.echo_figure.window_width - target_R, self.echo_figure.window_height)
+        w_mult = width / self.echo_figure.frame_count
+        source_L = w_mult * self.echo_figure.shown_x_min_limit;
+        source_R = w_mult * self.echo_figure.shown_x_max_limit;
 
         painter = QtGui.QPainter(self)
         painter.setPen(QtCore.Qt.green)
         painter.drawLine(QtCore.QLineF(source_L, 0, source_L, height))
-        painter.drawLine(QtCore.QLineF(width - source_R, 0, width - source_R, height))
+        painter.drawLine(QtCore.QLineF(source_R, 0, source_R, height))
 
 
 
@@ -480,6 +426,7 @@ if __name__ == "__main__":
     detector = TestDetector(playback_manager)
     fish_manager = TestFishManager()
     echogram = EchogramViewer(playback_manager, detector, fish_manager)
+    echogram.figure.debug_lines = True
 
     playback_manager.openTestFile()
 
@@ -492,7 +439,5 @@ if __name__ == "__main__":
     debug_window.setCentralWidget(debug_label)
     debug_window.show()
     debug_window.setWindowTitle("Debug window")
-    #debug_window.resize(echogram.figure.image_width, echogram.figure.image_height)
-    #debug_window.move(500, 100)
 
     sys.exit(app.exec_())

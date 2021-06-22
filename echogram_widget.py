@@ -13,7 +13,6 @@ class EchoFigure(ZoomableQLabel):
     def __init__(self, parent):
         super().__init__(False, True, False)
         self.parent = parent
-        self.displayed_image = None
         self.resetView()
         self.frame_ind = 0
         self.margin = 0
@@ -21,8 +20,6 @@ class EchoFigure(ZoomableQLabel):
         self.detection_opacity = 1
 
         self.max_height = 500
-        self.detection_lines = []
-        self.track_lines = {}
         self.detection_pixmap = None
 
         self.shown_x_min_limit = 0
@@ -31,6 +28,7 @@ class EchoFigure(ZoomableQLabel):
         self.shown_height = 1
         self.shown_zoom = 0
 
+        self.draw_selection_box = False
         self.debug_lines = False
 
     def frame2xPos(self, value):
@@ -70,7 +68,8 @@ class EchoFigure(ZoomableQLabel):
         painter = QtGui.QPainter(self)
 
         if self.parent.detector._show_echogram_detections or self.parent.fish_manager.show_echogram_fish:
-            self.overlayPixmap(painter, self.detection_pixmap)
+            if self.detection_pixmap is not None:
+                self.overlayPixmap(painter, self.detection_pixmap)
 
         # Draw current frame indicator / playhead
         if h_pos_0 < self.window_width:
@@ -78,6 +77,9 @@ class EchoFigure(ZoomableQLabel):
             painter.setBrush(QtCore.Qt.white)
             painter.setOpacity(0.3)
             painter.drawRect(h_pos_0, 0, h_pos_1-h_pos_0, self.window_height)
+
+        if self.draw_selection_box:
+            self.paintSelection()
 
     def overlayPixmap(self, painter, pixmap):
         """
@@ -183,16 +185,26 @@ class EchoFigure(ZoomableQLabel):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         if self.displayed_image is not None and event.button() == QtCore.Qt.LeftButton:
-            self.parent.setFrame(self.xPos2Frame(event.x()))
+            modifiers = QtWidgets.QApplication.keyboardModifiers()
+            self.draw_selection_box = modifiers == QtCore.Qt.ControlModifier
+            if not self.draw_selection_box:
+                self.parent.setFrame(self.xPos2Frame(event.x()))
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() == QtCore.Qt.LeftButton:
+            self.draw_selection_box = False
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         if self.displayed_image is not None and event.buttons() == QtCore.Qt.LeftButton:
-            self.parent.setFrame(self.xPos2Frame(event.x()))
+            if not self.draw_selection_box:
+                self.parent.setFrame(self.xPos2Frame(event.x()))
 
     def clear(self):
         super().clear()
-        self.displayed_image = None
+        self.detection_pixmap = None
+        self.frame_ind = 0
 
 class EchogramViewer(QtWidgets.QWidget):
     """
@@ -217,7 +229,9 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.figure = EchoFigure(self)
         self.figure.userInputSignal.connect(self.setInputUpdateTimer)
+        self.figure.boxSelectSignal.connect(self.onBoxSelect)
         self.horizontalLayout.addWidget(self.figure)
+
         self.playback_manager.file_opened.connect(self.onFileOpen)
         self.playback_manager.frame_available.connect(self.onImageAvailable)
         self.playback_manager.polars_loaded.connect(self.processEchogram)
@@ -316,6 +330,27 @@ class EchogramViewer(QtWidgets.QWidget):
     def updateOverlayedImage(self):
         self.figure.updateOverlayedImage(self.detector.vertical_detections, self.squeezed_fish)
         self.figure.update()
+
+    def onBoxSelect(self, box_positions):
+        if not self.figure.draw_selection_box:
+            return
+
+        m_pos1, m_pos2 = box_positions
+        min_x, max_x, min_y, max_y = self.figure.minMaxMousePositions(m_pos1, m_pos2)
+
+        frame_min = min_x / self.figure.image_width * self.figure.frame_count
+        frame_min = max(0, int(frame_min))
+        frame_max = max_x / self.figure.image_width * self.figure.frame_count
+        frame_max = min(int(frame_max), self.figure.frame_count)
+
+        min_d, max_d = self.playback_manager.getRadiusLimits()
+        height_min = min_d + max(0, (1 - min_y / self.figure.window_height)) * (max_d - min_d)
+        height_max = min_d + min((1 - max_y / self.figure.window_height), 1) * (max_d - min_d)
+
+        #print(frame_min, frame_max, " - ", height_min, height_max, " / ", self.playback_manager.getRadiusLimits())
+        #print(min_x, max_x, min_y, max_y, self.figure.image_height, self.figure.window_height)
+        self.fish_manager.selectFromEchogram(frame_min, frame_max, height_min, height_max)
+
 
 class Echogram():
     """
@@ -418,6 +453,9 @@ if __name__ == "__main__":
             super().__init__()
             self.show_fish = True
             self.show_echogram_fish = True
+
+        def selectFromEchogram(self, frame_min, frame_max, height_min, height_max):
+            pass
 
 
     app = QtWidgets.QApplication(sys.argv)

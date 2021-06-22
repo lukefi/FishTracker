@@ -30,16 +30,19 @@ class Tracker(QtCore.QObject):
         self.detector = detector
         self.resetParameters()
 
-        self.applied_parameters = None
-        self.applied_detector_parameters = None
-        self.mot_tracker = None
-        self.tracks_by_frame = {}
+        self.clear()
         self.tracking = False
         self.stop_tracking = False
         self._show_tracks = True
         self._show_bounding_box = True
         self._show_id = True
         self._show_detection_size = True
+
+    def clear(self):
+        self.applied_parameters = None
+        self.applied_detector_parameters = None
+        self.mot_tracker = None
+        self.tracks_by_frame = {}
 
     def resetParameters(self):
         self.parameters = TrackerParameters()

@@ -1,6 +1,7 @@
 ﻿from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 from playback_manager import Event
+import time
 
 class ZoomableQLabel(QtWidgets.QLabel):
     """
@@ -12,9 +13,10 @@ class ZoomableQLabel(QtWidgets.QLabel):
          is not currently used.
     """
 
-    # A signal that is emitted after a given amount of time has passed
-    # since the last user input.
+    # A signal that is emitted every time user input is applied to this widget.
     userInputSignal = QtCore.pyqtSignal()
+
+    boxSelectSignal = QtCore.pyqtSignal(tuple)
 
     def __init__(self, maintain_aspect_ratio = False, horizontal = True, vertical = True):
         super().__init__()
@@ -53,9 +55,30 @@ class ZoomableQLabel(QtWidgets.QLabel):
         # Debug window syncronization
         self.mouse_move_event = Event()
 
+        self.mouse_down_left = None
+        self.mouse_current_left = None
+
     def setImage(self, image):
         self.displayed_image = image
         self.applyPixmap()
+
+    def minMaxMousePositions(self, m_pos1, m_pos2):
+        x1, y1 = self.getMousePositionOnView(m_pos1)
+        x2, y2 = self.getMousePositionOnView(m_pos2)
+        return min(x1, x2), max(x1, x2), min(y1, y2), max(y1, y2)
+
+    def paintSelection(self):
+        """
+        Draws the selection box, when one exists. Needs to be called in paintEvent,
+        implemented e.g. in an inheriting subclass.
+        """
+        if self.mouse_down_left is not None:
+
+            min_x, max_x, min_y, max_y = self.minMaxMousePositions(self.mouse_down_left, self.mouse_current_left)
+
+            painter = QtGui.QPainter(self)
+            painter.setPen(QtCore.Qt.white)
+            painter.drawRect(min_x, min_y, max_x - min_x, max_y - min_y)
 
     def resizeEvent(self, event):
         self.updateWindowZoom()
@@ -76,10 +99,29 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
             self.mouse_move_event()
 
+    def getMousePositionOnImage(self, event):
+        return (self.view2imageX(event.x()), self.view2imageY(event.y()))
+
+    def getMousePositionOnView(self, image_pos):
+        return (self.image2viewX(image_pos[0]), self.image2viewY(image_pos[1]))
+
+    def getMouseDragTuple(self, released):
+        return (self.mouse_down_left, self.mouse_current_left, released)
+
     def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.RightButton:
+        if event.button() == QtCore.Qt.LeftButton:
+            self.mouse_down_left = self.getMousePositionOnImage(event)
+            self.mouse_current_left = self.mouse_down_left
+        elif event.button() == QtCore.Qt.RightButton:
             self.drag_data = WindowDragData(event.x(), event.y(), self.x_min_limit, self.x_max_limit,
                                             self.y_min_limit, self.y_max_limit)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.boxSelectSignal.emit((self.mouse_down_left, self.mouse_current_left))
+            self.mouse_down_left = None
+            self.mouse_current_left = None
+            self.update()
 
     def mouseMoveEvent(self, event):
         #self.x_pos = event.x() / self.window_width * self.image_width
@@ -95,6 +137,10 @@ class ZoomableQLabel(QtWidgets.QLabel):
                 
             else:
                 self.drag_data = None
+
+        if self.mouse_down_left is not None:
+            self.mouse_current_left = self.getMousePositionOnImage(event)
+            self.update()
 
         # Debug window syncronization
         self.mouse_move_event()
@@ -259,6 +305,10 @@ class ZoomableQLabel(QtWidgets.QLabel):
     #    self.input_timer.timeout.connect(self.afterUserInputSignal.emit)
     #    self.input_timer.setSingleShot(True)
     #    self.input_timer.start(self.input_timer_delay)
+
+    def clear(self):
+        super().clear()
+        self.displayed_image = None
         
 
     # Transform functions to transform coordinates from one system to other are defined below.
@@ -371,12 +421,23 @@ class DebugZQLabel(QtWidgets.QLabel):
         painter.drawRect(min_x, min_y, max_x-min_x, max_y-min_y)
         painter.drawEllipse(x_pos, y_pos, 5, 5)
 
+class TestZoomableQLabel(ZoomableQLabel):
+    """
+    Test class that enables drawing the selection box.
+    """
+    def __init__(self, b1, b2, b3):
+        super().__init__(b1, b2, b3)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        self.paintSelection()
+
 if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
-    z_label = ZoomableQLabel(True, True, True)
+    z_label = TestZoomableQLabel(True, True, True)
     z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
     z_label.resetView()
     #z_label.afterUserInputSignal.connect(lambda: print("Input timeout"))

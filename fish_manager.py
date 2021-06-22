@@ -24,6 +24,10 @@ class FishManager(QtCore.QAbstractTableModel):
     def __init__(self, playback_manager, tracker):
         super().__init__()
         self.playback_manager = playback_manager
+        if self.playback_manager is not None:
+            self.playback_manager.file_opened.connect(lambda x: self.clear())
+            self.playback_manager.file_closed.connect(lambda: self.clear())
+
         self.tracker = tracker
         if tracker is not None:
             self.tracker.init_signal.connect(self.clear)
@@ -245,6 +249,25 @@ class FishManager(QtCore.QAbstractTableModel):
                     continue
             self.fish_list[row].forceLengthByPercentile(self.length_percentile)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def selectFromEchogram(self, frame_min, frame_max, height_min, height_max):
+        new_selection = set()
+        print("New selection:", len(new_selection))
+
+        polar_transform = self.playback_manager.playback_thread.polar_transform
+        for fish in self.fish_list:
+            for frame, track in fish.tracks.items():
+                if frame >= frame_min and frame <= frame_max:
+                    track, det = fish.tracks[frame]
+                    center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
+                    distance, _ = polar_transform.cart2polMetric(center[0], center[1], True)
+                    if distance >= height_min and distance <= height_max:
+                        new_selection.add(fish)
+                        break
+
+        print("New selection:", len(new_selection))
+
+
 
     def flags(self, index):
         if not index.isValid():

@@ -20,6 +20,7 @@ pyqt_palette = [QtGui.QColor.fromRgbF(*c) for c in color_palette]
 # Items can be edited with the functions defined here through e.g. fish_list.py.
 class FishManager(QtCore.QAbstractTableModel):
     updateContentsSignal = QtCore.pyqtSignal()
+    updateSelectionSignal = QtCore.pyqtSignal(QtCore.QItemSelection, QtCore.QItemSelectionModel.SelectionFlags)
 
     def __init__(self, playback_manager, tracker):
         super().__init__()
@@ -61,6 +62,7 @@ class FishManager(QtCore.QAbstractTableModel):
         self.show_bounding_box = True
         self.show_id = True
         self.show_detection_size = True
+        self.update_fish_colors = False
 
         # Inverted upstream / downstream.
         self.up_down_inverted = False
@@ -83,7 +85,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
         self.trimFishList()
 
-    def trimFishList(self):
+    def trimFishList(self, force_color_update=False):
         """
         Updates shown table (fish_list) from all instances containing dictionary (all_fish).
         fish_list is trimmed based on the minimum duration.
@@ -107,7 +109,8 @@ class FishManager(QtCore.QAbstractTableModel):
         else:
             self.fish_list = fl
 
-        self.updateFishColors()
+        if self.update_fish_colors or force_color_update:
+            self.updateFishColors()
         self.refreshLayout()
 
     def clear(self):
@@ -251,23 +254,40 @@ class FishManager(QtCore.QAbstractTableModel):
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def selectFromEchogram(self, frame_min, frame_max, height_min, height_max):
+        """
+        Finds fish that are within given frame and height limits and sends a signal
+        to select the corresponding rows in table view.
+        """
         new_selection = set()
-        print("New selection:", len(new_selection))
-
         polar_transform = self.playback_manager.playback_thread.polar_transform
-        for fish in self.fish_list:
+        min_d, max_d = self.playback_manager.getRadiusLimits()
+
+        for ind, fish in enumerate(self.fish_list):
             for frame, track in fish.tracks.items():
                 if frame >= frame_min and frame <= frame_max:
                     track, det = fish.tracks[frame]
-                    center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
-                    distance, _ = polar_transform.cart2polMetric(center[0], center[1], True)
+                    center = FishEntry.trackCenter(track)
+                    distance, angle = polar_transform.cart2polMetric(center[0], center[1], True)
+
                     if distance >= height_min and distance <= height_max:
-                        new_selection.add(fish)
+                        new_selection.add(ind)
                         break
 
-        print("New selection:", len(new_selection))
+        self.setSelection(new_selection)
 
+    def setSelection(self, rows):
+        """
+        Creates a QItemSelection based on given rows (shown fish items)
+        and emits updateSelectionSignal with the selection.
+        """
+        selection = QtCore.QItemSelection()
+        for row in rows:
+            ind_1 = self.index(row, 0)
+            ind_2 = self.index(row, self.columnCount() - 1)
+            range = QtCore.QItemSelectionRange(ind_1, ind_2)
+            selection.append(range)
 
+        self.updateSelectionSignal.emit(selection, QtCore.QItemSelectionModel.ClearAndSelect)
 
     def flags(self, index):
         if not index.isValid():
@@ -326,7 +346,8 @@ class FishManager(QtCore.QAbstractTableModel):
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)
             fish.setDirection(self.up_down_inverted)
-        self.trimFishList()
+
+        self.trimFishList(force_color_update=True)
 
     def updateFishColors(self):
         color_ind = 0
@@ -400,7 +421,8 @@ class FishManager(QtCore.QAbstractTableModel):
         for fish in fish_by_frame:
             tr, det = fish.tracks[ind]
             if self.show_id:
-                center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
+                #center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
+                center = FishEntry.trackCenter(tr)
                 image = cv2.putText(image, "ID: " + str(fish.id), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
             if self.show_detection_size and det is not None:
@@ -469,7 +491,8 @@ class FishManager(QtCore.QAbstractTableModel):
                         length = fish.length
                     else:
                         length, _ = polar_transform.getMetricDistance(*track[:4])
-                    center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
+                    #center = [(track[2]+track[0])/2, (track[3]+track[1])/2]
+                    center = FishEntry.trackCenter(track)
                     distance, angle = polar_transform.cart2polMetric(center[0], center[1], True)
                     angle = float(angle / np.pi * 180 + 90)
 
@@ -626,6 +649,7 @@ class FishEntry():
         f.tracks = self.tracks.copy()
         f.lengths = self.lengths.copy()
         f.length_overwritten = self.length_overwritten
+        f.color_ind = self.color_ind
         return f
 
     def merge(self, other):
@@ -670,6 +694,10 @@ class FishEntry():
             self.direction = SwimDirection.UP if centers[0][1] >= centers[-1][1] else SwimDirection.DOWN
         else:
             self.direction = SwimDirection.UP if centers[0][1] < centers[-1][1] else SwimDirection.DOWN
+
+    @staticmethod
+    def trackCenter(track):
+        return [(track[2]+track[0])/2, (track[3]+track[1])/2]
 
 def floatTryParse(value):
     try:

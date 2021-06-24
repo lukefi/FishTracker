@@ -19,8 +19,6 @@ class FishList(QtWidgets.QWidget):
         #self.scroll = QtWidgets.QScrollArea(self)
         #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
-        self.fish_manager.layoutChanged.connect(self.checkDropdowns)
-
         self.table = QtWidgets.QTableView(self)
         self.table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.table.setModel(fish_manager)
@@ -40,6 +38,11 @@ class FishList(QtWidgets.QWidget):
         self.table.setColumnWidth(5, 80)
         self.table.setColumnWidth(6, 80)
         self.table.setColumnWidth(7, 80)
+
+        self.fish_manager.layoutChanged.connect(self.checkDropdowns)
+        self.fish_manager.updateSelectionSignal.connect(self.table.selectionModel().select)
+        self.fish_manager.updateSelectionSignal.connect(lambda x, y: self.table.setFocus())
+        #self.fish_manager.updateSelectionSignal.connect(lambda x, y: print(x, y))
 
         ### Enables easier interaction with dropdown fields.
         ### Can be disabled if turns out to break things.
@@ -220,14 +223,18 @@ if __name__ == "__main__":
         app = QtWidgets.QApplication(sys.argv)
         main_window = QtWidgets.QMainWindow()
         playback_manager = PlaybackManager(app, main_window)
-        # playback_manager.openTestFile()
         fish_manager = FishManager(None, None)
         fish_manager.testPopulate(500)
-        #info_w = InfoWidget(playback_manager, fish_manager)
         fish_list = FishList(fish_manager, playback_manager)
 
         main_window.setCentralWidget(fish_list)
         main_window.show()
+
+        #ind_1 = fish_manager.index(0, 0)
+        #ind_2 = fish_manager.index(2, fish_manager.columnCount() - 1)
+        #selection = QtCore.QItemSelection(ind_1, ind_2)
+        #fish_list.table.selectionModel().select(selection, QtCore.QItemSelectionModel.ClearAndSelect)
+
         sys.exit(app.exec_())
 
     def dataTest():

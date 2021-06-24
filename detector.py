@@ -49,6 +49,7 @@ class Detector:
 		self.current_len = 0
 
 		self.fgbg_mog = None
+		self.fgbg_mog_debug_initialized_once = False
 
 		self.ts = 0
 
@@ -117,6 +118,8 @@ class Detector:
 		self.fgbg_mog.setNMixtures(5)
 		self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		self.fgbg_mog.setShadowValue(0)
+
+		self.fgbg_mog_debug_initialized_once = True
 
 		nof_frames = self.image_provider.getFrameCount()
 		nof_bg_frames = min(nof_frames, self.mog_parameters.nof_bg_frames)
@@ -216,7 +219,12 @@ class Detector:
 		image_o = image_o_gray = image
 
 		# Get foreground mask, without updating the  model (learningRate = 0)
-		fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
+		try:
+			fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
+		except AttributeError as e:
+			LogObject().print(e, "\nDebug  (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
+			print(e, "\nDebug (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
+			return
 
 		# self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		fg_mask_cpy = fg_mask_mog

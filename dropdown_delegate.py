@@ -42,12 +42,14 @@ class DropdownDelegate(QtWidgets.QStyledItemDelegate):
             editor.setText(str(index.model().data(index, QtCore.Qt.DisplayRole)))
 
     def paint(self, painter, option, index):
-        if index.model().isColor(index):
-            color_label = ColorLabel()
+        if index.model().isColor(index):            
             if option.state & QtWidgets.QStyle.State_Selected:
-                brush = QtGui.QBrush(QtCore.Qt.green, QtCore.Qt.SolidPattern)
-                painter.fillRect(option.rect, option.palette.highlight())
+                if option.state & QtWidgets.QStyle.State_Active:
+                    painter.fillRect(option.rect, option.palette.highlight())
+                else:
+                    painter.fillRect(option.rect, option.palette.brush(QtGui.QPalette.Window))
 
+            color_label = ColorLabel()
             ind = index.model().data(index, QtCore.Qt.DisplayRole)
             color_label.paint(painter, option.rect, option.palette, pyqt_palette[ind])
         else:

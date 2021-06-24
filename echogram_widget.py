@@ -223,8 +223,8 @@ class EchogramViewer(QtWidgets.QWidget):
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0,0,0,0)
 
-        self.squeezed_fish = []
-        self.fish_manager.updateContentsSignal.connect(self.squeezeFish)
+        self.vertical_tracks = []
+        self.fish_manager.updateContentsSignal.connect(self.updateVerticalTracks)
         self.fish_manager.updateContentsSignal.connect(self.setInputUpdateTimer)
 
         self.figure = EchoFigure(self)
@@ -309,12 +309,12 @@ class EchogramViewer(QtWidgets.QWidget):
             return 1, 0
 
     @QtCore.pyqtSlot()
-    def squeezeFish(self):
+    def updateVerticalTracks(self):
         """
-        Iterates through FishManagers fish_list array to update the list of "squeezed" fish
-        that are displayed on the echogram.
+        Iterates through FishManagers fish_list array to update the list of vertical tracks
+        (i.e. "squeezed" fish) that are displayed on the echogram.
         """
-        self.squeezed_fish = [[] for fr in range(self.playback_manager.getFrameCount())]
+        self.vertical_tracks = [[] for fr in range(self.playback_manager.getFrameCount())]
         if not self.playback_manager.isMappingDone():
             return
 
@@ -324,11 +324,11 @@ class EchogramViewer(QtWidgets.QWidget):
                 avg_x = (tr[1] + tr[3]) / 2
 
                 distance, _ = self.playback_manager.getBeamDistance(avg_x, avg_y, True)
-                self.squeezed_fish[key].append((distance, fish.color_ind))
+                self.vertical_tracks[key].append((distance, fish.color_ind))
         self.figure.update()
 
     def updateOverlayedImage(self):
-        self.figure.updateOverlayedImage(self.detector.vertical_detections, self.squeezed_fish)
+        self.figure.updateOverlayedImage(self.detector.vertical_detections, self.vertical_tracks)
         self.figure.update()
 
     def onBoxSelect(self, box_positions):
@@ -336,7 +336,10 @@ class EchogramViewer(QtWidgets.QWidget):
             return
 
         m_pos1, m_pos2 = box_positions
-        min_x, max_x, min_y, max_y = self.figure.minMaxMousePositions(m_pos1, m_pos2)
+        min_x = min(m_pos1[0], m_pos2[0])
+        max_x = max(m_pos1[0], m_pos2[0])
+        min_y = min(m_pos1[1], m_pos2[1])
+        max_y = max(m_pos1[1], m_pos2[1])
 
         frame_min = min_x / self.figure.image_width * self.figure.frame_count
         frame_min = max(0, int(frame_min))
@@ -344,8 +347,8 @@ class EchogramViewer(QtWidgets.QWidget):
         frame_max = min(int(frame_max), self.figure.frame_count)
 
         min_d, max_d = self.playback_manager.getRadiusLimits()
-        height_min = min_d + max(0, (1 - min_y / self.figure.window_height)) * (max_d - min_d)
-        height_max = min_d + min((1 - max_y / self.figure.window_height), 1) * (max_d - min_d)
+        height_max = min_d + max(0, (1 - min_y / self.figure.image_height)) * (max_d - min_d)
+        height_min = min_d + min((1 - max_y / self.figure.image_height), 1) * (max_d - min_d)
 
         #print(frame_min, frame_max, " - ", height_min, height_max, " / ", self.playback_manager.getRadiusLimits())
         #print(min_x, max_x, min_y, max_y, self.figure.image_height, self.figure.window_height)

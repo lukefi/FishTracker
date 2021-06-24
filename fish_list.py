@@ -7,6 +7,8 @@ from detector_parameters import LabeledSlider
 # Tracked fish are stored and managed by fish_manager.py.
 #
 class FishList(QtWidgets.QWidget):
+    selectionRowsChanged = QtCore.pyqtSignal(set)
+
     def __init__(self, fish_manager, playback_manager, sonar_viewer=None):
         super().__init__()
         self.fish_manager = fish_manager
@@ -42,6 +44,8 @@ class FishList(QtWidgets.QWidget):
         self.fish_manager.layoutChanged.connect(self.checkDropdowns)
         self.fish_manager.updateSelectionSignal.connect(self.table.selectionModel().select)
         self.fish_manager.updateSelectionSignal.connect(lambda x, y: self.table.setFocus())
+        self.table.selectionModel().selectionChanged.connect(self.onSelectionChanged)
+
         #self.fish_manager.updateSelectionSignal.connect(lambda x, y: print(x, y))
 
         ### Enables easier interaction with dropdown fields.
@@ -160,6 +164,11 @@ class FishList(QtWidgets.QWidget):
         selection = self.table.selectionModel().selection().indexes();
         return list(set([s.row() for s in selection]))
 
+    def onSelectionChanged(self, selected, deselected):
+        selection = self.table.selectionModel().selection().indexes();
+        selection = set([s.row() for s in selection])
+        self.fish_manager.onSelectionChanged(selection)
+
     def displayFish(self):
         try:
             selection = self.table.selectionModel().selection().indexes();
@@ -208,9 +217,7 @@ class FishList(QtWidgets.QWidget):
             if self.fish_manager.isDropdown(index):
                 self.table.openPersistentEditor(index)
             else:
-                self.table.closePersistentEditor(index)
-            
-
+                self.table.closePersistentEditor(index)          
 
 
 if __name__ == "__main__":

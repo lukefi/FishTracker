@@ -16,6 +16,9 @@ N_COLORS = 16
 color_palette = sns.color_palette('bright', N_COLORS)
 pyqt_palette = [QtGui.QColor.fromRgbF(*c) for c in color_palette]
 
+color_palette_deep = sns.color_palette('deep', N_COLORS)
+pyqt_palette_deep = [QtGui.QColor.fromRgbF(*c) for c in color_palette_deep]
+
 # Implements functionality to store and manage the tracked fish items.
 # Items can be edited with the functions defined here through e.g. fish_list.py.
 class FishManager(QtCore.QAbstractTableModel):
@@ -39,6 +42,8 @@ class FishManager(QtCore.QAbstractTableModel):
 
         # Fish items that are currently displayed.
         self.fish_list = []
+
+        self.selected_rows = set()
 
         # Index for fish_sort_keys array, that contains lambda functions to sort the currently shown array.
         # Default: ID
@@ -288,6 +293,11 @@ class FishManager(QtCore.QAbstractTableModel):
             selection.append(range)
 
         self.updateSelectionSignal.emit(selection, QtCore.QItemSelectionModel.ClearAndSelect)
+
+    def onSelectionChanged(self, selected):
+        self.selected_rows = selected
+        self.updateContentsSignal.emit()
+
 
     def flags(self, index):
         if not index.isValid():

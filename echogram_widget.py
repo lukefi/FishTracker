@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from debug import Debug
 from log_object import LogObject
-from fish_manager import pyqt_palette
+from fish_manager import pyqt_palette, pyqt_palette_deep
 
 class EchoFigure(ZoomableQLabel):
     """
@@ -174,8 +174,11 @@ class EchoFigure(ZoomableQLabel):
             for i, height_color_pairs in enumerate(vertical_tracks[self.x_min_limit:self.x_max_limit]):
                 h_pos_1 = (i + 1) / show_frame_count * self.window_width
 
-                for height, color_ind in height_color_pairs:
-                    painter.setPen(pyqt_palette[color_ind])
+                for height, color_ind, selected in height_color_pairs:
+                    pen = QtGui.QPen(pyqt_palette[color_ind])
+                    pen.setWidth(2 if selected else 1)
+                    painter.setPen(pen)
+
                     v_pos = self.window_height - (height - v_min) * v_mult
                     painter.drawLine(h_pos_0, v_pos, h_pos_1, v_pos)
                 h_pos_0 = h_pos_1
@@ -318,13 +321,14 @@ class EchogramViewer(QtWidgets.QWidget):
         if not self.playback_manager.isMappingDone():
             return
 
-        for fish in self.fish_manager.fish_list:
+        for ind, fish in enumerate(self.fish_manager.fish_list):
+            selected = ind in self.fish_manager.selected_rows
             for key, (tr, _) in fish.tracks.items():
                 avg_y = (tr[0] + tr[2]) / 2
                 avg_x = (tr[1] + tr[3]) / 2
 
                 distance, _ = self.playback_manager.getBeamDistance(avg_x, avg_y, True)
-                self.vertical_tracks[key].append((distance, fish.color_ind))
+                self.vertical_tracks[key].append((distance, fish.color_ind, selected))
         self.figure.update()
 
     def updateOverlayedImage(self):

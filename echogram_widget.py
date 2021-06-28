@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from debug import Debug
 from log_object import LogObject
-from fish_manager import pyqt_palette, pyqt_palette_deep
+from fish_manager import FishEntry, pyqt_palette, pyqt_palette_deep
 
 class EchoFigure(ZoomableQLabel):
     """
@@ -216,7 +216,10 @@ class EchogramViewer(QtWidgets.QWidget):
     """
     def __init__(self, playback_manager, detector, fish_manager):
         super().__init__()
-        #self.setMaximumHeight(500)
+
+        # Contains vertical position of each fish in each frame, as well as the associated
+        # color index and a bool indicating  whether the fish is selected or not.
+        self.vertical_tracks = []
 
         self.playback_manager = playback_manager
         self.detector = detector
@@ -226,7 +229,6 @@ class EchogramViewer(QtWidgets.QWidget):
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0,0,0,0)
 
-        self.vertical_tracks = []
         self.fish_manager.updateContentsSignal.connect(self.updateVerticalTracks)
         self.fish_manager.updateContentsSignal.connect(self.setInputUpdateTimer)
 
@@ -241,6 +243,8 @@ class EchogramViewer(QtWidgets.QWidget):
         self.playback_manager.file_closed.connect(self.onFileClose)
 
         self.update_timer = None
+
+        # Delay for echohram to update overlayed detections/tracks after user input
         self.update_timer_delay = 100
 
         self.setLayout(self.horizontalLayout)
@@ -263,7 +267,7 @@ class EchogramViewer(QtWidgets.QWidget):
     def setInputUpdateTimer(self):
         """
         Starts a new timer that updates the image when set amount of time has passed.
-        If an old timer exists, it is stopped first to avoid updating too often.
+        If an old timer exists, it is stopped first to avoid updating repeatedly.
 
         This is used to update overlayed image, which is too heavy to update
         every frame.
@@ -317,18 +321,18 @@ class EchogramViewer(QtWidgets.QWidget):
         Iterates through FishManagers fish_list array to update the list of vertical tracks
         (i.e. "squeezed" fish) that are displayed on the echogram.
         """
-        self.vertical_tracks = [[] for fr in range(self.playback_manager.getFrameCount())]
         if not self.playback_manager.isMappingDone():
             return
+
+        self.vertical_tracks = [[] for fr in range(self.playback_manager.getFrameCount())]
 
         for ind, fish in enumerate(self.fish_manager.fish_list):
             selected = ind in self.fish_manager.selected_rows
             for key, (tr, _) in fish.tracks.items():
-                avg_y = (tr[0] + tr[2]) / 2
-                avg_x = (tr[1] + tr[3]) / 2
-
+                avg_y, avg_x = FishEntry.trackCenter(tr)
                 distance, _ = self.playback_manager.getBeamDistance(avg_x, avg_y, True)
                 self.vertical_tracks[key].append((distance, fish.color_ind, selected))
+
         self.figure.update()
 
     def updateOverlayedImage(self):

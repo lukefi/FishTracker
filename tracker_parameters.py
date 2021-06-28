@@ -27,7 +27,8 @@ class TrackerParametersView(QWidget):
         self.setButtonsEnabled()
 
     def setButtonsEnabled(self):
-        all_value = self.tracker.parametersDirty() and self.playback_manager.isPolarsDone() and ((not self.detector.initializing and not self.detector.computing) or self.tracker.tracking)
+        detector_active = self.detector.bg_subtractor.initializing or self.detector.computing
+        all_value = self.tracker.parametersDirty() and self.playback_manager.isPolarsDone() and (not detector_active or self.tracker.tracking)
         self.track_all_btn.setEnabled(all_value)
 
     def setButtonTexts(self):

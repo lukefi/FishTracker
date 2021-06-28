@@ -7,13 +7,13 @@ import seaborn as sns
 import sklearn.cluster as cluster
 import random as rng
 import collections
-import math
 import os
 import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager, Event, TestFigure
 from log_object import LogObject
+from background_subtractor import BackgroundSubtractor, MOGParameters
 
 def nothing(x):
     pass
@@ -32,31 +32,23 @@ PARAMETER_TYPES = {
 	        "dbscan_min_samples": int
         }
 
-class Detector:
+class Detector():
 
 	def __init__(self, image_provider):
-		# Test data, a folder with multiple png frames
-		#directory = '/data/ttekoo/data/luke/2_vaihe_kaikki/frames/Teno1_test_6000-6999'
-		#body = '*.png'
-		#path = directory + '/' + body
-
+		self.image_provider = image_provider
+		self.bg_subtractor = BackgroundSubtractor(image_provider)
 		self.resetParameters()
 		self.detections = [None]
 		self.vertical_detections = []
-		self.image_height = 0
 
 		self.current_ind = 0
 		self.current_len = 0
 
-		self.fgbg_mog = None
-		self.fgbg_mog_debug_initialized_once = False
-
 		self.ts = 0
-
-		self.image_provider = image_provider
 
 		# When detector parameters change.
 		self.state_changed_event = Event()
+		self.bg_subtractor.state_changed_signal.connect(self.state_changed_event)
 
 		# When results change (e.g. when a new frame is displayed).
 		self.data_changed_event = Event()
@@ -69,14 +61,7 @@ class Detector:
 		self._show_detection_size = False
 		self.show_bgsub = False
 
-		# [flag] Whether MOG is initializing
-		self.initializing = False
-
-		# [trigger] Terminate initializing process.
-		self.stop_initializing = False
-
-		# [flag] Whether MOG has been initialized
-		self.mog_ready = False
+		self.applied_parameters = None
 
 		# [flag] Whether detector is computing all the frames.
 		self.computing = False
@@ -87,98 +72,14 @@ class Detector:
 		# [flag] Calculate detections on event. Otherwise uses precalculated results.
 		self.compute_on_event = False
 
-		# [flag] Whether detection array can be cleared.
-		#self.detections_clearable = True
-
-		## [flag] Whether all frames should be calculated.
-		#self.detections_dirty = True
-
-		## ([flag] Whether MOG should be reinitialized.
-		#self.mog_dirty = False
-
-		self.applied_parameters = None
-		self.applied_mog_parameters = None
-
 	def resetParameters(self):
-		self.mog_parameters = MOGParameters()
-		self.parameters = DetectorParameters(mog_parameters=self.mog_parameters)
+		self.bg_subtractor.resetParameters()
+		self.parameters = DetectorParameters(mog_parameters=self.bg_subtractor.mog_parameters)
 
 	def initMOG(self, clear_detections=True):
-		LogObject().print("Init mog")
-		if hasattr(self.image_provider, "pausePolarLoading"):
-			self.image_provider.pausePolarLoading(True)
-
-		self.mog_ready = False
-		self.initializing = True
-		self.stop_initializing = False
-		self.compute_on_event = True
-		self.state_changed_event()
-
-		self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
-		self.fgbg_mog.setNMixtures(5)
-		self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
-		self.fgbg_mog.setShadowValue(0)
-
-		self.fgbg_mog_debug_initialized_once = True
-
-		nof_frames = self.image_provider.getFrameCount()
-		nof_bg_frames = min(nof_frames, self.mog_parameters.nof_bg_frames)
-
 		if clear_detections:
 			self.clearDetections()
-
-		# Create background model from fixed number of frames.
-		# Count step based on number of frames
-		# NOTE: nof_bg_frames to UI / file
-		#bg_counter = 0
-		#step = np.ceil(nof_frames/self.nof_bg_frames)
-		step = nof_frames / nof_bg_frames
-
-		ten_perc = 0.1 * nof_bg_frames
-		print_limit = 0
-
-		for i in range(nof_bg_frames):
-			if i > print_limit:
-				LogObject().print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")
-				print_limit += ten_perc
-
-			ind = math.floor(i * step)
-
-			if self.stop_initializing:
-				LogObject().print("Stopped initializing at", ind)
-				self.stop_initializing = False
-				self.mog_ready = False
-				self.initializing = False
-				self.applied_mog_parameters = None
-				#self.parameters.mog_parameters = None
-				self.state_changed_event()
-				return
-
-			image_o = self.image_provider.getFrame(ind)
-
-			# NOTE: now all frames are resized to (500,100).
-			# Should be other way. This is now for keping parameter values same.
-			# image_o = cv2.resize(image_o, (500,1000), interpolation = cv2.INTER_AREA)
-
-			# NOTE: learningRate to UI / file / compute from nof_bg_frames (learningRate = 1/nof_bg_frames)
-			self.fgbg_mog.apply(image_o, learningRate=self.mog_parameters.learning_rate)
-			#bg_counter = bg_counter + step
-			#if bg_counter == self.nof_bg_frames:
-			#	break;
-
-		self.image_height = image_o.shape[0]
-		self.mog_ready = True
-		self.initializing = False;
-		self.applied_mog_parameters = self.mog_parameters.copy()
-
-		self.state_changed_event()
-		LogObject().print("Initializing: 100 %")
-
-		if hasattr(self.image_provider, "pausePolarLoading"):
-			self.image_provider.pausePolarLoading(False)
-
-		if hasattr(self.image_provider, "refreshFrame"):
-			self.image_provider.refreshFrame()
+		self.bg_subtractor.initMOG()
 
 	def compute_from_event(self, tuple):
 		if tuple is None:
@@ -211,22 +112,12 @@ class Detector:
 	def computeBase(self, ind, image, get_images=False):
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
-		
-		# NOTE: now all frames are resized to (500,100).
-		# Should be other way. This is now for keping parameter values same.
-		#image_o = cv2.resize(image, (500,1000), interpolation = cv2.INTER_AREA)
-		#image_o_gray = image_o
-		image_o = image_o_gray = image
 
-		# Get foreground mask, without updating the  model (learningRate = 0)
-		try:
-			fg_mask_mog = self.fgbg_mog.apply(image_o, learningRate=0)
-		except AttributeError as e:
-			LogObject().print(e, "\nDebug  (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
-			print(e, "\nDebug (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
+		image_o = image_o_gray = image
+		fg_mask_mog = self.bg_subtractor.subtractBG(image_o)
+		if fg_mask_mog is None:
 			return
 
-		# self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
 		fg_mask_cpy = fg_mask_mog
 		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
 		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
@@ -274,9 +165,9 @@ class Detector:
 		self.compute_on_event = False
 		self.state_changed_event()
 
-		if self.mogParametersDirty():
+		if self.bg_subtractor.parametersDirty():
 			self.initMOG()
-			if self.mogParametersDirty():
+			if self.bg_subtractor.parametersDirty():
 				LogObject().print("Stopped before detecting.")
 				self.abortComputing(True)
 				return
@@ -315,11 +206,12 @@ class Detector:
 		self.stop_computing = False
 		self.computing = False
 		self.compute_on_event = True
-		#self.detections_clearable = True
+
 		self.state_changed_event()
 		self.applied_parameters = None
+
 		if mog_aborted:
-			self.applied_mog_parameters = None
+			self.bg_subtractor.abortComputing()
 
 	def clearDetections(self):
 		LogObject().print("Cleared")
@@ -350,7 +242,7 @@ class Detector:
 
 	def setMOGVarThresh(self, value):
 		try:
-			self.mog_parameters.mog_var_thresh = int(value)
+			self.bg_subtractor.mog_parameters.mog_var_thresh = int(value)
 			self.state_changed_event()
 		except ValueError as e:
 			LogObject().print(e)
@@ -371,14 +263,14 @@ class Detector:
 
 	def setNofBGFrames(self, value):
 		try:
-			self.mog_parameters.nof_bg_frames = int(value)
+			self.bg_subtractor.mog_parameters.nof_bg_frames = int(value)
 			self.state_changed_event()
 		except ValueError as e:
 			LogObject().print(e)
 
 	def setLearningRate(self, value):
 		try:
-			self.mog_parameters.learning_rate = float(value)
+			self.bg_subtractor.mog_parameters.learning_rate = float(value)
 			self.state_changed_event()
 		except ValueError as e:
 			LogObject().print(e)
@@ -442,13 +334,10 @@ class Detector:
 		return fg_mask_filt
 
 	def parametersDirty(self):
-		return self.parameters != self.applied_parameters or self.mogParametersDirty()
-
-	def mogParametersDirty(self):
-		return self.mog_parameters != self.applied_mog_parameters
+		return self.parameters != self.applied_parameters or self.bg_subtractor.parametersDirty()
 
 	def allCalculationAvailable(self):
-		return self.parametersDirty() and not self.initializing
+		return self.parametersDirty() and not self.bg_subtractor.initializing
 
 	def saveDetectionsToFile(self, path):
 		"""
@@ -557,36 +446,14 @@ class Detector:
 			self.detections[frame] = frame_dets
 
 		self.applied_parameters = self.parameters.copy()
-		self.mog_parameters = self.parameters.mog_parameters
-		self.applied_mog_parameters = self.mog_parameters.copy()
+		self.bg_subtractor.setParameters(self.parameters.mog_parameters)
 
 		self.updateVerticalDetections()
 		#print("---", self.vertical_detections)
 		self.compute_on_event = False
 		self.state_changed_event()
 		self.all_computed_event()
-			
-			
 
-class MOGParameters:
-	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01,):
-		self.mog_var_thresh = mog_var_thresh
-		self.nof_bg_frames = nof_bg_frames
-		self.learning_rate = learning_rate
-
-	def __eq__(self, other):
-		if not isinstance(other, MOGParameters):
-			return False
-
-		return self.mog_var_thresh == other.mog_var_thresh \
-			and self.nof_bg_frames == other.nof_bg_frames \
-			and self.learning_rate == other.learning_rate
-
-	def __repr__(self):
-		return "MOG Parameters: {} {} {}".format(self.mog_var_thresh, self.nof_bg_frames, self.learning_rate)
-
-	def copy(self):
-		return MOGParameters( self.mog_var_thresh, self.nof_bg_frames, self.learning_rate )
 
 class DetectorParameters:
 	def __init__(self, mog_parameters=None, detection_size=10, min_fg_pixels=25, median_size=3, dbscan_eps=10, dbscan_min_samples=10):
@@ -791,7 +658,7 @@ class DetectorDisplay:
 		cv2.createTrackbar('median_size', 'image_o_rgb', 1, 21, nothing)
 		cv2.createTrackbar('min_fg_pixels', 'image_o_rgb', 10, 100, nothing)
 
-		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.mog_parameters.mog_var_thresh)
+		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.bg_subtractor.mog_parameters.mog_var_thresh)
 		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.detector.parameters.min_fg_pixels)
 		cv2.setTrackbarPos('median_size','image_o_rgb', self.detector.parameters.median_size)
 
@@ -815,7 +682,7 @@ class DetectorDisplay:
 
 	def readParameters(self):
 		# Read parameter values from trackbars
-		self.detector.mog_parameters.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
+		self.detector.bg_subtractor.mog_parameters.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
 		self.detector.parameters.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
 		self.detector.parameters.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
 
@@ -855,7 +722,7 @@ def playbackTest():
 	playback_manager.openTestFile()
 	playback_manager.frame_available.connect(forwardImage)
 	detector = Detector(playback_manager)
-	detector.mog_parameters.nof_bg_frames = 100
+	detector.bg_subtractor.mog_parameters.nof_bg_frames = 100
 	detector._show_detections = True
 	detector._show_echogram_detections = True
 	playback_manager.mapping_done.connect(startDetector)

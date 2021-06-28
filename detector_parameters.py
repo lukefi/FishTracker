@@ -69,6 +69,7 @@ class DetectorParametersView(QWidget):
         super().__init__()
         self.playback_manager = playback_manager
         self.detector = detector
+        self.bg_subtractor = detector.bg_subtractor
         self.sonar_processor = sonar_processor
 
         self.verticalLayout = QVBoxLayout()
@@ -236,7 +237,7 @@ class DetectorParametersView(QWidget):
     def refreshValues(self):
 
         params = self.detector.parameters
-        mog_params = self.detector.mog_parameters
+        mog_params = self.bg_subtractor.mog_parameters
 
         self.detection_size_line.setText(str(params.detection_size))
         self.min_fg_pixels_line.setText(str(params.min_fg_pixels))
@@ -249,10 +250,10 @@ class DetectorParametersView(QWidget):
         self.mog_var_threshold_line.setText(str(mog_params.mog_var_thresh))
 
     def recalculateMOG(self):
-        if not self.detector.initializing:
+        if not self.bg_subtractor.initializing:
             self.playback_manager.runInThread(self.detector.initMOG)
         else:
-            self.detector.stop_initializing = True
+            self.bg_subtractor.stop_initializing = True
 
     def calculateAll(self):
         if not self.detector.computing:
@@ -266,14 +267,14 @@ class DetectorParametersView(QWidget):
         else:
             self.calculate_all_btn.setText("Calculate All")
 
-        if self.detector.initializing:
+        if self.bg_subtractor.initializing:
             self.recalculate_mog_btn.setText("Cancel")
         else:
             self.recalculate_mog_btn.setText("Apply Values")
 
     def setButtonsEnabled(self):
         #LogObject().print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
-        mog_value = self.playback_manager.isMappingDone() and self.detector.mogParametersDirty() #mog_dirty
+        mog_value = self.playback_manager.isMappingDone() and self.bg_subtractor.parametersDirty() #mog_dirty
         self.recalculate_mog_btn.setEnabled(mog_value)
 
         all_value = self.playback_manager.isPolarsDone() and self.detector.allCalculationAvailable() #(self.detector.detections_dirty or self.detector.mog_dirty)

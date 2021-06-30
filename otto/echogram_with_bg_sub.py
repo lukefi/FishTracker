@@ -5,7 +5,7 @@ import cv2
 def main():
 
 	# Test data, a folder with multiple png frames
-	directory = '/data/ttekoo/data/luke/2_vaihe_kaikki/frames/Teno1_test_6000-6999'
+	directory = 'D:/Projects/VTT/FishTracking/out'
 	body = '*.png'
 	path = directory + '/' + body
 
@@ -43,6 +43,7 @@ def main():
 		# Update background model & foreground mask
 		foreground = fgbg.apply(col_im, learningRate=0.01)
 		echogram_foreground = np.c_[echogram_foreground, foreground]
+	print(echogram_foreground[0:10,0:10])
 
 
 	# Show results

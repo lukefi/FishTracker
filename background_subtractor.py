@@ -49,7 +49,7 @@ class BackgroundSubtractor(QtCore.QObject):
         self.state_changed_signal.emit()
 
         self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
-        self.fgbg_mog.setNMixtures(5)
+        self.fgbg_mog.setNMixtures(self.mog_parameters.mixture_count)
         self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
         self.fgbg_mog.setShadowValue(0)
 
@@ -85,7 +85,10 @@ class BackgroundSubtractor(QtCore.QObject):
             self.fgbg_mog.apply(image_o, learningRate=self.mog_parameters.learning_rate)
 
         self.image_height = image_o.shape[0]
-        self.image_width = image_o.shape[1]
+        try:
+            self.image_width = image_o.shape[1]
+        except IndexError:
+            self.image_width = 1
 
         self.mog_ready = True
         self.initializing = False;
@@ -122,10 +125,11 @@ class BackgroundSubtractor(QtCore.QObject):
         self.applied_mog_parameters = None
 
 class MOGParameters:
-	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01,):
+	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01):
 		self.mog_var_thresh = mog_var_thresh
 		self.nof_bg_frames = nof_bg_frames
 		self.learning_rate = learning_rate
+		self.mixture_count = 5
 
 	def __eq__(self, other):
 		if not isinstance(other, MOGParameters):

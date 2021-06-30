@@ -3,7 +3,7 @@ from image_manipulation import ImageProcessor
 import iconsLauncher as uiIcons
 
 class ParameterList(QtWidgets.QToolBar):
-    def __init__(self, playback_manager, sonar_processor, sonar_viewer, fish_manager, detector, tracker):
+    def __init__(self, playback_manager, sonar_processor, sonar_viewer, fish_manager, detector, tracker, echogram):
         super().__init__()
         self.playback_manager = playback_manager
         self.sonar_viewer = sonar_viewer
@@ -11,6 +11,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.fish_manager = fish_manager
         self.detector = detector
         self.tracker = tracker
+        self.echogram = echogram
 
         self.setOrientation(QtCore.Qt.Vertical)
 
@@ -44,7 +45,11 @@ class ParameterList(QtWidgets.QToolBar):
         #self.gamma_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         #self.gamma_label.setMinimumWidth(50)
 
-        self.show_echogram_detections_btn = QtWidgets.QPushButton()
+
+        # --- Echogram options ---
+
+        # Echogram detections
+        self.show_echogram_detections_btn = QtWidgets.QPushButton(self)
         self.show_echogram_detections_btn.setObjectName("showEchogramDetections")
         self.show_echogram_detections_btn.setFlat(True)
         self.show_echogram_detections_btn.setCheckable(True)
@@ -54,8 +59,9 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_echogram_detections_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("detections")))
         self.show_echogram_detections_btn.setIconSize(btn_size)
 
-        self.show_echogram_tracks_btn = QtWidgets.QPushButton()
-        self.show_echogram_tracks_btn.setObjectName("showTracks")
+        # Echogram tracks
+        self.show_echogram_tracks_btn = QtWidgets.QPushButton(self)
+        self.show_echogram_tracks_btn.setObjectName("showEchogramTracks")
         self.show_echogram_tracks_btn.setFlat(True)
         self.show_echogram_tracks_btn.setCheckable(True)
         self.show_echogram_tracks_btn.setChecked(True)
@@ -64,6 +70,21 @@ class ParameterList(QtWidgets.QToolBar):
         self.show_echogram_tracks_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("tracks")))
         self.show_echogram_tracks_btn.setIconSize(btn_size)
 
+        # Echogram background subtraction
+        self.echogram_bgsub_btn = QtWidgets.QPushButton(self)
+        self.echogram_bgsub_btn.setObjectName("subtractEchogramBackground")
+        self.echogram_bgsub_btn.setFlat(True)
+        self.echogram_bgsub_btn.setCheckable(True)
+        self.echogram_bgsub_btn.setChecked(False)
+        if self.echogram is not None:
+            self.echogram_bgsub_btn.clicked.connect(self.echogram.showBGSubtraction)
+        self.echogram_bgsub_btn.clicked.connect(self.playback_manager.refreshFrame)
+        self.echogram_bgsub_btn.setToolTip("Background subtraction\nShow background subtraction in Echogram")
+        self.echogram_bgsub_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("background_subtraction")))
+        self.echogram_bgsub_btn.setIconSize(btn_size)
+
+
+        # --- Sonar view options ---
 
         self.gamma_value = QtWidgets.QLabel("1.0", self)
         self.gamma_value.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignTop)
@@ -192,12 +213,19 @@ class ParameterList(QtWidgets.QToolBar):
         line.setFrameShape(QtWidgets.QFrame.HLine);
         line.setFrameShadow(QtWidgets.QFrame.Sunken)
 
+        line2 = QtWidgets.QFrame()
+        line2.setFrameShape(QtWidgets.QFrame.HLine);
+        line2.setFrameShadow(QtWidgets.QFrame.Sunken)
+
         #self.verticalLayout.addWidget(self.image_controls_label)
         #self.verticalLayout.addWidget(self.distance_tick)
         #self.verticalLayout.addWidget(self.contrast_tick)
         #self.verticalLayout.addWidget(self.gamma_label)
+
+        self.addWidget(self.echogram_bgsub_btn)
         self.addWidget(self.show_echogram_detections_btn)
         self.addWidget(self.show_echogram_tracks_btn)
+        self.addWidget(line)
         self.addWidget(self.gamma_value)
         self.addWidget(self.gamma_slider)
         self.addWidget(self.bgsub_btn)
@@ -206,7 +234,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.addWidget(self.show_tracks_btn)
         self.addWidget(self.show_detection_size_btn)
         self.addWidget(self.show_trackingIDs_btn)
-        self.addWidget(line)
+        self.addWidget(line2)
         self.addWidget(self.measure_btn)
 
     def gammaSliderChanged(self, value):
@@ -223,10 +251,16 @@ class ParameterList(QtWidgets.QToolBar):
         self.playback_manager.refreshFrame()
 
     def showEchogramDetectionsChanged(self, value):
+        if value and self.show_echogram_tracks_btn.isChecked():
+            self.show_echogram_tracks_btn.click()
+
         self.detector.setShowEchogramDetections(value)
         self.playback_manager.refreshFrame()
 
     def showEchogramTracksChanged(self, value):
+        if value and self.show_echogram_detections_btn.isChecked():
+            self.show_echogram_detections_btn.click()
+
         self.fish_manager.setShowEchogramFish(value)
         self.playback_manager.refreshFrame()
 
@@ -252,7 +286,7 @@ if __name__ == "__main__":
     detector = Detector(playback_manager)
     tracker = Tracker(detector)
 
-    parameter_list = ParameterList(playback_manager, sonar_processor, None, fish_manager, detector, tracker)
+    parameter_list = ParameterList(playback_manager, sonar_processor, None, fish_manager, detector, tracker, None)
     main_window.setCentralWidget(parameter_list)
     main_window.show()
     sys.exit(app.exec_())

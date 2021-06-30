@@ -172,6 +172,15 @@ class PlaybackManager(QObject):
 
         #self.polar_transform = None
 
+    def getFileName(self, extension=True):
+        if self.path == "":
+            return ""
+        basename = os.path.basename(self.path)
+        if extension:
+            return basename
+        else:
+            return basename.split('.')[0]
+
     def setTitle(self, path=""):
         if self.main_window is None:
             return

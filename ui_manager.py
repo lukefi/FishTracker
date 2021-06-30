@@ -57,7 +57,7 @@ class UIManager():
         self.ui.splitter.replaceWidget(0, self.sonar_viewer)
         self.ui.sonar_widget = self.sonar_viewer
 
-        self.tool_bar = ParameterList(self.playback, self.sonar_viewer.image_processor, self.sonar_viewer, self.fish_manager, self.detector, self.tracker)
+        self.tool_bar = ParameterList(self.playback, self.sonar_viewer.image_processor, self.sonar_viewer, self.fish_manager, self.detector, self.tracker, echo)
         self.ui.horizontalLayout_2.replaceWidget(self.ui.tool_bar, self.tool_bar)
         self.tool_bar.setMaximumWidth(40)
         self.ui.tool_bar = self.tool_bar

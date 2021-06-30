@@ -5,6 +5,7 @@ import numpy as np
 from debug import Debug
 from log_object import LogObject
 from fish_manager import FishEntry, pyqt_palette, pyqt_palette_deep
+from background_subtractor import BackgroundSubtractor
 
 class EchoFigure(ZoomableQLabel):
     """
@@ -87,7 +88,7 @@ class EchoFigure(ZoomableQLabel):
         The given pixmap is either cropped to fit the current zoom level or
         scaled down so that the overlayed image aligns with the underlying one.
 
-        This enables reusing precalculating images until the image is refreshed.
+        This enables reusing a previous image until the image has been refreshed.
         """
 
         if pixmap is not None:
@@ -225,6 +226,9 @@ class EchogramViewer(QtWidgets.QWidget):
         self.detector = detector
         self.detector.all_computed_event.append(self.updateOverlayedImage)
         self.fish_manager = fish_manager
+        self.echogram = None
+        self.show_bg_subtracted = False
+
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.horizontalLayout.setContentsMargins(0,0,0,0)
@@ -248,7 +252,6 @@ class EchogramViewer(QtWidgets.QWidget):
         self.update_timer_delay = 100
 
         self.setLayout(self.horizontalLayout)
-        self.echogram = None
 
     def onImageAvailable(self, tuple):
         """
@@ -285,7 +288,7 @@ class EchogramViewer(QtWidgets.QWidget):
         self.playback_manager.setRelativeIndex(percentage)
 
     def onFileOpen(self, sonar):
-        self.echogram = Echogram(sonar.frameCount)
+        self.echogram = Echogram(self.playback_manager, sonar.frameCount)
         self.figure.frame_count = sonar.frameCount
 
     def onFileClose(self):
@@ -297,8 +300,15 @@ class EchogramViewer(QtWidgets.QWidget):
 
     def processEchogram(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
-        self.figure.setImage(self.echogram.getDisplayedImage())
+        self.showBGSubtraction(self.show_bg_subtracted)
         self.figure.resetView()
+
+    def showBGSubtraction(self, value):
+        self.show_bg_subtracted = value
+        if self.show_bg_subtracted:
+            self.figure.setImage(self.echogram.getBGSubtractedImage())
+        else:
+            self.figure.setImage(self.echogram.getDisplayedImage())
 
     def getDetections(self):
         return self.detector.vertical_detections
@@ -340,6 +350,10 @@ class EchogramViewer(QtWidgets.QWidget):
         self.figure.update()
 
     def onBoxSelect(self, box_positions):
+        """
+        Converts image coordinates to frame and height measurements
+        and selects fish corresponding to those values.
+        """
         if not self.figure.draw_selection_box:
             return
 
@@ -358,8 +372,6 @@ class EchogramViewer(QtWidgets.QWidget):
         height_max = min_d + max(0, (1 - min_y / self.figure.image_height)) * (max_d - min_d)
         height_min = min_d + min((1 - max_y / self.figure.image_height), 1) * (max_d - min_d)
 
-        #print(frame_min, frame_max, " - ", height_min, height_max, " / ", self.playback_manager.getRadiusLimits())
-        #print(min_x, max_x, min_y, max_y, self.figure.image_height, self.figure.window_height)
         self.fish_manager.selectFromEchogram(frame_min, frame_max, height_min, height_max)
 
 
@@ -367,27 +379,58 @@ class Echogram():
     """
     Transforms polar frames into an echogram image.
     """
-    def __init__(self, length):
+    def __init__(self, image_provider, length):
+        self.bg_subtractor = BackgroundSubtractor(self)
+        self.bg_subtractor.mog_parameters.nof_bg_frames = 100
+        self.bg_subtractor.mog_parameters.mixture_count = 3
         self.data = None
+        self.bgs_data = None
         self.length = length
 
     def processBuffer(self, buffer):
+        """
+        Calculates the normal echogram image and the background subtracted one.
+        The data is transposed only when returning the displayed image
+        to allow easier iteration.
+        """
         try:
-            buf = [b for b in buffer if b is not None]
+            # Calculate echogram
+            buf = [b for b in buffer]
+            #buf = [b for b in buffer if b is not None]
+
             buf = np.asarray(buf, dtype=np.uint8)
-            self.data = np.max(buf, axis=2).T
+            self.data = np.max(buf, axis=2)
             min_v = np.min(self.data)
             max_v = np.max(self.data)
             self.data = (255 / (max_v - min_v) * (self.data - min_v)).astype(np.uint8)
+
+            # Subtract background
+            self.bg_subtractor.initMOG()
+            self.bgs_data = np.squeeze([self.bg_subtractor.subtractBG(column) for column in self.data])
+            self.bgs_data = self.bgs_data.astype(np.uint8)
+
         except np.AxisError as e:
             LogObject().print("Echogram processing error:", e)
             self.data = None
+
 
     def clear(self):
         self.data = None
 
     def getDisplayedImage(self):
-        return self.data
+        return self.data.T
+
+    def getBGSubtractedImage(self):
+        return self.bgs_data.T
+
+    def getFrameCount(self):
+        return self.length
+
+    def getFrame(self, ind):
+        """
+        Returns the column of echogram corresponding to the given frame index.
+        """
+        return self.data[ind, :]
 
 class DebugEchoFigure(DebugZQLabel):
     def __init__(self, echo_figure):
@@ -475,6 +518,7 @@ if __name__ == "__main__":
     detector = TestDetector(playback_manager)
     fish_manager = TestFishManager()
     echogram = EchogramViewer(playback_manager, detector, fish_manager)
+    echogram.show_bg_subtracted = True
     echogram.figure.debug_lines = True
 
     playback_manager.openTestFile()

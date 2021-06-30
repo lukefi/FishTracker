@@ -8,7 +8,7 @@ class ZoomableQLabel(QtWidgets.QLabel):
     Base class that enables zooming and panning of the assigned image.
     Horizontal zoomig, vertical zooming and preserving aspect ratio can be enabled/disabled individually.
 
-    BUG: If aspect ratio preserving is enabled and either of zooming options is disabled,
+    BUG: If maintain_aspect_ratio is enabled and either of zooming options is disabled,
          the image is shown only partially when zoomed in. This combination of options
          is not currently used.
     """
@@ -49,9 +49,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
         self.drag_data = None
 
-        #self.input_timer = None
-        #self.input_timer_delay = 300
-
         # Debug window syncronization
         self.mouse_move_event = Event()
 
@@ -63,6 +60,10 @@ class ZoomableQLabel(QtWidgets.QLabel):
         self.applyPixmap()
 
     def minMaxMousePositions(self, m_pos1, m_pos2):
+        """
+        Coverts two mouse positions in image coordinates into a rectangle (min and max corners)
+        in view coordinates.
+        """
         x1, y1 = self.getMousePositionOnView(m_pos1)
         x2, y2 = self.getMousePositionOnView(m_pos2)
         return min(x1, x2), max(x1, x2), min(y1, y2), max(y1, y2)
@@ -84,7 +85,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
         self.updateWindowZoom()
         self.applyPixmap()
         self.userInputSignal.emit()
-        #self.onInput()
 
     def wheelEvent(self, event):
         if self.drag_data is None:
@@ -95,7 +95,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.applyWindowZoom(event.x(), event.y())
             self.applyPixmap()
             self.userInputSignal.emit()
-            #self.onInput()
 
             self.mouse_move_event()
 
@@ -124,7 +123,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.update()
 
     def mouseMoveEvent(self, event):
-        #self.x_pos = event.x() / self.window_width * self.image_width
         self.x_pos = self.view2imageX(event.x())
         self.y_pos = self.view2imageY(event.y())
 
@@ -133,7 +131,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
                 self.applyWindowDrag(event.x(), event.y(), self.drag_data)
                 self.applyPixmap()
                 self.userInputSignal.emit()
-                #self.onInput()
                 
             else:
                 self.drag_data = None
@@ -142,7 +139,7 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.mouse_current_left = self.getMousePositionOnImage(event)
             self.update()
 
-        # Debug window syncronization
+        # Debug window synchronization
         self.mouse_move_event()
 
     def setLimits(self, shape):
@@ -190,22 +187,52 @@ class ZoomableQLabel(QtWidgets.QLabel):
 
     def fitToSize(self, image):
         img = image
+        img_shape = (img.shape[1], img.shape[0])
+
         if self.horizontal_z:
+            # Zoom horizontally
             img = img[:, self.x_min_limit:self.x_max_limit]
+
         if self.vertical_z:
+            # Zoom vertically
             img = img[self.y_min_limit:self.y_max_limit, :]
+
         if self.maintain_aspect_ratio:
-            sz = (img.shape[1], img.shape[0])
+            # Calculate size that fits the window
+            sz = img_shape = (img.shape[1], img.shape[0])
             if sz[0] > self.window_width:
                 mult = self.window_width / sz[0]
                 sz = (max(1, int(mult * sz[0])), max(1, int(mult * sz[1])))
             if sz[1] > self.window_height:
                 mult = self.window_height / sz[1]
                 sz = (max(1, int(mult * sz[0])), max(1, int(mult * sz[1])))
+            #return cv2.resize(img, sz)
 
-            return cv2.resize(img, sz)
         else:
-            return cv2.resize(img, (self.window_width, self.window_height))
+            sz = (self.window_width, self.window_height)
+
+        # Scale x- and y-axis separately to avoid Moire effects when scalind down
+        # and allow linear interpolation when scaling up.
+        if sz[0] > img_shape[0]:
+            # Scale up width
+            img = cv2.resize(img, (sz[0], img_shape[1]), interpolation=cv2.INTER_LINEAR)
+            img_shape = (img.shape[1], img.shape[0])
+
+        if sz[1] > img_shape[1]:
+            # Scale up height
+            img = cv2.resize(img, (img_shape[0], sz[1]), interpolation=cv2.INTER_LINEAR)
+            img_shape = (img.shape[1], img.shape[0])
+
+        if sz[0] <= img_shape[0]:
+            # Scale down width
+            img = cv2.resize(img, (sz[0], img_shape[1]), interpolation=cv2.INTER_AREA)
+            img_shape = (img.shape[1], img.shape[0])
+
+        if sz[1] <= img_shape[1]:
+            # Scale down height
+            img = cv2.resize(img, (img_shape[0], sz[1]), interpolation=cv2.INTER_AREA)
+
+        return img
 
     def updateWindowZoom(self):
         if self.displayed_image is None:
@@ -216,11 +243,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
             applied_zoom = (self.zoom_01 * (self.max_zoom - applied_min_zoom) + applied_min_zoom)
             total_width = applied_zoom  * self.image_width
             total_height = applied_zoom * self.image_height
-
-            #x_min = 0
-            #x_max = int(self.window_width / total_width * self.image_width)
-            #y_min = 0
-            #y_max = int(self.window_height / total_height * self.image_height)
 
         else:
             total_width = self.zoom_01 * (max(self.max_zoom * self.image_width, 2 * self.window_width) - self.window_width) + self.window_width
@@ -292,20 +314,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
             self.y_min_limit = 0
             self.y_max_limit = self.image_height
 
-    #def onInput(self):
-    #    """
-    #    Starts a new timer that emits the afterUserInputSignal when set amount of time has passed.
-    #    If an old timer exists, it is stopped first to avoid emitting repeated signals.
-    #    """
-    #    if self.input_timer:
-    #        self.input_timer.stop()
-    #        self.input_timer.deleteLater()
-        
-    #    self.input_timer = QtCore.QTimer()
-    #    self.input_timer.timeout.connect(self.afterUserInputSignal.emit)
-    #    self.input_timer.setSingleShot(True)
-    #    self.input_timer.start(self.input_timer_delay)
-
     def clear(self):
         super().clear()
         self.displayed_image = None
@@ -350,10 +358,6 @@ class ZoomableQLabel(QtWidgets.QLabel):
     def image2viewDirectionY(self, value):
         return value / (self.y_max_limit - self.y_min_limit) * self.window_height
 
-        #margin_x = (self.width() - self.pixmap().width()) / 2
-        #xs = event.x() - margin_x
-        #margin_y = (self.height() - self.pixmap().height()) / 2
-        #ys = event.y() - margin_y
 
 class WindowDragData:
     def __init__(self, mouse_x, mouse_y, x_min, x_max, y_min, y_max):
@@ -363,6 +367,7 @@ class WindowDragData:
         self.x_max = x_max
         self.y_min = y_min
         self.y_max = y_max
+
 
 class DebugZQLabel(QtWidgets.QLabel):
     def __init__(self, z_qlabel):
@@ -409,10 +414,10 @@ class DebugZQLabel(QtWidgets.QLabel):
         width_mult = width / image_width
         height_mult = height / image_height
 
-        min_x = self.z_qlabel.x_min_limit * width_mult #/ image_width * width
-        max_x = self.z_qlabel.x_max_limit * width_mult #/ image_width * width
-        min_y = self.z_qlabel.y_min_limit * height_mult #/ image_height * height
-        max_y = self.z_qlabel.y_max_limit * height_mult #/ image_height * height
+        min_x = self.z_qlabel.x_min_limit * width_mult
+        max_x = self.z_qlabel.x_max_limit * width_mult
+        min_y = self.z_qlabel.y_min_limit * height_mult
+        max_y = self.z_qlabel.y_max_limit * height_mult
 
         x_pos = self.z_qlabel.x_pos * width_mult
         y_pos = self.z_qlabel.y_pos * height_mult
@@ -438,9 +443,9 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     z_label = TestZoomableQLabel(True, True, True)
+    #z_label = TestZoomableQLabel(False, True, False)
     z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
     z_label.resetView()
-    #z_label.afterUserInputSignal.connect(lambda: print("Input timeout"))
     main_window.setCentralWidget(z_label)
     main_window.show()
     main_window.setWindowTitle("Main window")

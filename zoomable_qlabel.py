@@ -211,7 +211,7 @@ class ZoomableQLabel(QtWidgets.QLabel):
         else:
             sz = (self.window_width, self.window_height)
 
-        # Scale x- and y-axis separately to avoid Moire effects when scalind down
+        # Scale x- and y-axis separately to avoid Moire effects when scaling down
         # and allow linear interpolation when scaling up.
         if sz[0] > img_shape[0]:
             # Scale up width

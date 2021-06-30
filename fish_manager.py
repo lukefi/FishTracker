@@ -127,34 +127,45 @@ class FishManager(QtCore.QAbstractTableModel):
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
         self.updateContentsSignal.emit()
 
+    data_lambda_list = [lambda f: f.color_ind,
+                        lambda f: f.id,
+                        lambda f: f.length,
+                        lambda f: f.direction.name,
+                        lambda f: f.frame_in,
+                        lambda f: f.frame_out,
+                        lambda f: f.duration,
+                        lambda f: len(f.tracks)]
 
     def data(self, index, role):
         if role == Qt.DisplayRole:
             row = index.row()
             col = index.column()
 
-            if row >= len(self.fish_list):
-                LogObject().print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
+            try:
+                return self.data_lambda_list[col](self.fish_list[row])
+            except IndexError:
+                if row >= len(self.fish_list):
+                    LogObject().print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
                 return QtCore.QVariant()
 
-            if col == 0:
-                return self.fish_list[row].color_ind
-            if col == 1:
-                return self.fish_list[row].id
-            elif col == 2:
-                return self.fish_list[row].length
-            elif col == 3:
-                return self.fish_list[row].direction.name
-            elif col == 4:
-                return self.fish_list[row].frame_in
-            elif col == 5:
-                return self.fish_list[row].frame_out
-            elif col == 6:
-                return self.fish_list[row].duration
-            elif col == 7:
-                return len(self.fish_list[row].tracks)
-            else:
-                return QtCore.QVariant()
+            #if col == 0:
+            #    return self.fish_list[row].color_ind
+            #if col == 1:
+            #    return self.fish_list[row].id
+            #elif col == 2:
+            #    return self.fish_list[row].length
+            #elif col == 3:
+            #    return self.fish_list[row].direction.name
+            #elif col == 4:
+            #    return self.fish_list[row].frame_in
+            #elif col == 5:
+            #    return self.fish_list[row].frame_out
+            #elif col == 6:
+            #    return self.fish_list[row].duration
+            #elif col == 7:
+            #    return len(self.fish_list[row].tracks)
+            #else:
+            #    return QtCore.QVariant()
         else:
             return QtCore.QVariant()
     
@@ -268,6 +279,10 @@ class FishManager(QtCore.QAbstractTableModel):
         min_d, max_d = self.playback_manager.getRadiusLimits()
 
         for ind, fish in enumerate(self.fish_list):
+            # Skip fish outside the given range of frames
+            if fish.frame_out < frame_min or fish.frame_in > frame_max:
+                continue
+
             for frame, track in fish.tracks.items():
                 if frame >= frame_min and frame <= frame_max:
                     track, det = fish.tracks[frame]

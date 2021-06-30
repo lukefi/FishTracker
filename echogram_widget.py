@@ -297,6 +297,8 @@ class EchogramViewer(QtWidgets.QWidget):
         if self.echogram is not None:
             self.echogram.clear()
             self.echogram = None
+        self.vertical_tracks = []
+        self.setInputUpdateTimer()
 
     def processEchogram(self):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
@@ -305,6 +307,8 @@ class EchogramViewer(QtWidgets.QWidget):
 
     def showBGSubtraction(self, value):
         self.show_bg_subtracted = value
+        if self.echogram is None:
+            return
         if self.show_bg_subtracted:
             self.figure.setImage(self.echogram.getBGSubtractedImage())
         else:

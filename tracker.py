@@ -284,7 +284,7 @@ if __name__ == "__main__":
         playback_manager.fps = 10
         playback_manager.openTestFile()
         playback_manager.frame_available.connect(forwardImage)
-        detector.mog_parameters.nof_bg_frames = 500
+        detector.bg_subtractor.mog_parameters.nof_bg_frames = 500
         detector._show_detections = True
         playback_manager.mapping_done.connect(startDetector)
 

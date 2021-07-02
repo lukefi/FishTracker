@@ -114,6 +114,11 @@ class BackgroundSubtractor(QtCore.QObject):
             print(e, "\nDebug (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
             return None
 
+    def subtractBGFiltered(self, image, median_size):
+        fg_mask_mog = self.fgbg_mog.apply(image, learningRate=0)
+        fg_mask_filt = cv2.medianBlur(fg_mask_mog, median_size)
+        return fg_mask_filt
+
     def setParameters(self, parameters):
         self.mog_parameters = parameters
         self.applied_mog_parameters = self.mog_parameters.copy()

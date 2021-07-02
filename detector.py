@@ -328,10 +328,7 @@ class Detector():
 			return None
 
 	def bgSubtraction(self, image):
-		fg_mask_mog = self.fgbg_mog.apply(image, learningRate=0)
-		fg_mask_cpy = fg_mask_mog
-		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
-		return fg_mask_filt
+		return self.bg_subtractor.subtractBGFiltered(image, self.parameters.median_size)
 
 	def parametersDirty(self):
 		return self.parameters != self.applied_parameters or self.bg_subtractor.parametersDirty()

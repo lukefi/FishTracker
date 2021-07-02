@@ -274,6 +274,8 @@ class Sort(object):
                     new_allowed = False
             if new_allowed == True:
                 trk = KalmanBoxTracker(dets[i, :])
+                trk.last_det_ind = i
+                trk.last_det_frame = self.frame_count
                 self.trackers.append(trk)
 
         i = len(self.trackers)

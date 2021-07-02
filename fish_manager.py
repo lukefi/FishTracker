@@ -134,9 +134,14 @@ class FishManager(QtCore.QAbstractTableModel):
                         lambda f: f.frame_in,
                         lambda f: f.frame_out,
                         lambda f: f.duration,
-                        lambda f: len(f.tracks)]
+                        lambda f: f.detection_count]
 
     def data(self, index, role):
+        """
+        Return data for TableView based on row and column.
+        Row: Fish 
+        Column: Some parameter of the fish
+        """
         if role == Qt.DisplayRole:
             row = index.row()
             col = index.column()
@@ -147,25 +152,6 @@ class FishManager(QtCore.QAbstractTableModel):
                 if row >= len(self.fish_list):
                     LogObject().print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
                 return QtCore.QVariant()
-
-            #if col == 0:
-            #    return self.fish_list[row].color_ind
-            #if col == 1:
-            #    return self.fish_list[row].id
-            #elif col == 2:
-            #    return self.fish_list[row].length
-            #elif col == 3:
-            #    return self.fish_list[row].direction.name
-            #elif col == 4:
-            #    return self.fish_list[row].frame_in
-            #elif col == 5:
-            #    return self.fish_list[row].frame_out
-            #elif col == 6:
-            #    return self.fish_list[row].duration
-            #elif col == 7:
-            #    return len(self.fish_list[row].tracks)
-            #else:
-            #    return QtCore.QVariant()
         else:
             return QtCore.QVariant()
     
@@ -200,7 +186,8 @@ class FishManager(QtCore.QAbstractTableModel):
     def addFish(self):
         """
         Manual addition of fish.
-        Currently not supported. Manual fish detection from frames is required.
+        Currently not supported. Manual fish detection from frames is required,
+        i.e. user should be able to select fish location from SonarView for each frame.
         """
         f = FishEntry(self.getNewID())
         self.all_fish[f.id] = f
@@ -635,6 +622,7 @@ class FishEntry():
 
         # tracks: Dictionary {frame index : (track, detection)}
         self.tracks = {}
+        self.detection_count = 0
 
         # lengths: Sorted list [lengths of detections]
         self.lengths = []
@@ -710,6 +698,7 @@ class FishEntry():
             self.frame_in = min(inds)
             self.frame_out = max(inds)
             self.duration = self.frame_out - self.frame_in + 1
+        self.detection_count = len([det for _, det in self.tracks.values() if det is not None])
 
     def setDirection(self, inverted):
         centers = [d.center for _, d in self.tracks.values() if d is not None]

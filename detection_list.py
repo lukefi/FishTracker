@@ -58,6 +58,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
     def checkLayout(self, count):
         if self.row_count != count:
             self.layoutChanged.emit()
+        self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def flags(self, index):
         if not index.isValid():

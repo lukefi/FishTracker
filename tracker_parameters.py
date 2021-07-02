@@ -63,10 +63,18 @@ class TrackerParametersView(QWidget):
         self.max_age_slider = LabeledSlider("Max age", self.form_layout, [self.tracker.setMaxAge], self.tracker.parameters.max_age, 1, 100, self)
         self.min_hits_slider = LabeledSlider("Min hits", self.form_layout, [self.tracker.setMinHits], self.tracker.parameters.min_hits, 1, 10, self)
         self.search_radius_slider = LabeledSlider("Search radius", self.form_layout, [self.tracker.setSearchRadius], self.tracker.parameters.search_radius, 1, 100, self)
+
+        self.vertical_spacer1 = QSpacerItem(0, 5, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.form_layout.addItem(self.vertical_spacer1)
+
+        self.trim_tails_checkbox = QCheckBox("", self)
+        self.trim_tails_checkbox.stateChanged.connect(self.tracker.setTrimTails)
+        self.form_layout.addRow("Trim tails", self.trim_tails_checkbox)
+
         self.vertical_layout.addLayout(self.form_layout)
 
-        self.vertical_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
-        self.vertical_layout.addItem(self.vertical_spacer)
+        self.vertical_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.vertical_layout.addItem(self.vertical_spacer2)
 
         self.track_all_btn = QPushButton()
         self.track_all_btn.setObjectName("trackAllButton")
@@ -119,6 +127,7 @@ class TrackerParametersView(QWidget):
         self.vertical_layout.addLayout(self.button_layout)
 
         self.setLayout(self.vertical_layout)
+        self.refreshValues()
 
     def saveJSON(self):
         dict = self.tracker.getParameterDict()
@@ -151,6 +160,7 @@ class TrackerParametersView(QWidget):
         self.max_age_slider.setValue(params.max_age)
         self.min_hits_slider.setValue(params.min_hits)
         self.search_radius_slider.setValue(params.search_radius)
+        self.trim_tails_checkbox.setChecked(params.trim_tails)
 
 if __name__ == "__main__":
     import sys

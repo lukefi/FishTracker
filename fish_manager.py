@@ -354,6 +354,8 @@ class FishManager(QtCore.QAbstractTableModel):
                     f = FishEntryFromTrack(tr, det, frame)
                     self.all_fish[id] = f
 
+        # TODO: Trim tails here...
+
         # Refresh values
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)

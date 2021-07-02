@@ -8,7 +8,8 @@ from log_object import LogObject
 PARAMETER_TYPES = {
             "max_age": int,
 	        "min_hits": int,
-            "search_radius": int
+            "search_radius": int,
+            "trim_tails": bool
         }
 
 class Tracker(QtCore.QObject):
@@ -172,6 +173,13 @@ class Tracker(QtCore.QObject):
         except ValueError as e:
             LogObject().print(e)
 
+    def setTrimTails(self, value):
+        try:
+            self.parameters.trim_tails = bool(value)
+            self.state_changed_signal.emit()
+        except ValueError as e:
+            LogObject().print(e)
+
     def getParameterDict(self):
         if self.parameters is not None:
             return self.parameters.getParameterDict()
@@ -180,10 +188,11 @@ class Tracker(QtCore.QObject):
 
 
 class TrackerParameters:
-    def __init__(self, max_age = 10, min_hits = 5, search_radius = 10):
+    def __init__(self, max_age = 10, min_hits = 5, search_radius = 10, trim_tails = True):
         self.max_age = max_age
         self.min_hits = min_hits
         self.search_radius = search_radius
+        self.trim_tails = trim_tails
 
     def __eq__(self, other):
         if not isinstance(other, TrackerParameters):
@@ -191,19 +200,21 @@ class TrackerParameters:
     
         return self.max_age == other.max_age \
             and self.min_hits == other.min_hits \
-            and self.search_radius == other.search_radius
+            and self.search_radius == other.search_radius \
+            and self.trim_tails == other.trim_tails
 
     def __repr__(self):
-        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.search_radius)
+        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.search_radius, self.trim_tails)
 
     def copy(self):
-        return TrackerParameters(self.max_age, self.min_hits, self.search_radius)
+        return TrackerParameters(self.max_age, self.min_hits, self.search_radius, self.trim_tails)
 
     def getParameterDict(self):
         return {
             "max_age": self.max_age,
 	        "min_hits": self.min_hits,
-            "search_radius": self.search_radius
+            "search_radius": self.search_radius,
+            "trim_tails": self.trim_tails
         }
 
     def setParameterDict(self, dict):

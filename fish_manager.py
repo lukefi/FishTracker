@@ -354,7 +354,10 @@ class FishManager(QtCore.QAbstractTableModel):
                     f = FishEntryFromTrack(tr, det, frame)
                     self.all_fish[id] = f
 
-        # TODO: Trim tails here...
+        # Trim tails, i.e. remove last tracks with no corresponding detection.
+        if self.tracker.parameters.trim_tails:
+            for id, fish in self.all_fish.items():
+                fish.trimTail()
 
         # Refresh values
         for fish in self.all_fish.values():
@@ -684,6 +687,11 @@ class FishEntry():
                 pass
 
     def split(self, frame, new_id):
+        """
+        Splits the fish in two at the argument "frame".
+        frame: the first included frame of the second fish
+        new_id: the new id of the second fish
+        """
         f = FishEntry(new_id, frame, self.frame_out)
         for tr_frame in list(self.tracks.keys()):
             if tr_frame >= frame:
@@ -693,6 +701,25 @@ class FishEntry():
         self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
         self.setFrames()
         return f
+
+    def trimTail(self):
+        """
+        Removes the tail of the tracks, i.e. the last tracks with no corresponding detections (det == None).
+        """
+        for frame in self.getTail():
+            self.tracks.pop(frame)
+
+        self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
+        self.setFrames()
+
+    def getTail(self):
+        tail = []
+        for frame, (tr, det) in self.tracks.items():
+            if det is None:
+                tail.append(frame)
+            else:
+                tail = []
+        return tail
 
     def setFrames(self):
         inds = self.tracks.keys()

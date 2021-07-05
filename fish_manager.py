@@ -161,6 +161,21 @@ class FishManager(QtCore.QAbstractTableModel):
     def columnCount(self, index=None):
         return 8;
 
+    def directionCounts(self):
+        total_count = 0
+        up_count = 0
+        down_count = 0
+        none_count = 0
+        for f in self.fish_list:
+            total_count += 1
+            if f.direction == SwimDirection.UP:
+                up_count += 1
+            elif f.direction == SwimDirection.DOWN:
+                down_count += 1
+            else:
+                none_count += 1
+        return total_count, up_count, down_count, none_count
+
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
             return fish_headers[section]

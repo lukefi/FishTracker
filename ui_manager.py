@@ -255,7 +255,9 @@ def launch_ui():
     playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))
     playback_manager.frame_available_early.connect(detector.compute_from_event)
     playback_manager.file_opened.connect(lambda x: detector.clearDetections())
+    playback_manager.file_closed.connect(detector.clearDetections)
     playback_manager.file_opened.connect(lambda x: tracker.clear())
+    playback_manager.file_closed.connect(tracker.clear)
 
     ui_manager = UIManager(main_window, playback_manager, detector, tracker, fish_manager, save_manager)
     sys.exit(app.exec_())

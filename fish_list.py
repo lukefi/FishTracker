@@ -42,6 +42,7 @@ class FishList(QtWidgets.QWidget):
         self.table.setColumnWidth(7, 80)
 
         self.fish_manager.layoutChanged.connect(self.checkDropdowns)
+        self.fish_manager.dataChanged.connect(self.onDataChanged)
         self.fish_manager.updateSelectionSignal.connect(self.table.selectionModel().select)
         self.fish_manager.updateSelectionSignal.connect(lambda x, y: self.table.setFocus())
         self.table.selectionModel().selectionChanged.connect(self.onSelectionChanged)
@@ -58,9 +59,37 @@ class FishList(QtWidgets.QWidget):
 
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.vertical_layout.setObjectName("verticalLayout")
-        self.vertical_layout.addWidget(self.table)
         self.vertical_layout.setSpacing(0)
         self.vertical_layout.setContentsMargins(0,0,0,0)
+
+        self.statistics_layout = QtWidgets.QHBoxLayout()
+        self.statistics_layout.setObjectName("statisticsLayout")
+        self.statistics_layout.setSpacing(0)
+        self.statistics_layout.setContentsMargins(0,7,0,7)
+
+        self.total_fish_label = QtWidgets.QLabel()
+        self.total_fish_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.statistics_layout.addWidget(self.total_fish_label)
+
+        self.up_fish_label = QtWidgets.QLabel()
+        self.up_fish_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.statistics_layout.addWidget(self.up_fish_label)
+
+        self.down_fish_label = QtWidgets.QLabel()
+        self.down_fish_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.statistics_layout.addWidget(self.down_fish_label)
+
+        self.none_fish_label = QtWidgets.QLabel()
+        self.none_fish_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.statistics_layout.addWidget(self.none_fish_label)
+
+        self.updateCountLabels()
+        self.vertical_layout.addLayout(self.statistics_layout)
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine);
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.vertical_layout.addWidget(line)
+        self.vertical_layout.addWidget(self.table)
 
         self.form_layout = QtWidgets.QFormLayout()
         self.form_layout.setContentsMargins(7,7,7,7)
@@ -210,6 +239,17 @@ class FishList(QtWidgets.QWidget):
     def checkDropdowns(self):
         for row in range(self.fish_manager.rowCount()):
             self.setPersistentDropdown(row)
+
+    def onDataChanged(self, parents, hint):
+        self.updateCountLabels()
+
+    def updateCountLabels(self):
+        tc, uc, dc, nc = self.fish_manager.directionCounts()
+
+        self.total_fish_label.setText("Total: {}".format(tc))
+        self.up_fish_label.setText("Up: {}".format(uc))
+        self.down_fish_label.setText("Down: {}".format(dc))
+        self.none_fish_label.setText("None: {}".format(nc))
 
     def setPersistentDropdown(self, row):
         for column in range(self.fish_manager.columnCount()):

@@ -94,7 +94,6 @@ class PlaybackManager(QObject):
 
     def loadFile(self, path, overrideLength=-1):
         self.path = path
-        self.setTitle(path)
         sonar = fh.FOpenSonarFile(path)
         if overrideLength > 0:
             sonar.frameCount = min(overrideLength, sonar.frameCount)
@@ -106,6 +105,8 @@ class PlaybackManager(QObject):
             self.setLoadedFile(sonar)
         else:
             self.setLoadedFile(sonar)
+
+        self.setTitle(path)
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar

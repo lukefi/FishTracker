@@ -140,7 +140,8 @@ class PolarTransform:
 		if not isinstance(image, np.ndarray) or image.shape != self.pol_shape:
 			raise ValueError("Passed array is not of the right shape")
 
-		return cv2.remap(cv2.flip(image,0), self.map_x, self.map_y, interpolation)
+		#return cv2.remap(cv2.flip(image,0), self.map_x, self.map_y, interpolation)
+		return cv2.remap(cv2.flip(image,-1), self.map_x, self.map_y, interpolation)
 
 	def getOuterEdge(self, distance, right=True):
 		"""

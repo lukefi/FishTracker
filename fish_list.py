@@ -94,6 +94,7 @@ class FishList(QtWidgets.QWidget):
         self.form_layout = QtWidgets.QFormLayout()
         self.form_layout.setContentsMargins(7,7,7,7)
         self.min_detections_slider = LabeledSlider("Min duration", self.form_layout, [self.fish_manager.setMinDetections], self.fish_manager.min_detections, 1, 50, self)
+        self.mad_slider = LabeledSlider("MAD", self.form_layout, [self.fish_manager.setMAD], self.fish_manager.mad_limit, 0, 50, self)
         self.length_percentile_slider = LabeledSlider("Length percentile", self.form_layout, [self.fish_manager.setLengthPercentile], self.fish_manager.length_percentile, 1, 100, self)
         self.vertical_layout.addLayout(self.form_layout)
 

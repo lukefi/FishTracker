@@ -13,6 +13,7 @@ PARAMETER_TYPES = {
         }
 
 class Tracker(QtCore.QObject):
+
     # When new computation is started
     init_signal = QtCore.pyqtSignal()
 
@@ -30,6 +31,9 @@ class Tracker(QtCore.QObject):
 
         self.detector = detector
         self.resetParameters()
+        self.width = 0
+        self.height = 0
+        self.shape_set = False
 
         self.clear()
         self.tracking = False
@@ -57,6 +61,8 @@ class Tracker(QtCore.QObject):
         Tracks all detections in the given frames. Updates tracks_by_frame and
         signals when the computation has finished.
         """
+        assert self.shape_set, "Image shape was not defined (Tracker)."
+
         self.tracking = True
         self.stop_tracking = False
         self.state_changed_signal.emit()
@@ -64,6 +70,8 @@ class Tracker(QtCore.QObject):
 
         if self.detector.allCalculationAvailable():
             self.detector.computeAll()
+
+            # Return if the applied detector parameters are not up to date
             if self.detector.allCalculationAvailable():
                 LogObject().print("Stopped before tracking.")
                 self.abortComputing(True)
@@ -74,7 +82,10 @@ class Tracker(QtCore.QObject):
         self.tracks_by_frame = {}
         self.mot_tracker = Sort(max_age = self.parameters.max_age,
                                 min_hits = self.parameters.min_hits,
-                                search_radius = self.parameters.search_radius)
+                                search_radius = self.parameters.search_radius,
+                                im_width = self.width,
+                                im_height = self.height)
+
         KalmanBoxTracker.count = 0
         ten_perc = 0.1 * count
         print_limit = 0
@@ -180,6 +191,11 @@ class Tracker(QtCore.QObject):
         except ValueError as e:
             LogObject().print(e)
 
+    def setImageShape(self, width, height):
+        self.width = width
+        self.height = height
+        self.shape_set = True
+
     def getParameterDict(self):
         if self.parameters is not None:
             return self.parameters.getParameterDict()
@@ -281,6 +297,7 @@ if __name__ == "__main__":
             figure.displayImage((ind, image))
 
         def startDetector():
+            tracker.setImageShape(*playback_manager.getImageShape())
             detector.initMOG()
             detector.computeAll()
             tracker.trackAll(detector.detections)

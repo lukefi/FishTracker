@@ -57,6 +57,9 @@ class FishManager(QtCore.QAbstractTableModel):
         # Min number of detections required for a fish to be included in fish_list
         self.min_detections = 2
 
+        # Major axis distance, i.e. delta angle (degrees) between the first and the last associated detection
+        self.mad_limit = 0
+
         # Percentile with which the shown length is determined
         self.length_percentile = 50
 
@@ -94,7 +97,7 @@ class FishManager(QtCore.QAbstractTableModel):
         Updates shown table (fish_list) from all instances containing dictionary (all_fish).
         fish_list is trimmed based on the minimum duration.
         """
-        fl = [fish for fish in self.all_fish.values() if fish.duration >= self.min_detections]
+        fl = [fish for fish in self.all_fish.values() if fish.checkConditions(self.min_detections, self.mad_limit)]
 
         reverse = self.sort_order != QtCore.Qt.AscendingOrder
         fl.sort(key=fish_sort_keys[self.sort_ind], reverse=reverse)
@@ -405,6 +408,10 @@ class FishManager(QtCore.QAbstractTableModel):
         self.min_detections = value
         self.trimFishList()
 
+    def setMAD(self, value):
+        self.mad_limit = value
+        self.trimFishList()
+
     def setLengthPercentile(self, value):
         self.length_percentile = value
         for fish in self.all_fish.values():
@@ -625,6 +632,7 @@ class FishEntry():
         self.frame_in = frame_in
         self.frame_out = frame_out
         self.duration = frame_out - frame_in + 1
+        self.mad = 0
 
         # tracks: Dictionary {frame index : (track, detection)}
         self.tracks = {}
@@ -654,6 +662,9 @@ class FishEntry():
     def forceLengthByPercentile(self, percentile):
         self.length_overwritten = False
         self.setLengthByPercentile(percentile)
+
+    def checkConditions(self, duration, mad):
+        return self.duration >= duration and self.mad >= mad
 
     def addTrack(self, track, detection, frame):
         self.tracks[frame] = (track[0:4], detection)

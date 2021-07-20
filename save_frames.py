@@ -54,7 +54,7 @@ if __name__ == "__main__":
 		playback_manager.polars_loaded.connect(savePolarFrames)
 	else:
 		print("Saving frames in cartesian mapping.")
-		playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+		playback_manager.mapping_done.connect(playback_manager.play)
 		playback_manager.frame_available.connect(saveImage)
 
 	playback_manager.openFile()

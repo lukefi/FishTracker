@@ -1,5 +1,6 @@
 {
    "max_age": 10,
    "min_hits": 5,
-   "search_radius": 10
+   "search_radius": 10,
+   "trim_tails": true
 }

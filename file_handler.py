@@ -289,6 +289,8 @@ def loadJSON(jsonFilePath):
     except:
         return None
 
+# TODO: Use default values instead multiple try/except patterns
+#       when accessing the values.
 def loadConf():
     try:
         with open(CONF_PATH, "r") as file:

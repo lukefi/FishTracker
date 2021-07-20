@@ -382,6 +382,16 @@ class PlaybackManager(QObject):
         else:
             return 0
 
+    def getImageShape(self):
+        """
+        Returns (width, height) of the cartesian image in pixels.
+        """
+        if self.playback_thread and self.playback_thread.polar_transform:
+            shape = self.playback_thread.polar_transform.cart_shape
+            return shape[1], shape[0]
+        else:
+            return None
+
     def pausePolarLoading(self, value):
         if self.playback_thread is not None:
             self.playback_thread.pause_polar_loading = value

@@ -9,8 +9,10 @@ from enum import IntEnum
 from tracker import Tracker
 from log_object import LogObject
 
-fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections"]
-fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
+fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections", "MAD", "Tortuosity"]
+fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count, lambda f: f.mad, lambda f: f.tortuosity]
+data_lambda_list = [lambda f: f.color_ind, lambda f: f.id, lambda f: f.length, lambda f: f.direction.name, lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count, lambda f: f.mad, lambda f: f.tortuosity]
+COLUMN_COUNT = 10
 
 N_COLORS = 16
 #color_palette = sns.color_palette('bright', N_COLORS)
@@ -88,9 +90,15 @@ class FishManager(QtCore.QAbstractTableModel):
             f.frame_in = np.random.randint(frame_count)
             f.frame_out = min(f.frame_in + np.random.randint(100), frame_count)
             f.duration = f.frame_out - f.frame_in + 1
+            f.mad = np.random.randint(30)
+            f.tortuosity = np.random.uniform(1,2)
             self.all_fish[f.id] = f
 
         self.trimFishList()
+
+    def refreshAllFishData(self):
+        for f in self.all_fish.values():
+            f.refreshData(self.up_down_inverted)
 
     def trimFishList(self, force_color_update=False):
         """
@@ -129,15 +137,6 @@ class FishManager(QtCore.QAbstractTableModel):
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
         self.updateContentsSignal.emit()
 
-    data_lambda_list = [lambda f: f.color_ind,
-                        lambda f: f.id,
-                        lambda f: f.length,
-                        lambda f: f.direction.name,
-                        lambda f: f.frame_in,
-                        lambda f: f.frame_out,
-                        lambda f: f.duration,
-                        lambda f: f.detection_count]
-
     def data(self, index, role):
         """
         Return data for TableView based on row and column.
@@ -149,7 +148,7 @@ class FishManager(QtCore.QAbstractTableModel):
             col = index.column()
 
             try:
-                return self.data_lambda_list[col](self.fish_list[row])
+                return data_lambda_list[col](self.fish_list[row])
             except IndexError:
                 if row >= len(self.fish_list):
                     LogObject().print("Bad index {}/{}".format(row, len(self.fish_list) - 1))
@@ -161,7 +160,7 @@ class FishManager(QtCore.QAbstractTableModel):
         return len(self.fish_list)
 
     def columnCount(self, index=None):
-        return 8;
+        return COLUMN_COUNT;
 
     def directionCounts(self):
         total_count = 0
@@ -244,6 +243,7 @@ class FishManager(QtCore.QAbstractTableModel):
             fish = self.fish_list[row]
             new_fish.merge(fish)
 
+        new_fish.refreshData(self.up_down_inverted)
         self.removeFish(rows, False)
         self.all_fish[new_fish.id] = new_fish
         self.trimFishList()
@@ -261,6 +261,9 @@ class FishManager(QtCore.QAbstractTableModel):
                 fish.forceLengthByPercentile(self.length_percentile)
                 new_fish.forceLengthByPercentile(self.length_percentile)
                 self.all_fish[id] = new_fish
+
+                fish.refreshData()
+                new_fish.refreshData()
 
         self.trimFishList()
 
@@ -379,7 +382,8 @@ class FishManager(QtCore.QAbstractTableModel):
         # Refresh values
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)
-            fish.setDirection(self.up_down_inverted)
+            fish.refreshData(self.up_down_inverted)
+            #fish.setDirection(self.up_down_inverted)
 
         self.trimFishList(force_color_update=True)
 
@@ -558,6 +562,7 @@ class FishManager(QtCore.QAbstractTableModel):
                     f.direction = direction
                     self.all_fish[id] = f
 
+            self.refreshAllFishData()
             self.trimFishList()
 
     def convertToWritable(self, frame, label, track):
@@ -610,6 +615,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
             self.all_fish[id] = f
 
+        self.refreshAllFishData()
         self.trimFishList()
 
 
@@ -633,6 +639,7 @@ class FishEntry():
         self.frame_out = frame_out
         self.duration = frame_out - frame_in + 1
         self.mad = 0
+        self.tortuosity = 1
 
         # tracks: Dictionary {frame index : (track, detection)}
         self.tracks = {}
@@ -670,7 +677,7 @@ class FishEntry():
         self.tracks[frame] = (track[0:4], detection)
         if detection is not None:
             insort(self.lengths, detection.length)
-        self.setFrames()
+        #self.setFrames()
 
     def copy(self):
         f = FishEntry(self.id, self.frame_in, self.frame_out)
@@ -680,6 +687,8 @@ class FishEntry():
         f.lengths = self.lengths.copy()
         f.length_overwritten = self.length_overwritten
         f.color_ind = self.color_ind
+        f.mad = self.mad
+        f.tortuosity = self.tortuosity
         return f
 
     def merge(self, other):
@@ -710,8 +719,8 @@ class FishEntry():
                 tr, det = self.tracks.pop(tr_frame)
                 f.addTrack(tr, det, tr_frame)
 
-        self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
-        self.setFrames()
+        #self.setLengths()
+        #self.setFrames()
         return f
 
     def trimTail(self):
@@ -721,8 +730,8 @@ class FishEntry():
         for frame in self.getTail():
             self.tracks.pop(frame)
 
-        self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
-        self.setFrames()
+        #self.setLengths()
+        #self.setFrames()
 
     def getTail(self):
         tail = []
@@ -733,6 +742,11 @@ class FishEntry():
                 tail = []
         return tail
 
+    def refreshData(self, direction):
+        self.setFrames()
+        self.setDirection(direction)
+        self.setLengths()
+
     def setFrames(self):
         inds = self.tracks.keys()
         if len(inds) > 0:
@@ -742,13 +756,35 @@ class FishEntry():
         self.detection_count = len([det for _, det in self.tracks.values() if det is not None])
 
     def setDirection(self, inverted):
-        centers = [d.center for _, d in self.tracks.values() if d is not None]
-        if len(centers) <= 1:
+        valid_dets = [d for _, d in self.tracks.values() if d is not None]
+        if len(valid_dets) <= 1:
             self.direction = SwimDirection.NONE
-        elif inverted:
-            self.direction = SwimDirection.UP if centers[0][1] >= centers[-1][1] else SwimDirection.DOWN
+            self.mad = 0
+            self.tortuosity = 1
         else:
-            self.direction = SwimDirection.UP if centers[0][1] < centers[-1][1] else SwimDirection.DOWN
+            end_point_distance = valid_dets[-1].center - valid_dets[0].center
+            if inverted:
+                self.direction = SwimDirection.UP if end_point_distance[1] <= 0 else SwimDirection.DOWN
+            else:
+                self.direction = SwimDirection.UP if end_point_distance[1] > 0 else SwimDirection.DOWN
+
+            self.mad = abs(valid_dets[-1].angle - valid_dets[0].angle)
+            path_length = self.calculatePathLength(valid_dets)
+            self.tortuosity = float(path_length / np.linalg.norm(end_point_distance))
+            print(f"{path_length} {self.tortuosity}")
+
+    def calculatePathLength(self, dets):
+        dist_sum = 0
+        prev_point = dets[0].center
+        for i in range(1, len(dets)):
+            new_point = dets[i].center
+            dist_sum += np.linalg.norm(new_point - prev_point)
+            prev_point = new_point
+        return dist_sum
+
+
+    def setLengths(self):
+        self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])
 
     @staticmethod
     def trackCenter(track):

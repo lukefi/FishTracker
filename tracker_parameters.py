@@ -41,8 +41,8 @@ class TrackerParametersView(QWidget):
         if not self.tracker.tracking:
             self.playback_manager.runInThread(self.tracker.trackAllDetectorFrames)
         else:
-            if self.detector.initializing:
-                self.detector.stop_initializing = True
+            if self.detector.bg_subtractor.initializing:
+                self.detector.bg_subtractor.stop_initializing = True
             elif self.detector.computing:
                 self.detector.stop_computing = True
             else:

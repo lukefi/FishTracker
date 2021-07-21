@@ -141,7 +141,10 @@ class SonarViewer(QtWidgets.QDialog):
         self.setLayout(self.FLayout)
 
     def displayImage(self, tuple):
-        if tuple is not None:
+        if tuple is None:
+            self.MyFigureWidget.clear()
+
+        else:
             ind, frame = tuple
 
             sfig = self.sonar_figure
@@ -190,17 +193,15 @@ class SonarViewer(QtWidgets.QDialog):
 
             sfig.setImage(image)
             sfig.setUpdatesEnabled(True)
-        else:
-            self.sonar_figure.clear()
 
-        if self.show_first_frame:
-            LogObject().print("First frame shown")
-            self.sonar_figure.resetView()
-            self.show_first_frame = False
+            if self.show_first_frame:
+                LogObject().print("First frame shown")
+                self.sonar_figure.resetView()
+                self.show_first_frame = False
 
-        if isinstance(self.main_window, MainWindow):
-            self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
-        self.updateSliderValue(self.playback_manager.getFrameInd())
+            if isinstance(self.main_window, MainWindow):
+                self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
+            self.updateSliderValue(self.playback_manager.getFrameInd())
 
 
 

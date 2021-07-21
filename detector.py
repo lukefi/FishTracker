@@ -46,6 +46,8 @@ class Detector():
 
 		self.ts = 0
 
+		#TODO: Change Events to pyqtSignals.
+
 		# When detector parameters change.
 		self.state_changed_event = Event()
 		self.bg_subtractor.state_changed_signal.connect(self.state_changed_event)

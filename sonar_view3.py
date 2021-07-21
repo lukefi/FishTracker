@@ -75,6 +75,13 @@ class Ui_MainWindow(object):
         self.menu_File.addAction(self.action_Open)
         self.menubar.addAction(self.menu_File.menuAction())
 
+        self.menu_Edit = QtWidgets.QMenu(self.menubar)
+        self.menu_Edit.setObjectName("menu_Edit")
+        self.action_FlowDir = QtWidgets.QAction(MainWindow)
+        self.action_FlowDir.setObjectName("action_FlowDir")
+        self.menu_Edit.addAction(self.action_FlowDir)
+        self.menubar.addAction(self.menu_Edit.menuAction())
+
         self.menu_Run = QtWidgets.QMenu(self.menubar)
         self.menu_Run.setObjectName("menu_Run")
         self.action_Batch = QtWidgets.QAction(MainWindow)
@@ -92,6 +99,8 @@ class Ui_MainWindow(object):
         self.info_widget.setTabText(self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.menu_Run.setTitle(_translate("MainWindow", "&Run"))
+        self.menu_Edit.setTitle(_translate("MainWindow", "&Edit"))
         self.action_Open.setText(_translate("MainWindow", "&Open..."))
         self.action_Batch.setText(_translate("MainWindow", "&Batch"))
+        self.action_FlowDir.setText(_translate("MainWindow", "&Switch flow direction"))
 

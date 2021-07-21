@@ -164,17 +164,18 @@ class SonarViewer(QtWidgets.QDialog):
 
             ffigure.setImage(image)
             ffigure.setUpdatesEnabled(True)
+
+            if self.show_first_frame:
+                LogObject().print("First frame shown")
+                self.MyFigureWidget.resetView()
+                self.show_first_frame = False
+
+            if isinstance(self.main_window, MainWindow):
+                self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
+            self.updateSliderValue(self.playback_manager.getFrameInd())
+
         else:
             self.MyFigureWidget.clear()
-
-        if self.show_first_frame:
-            LogObject().print("First frame shown")
-            self.MyFigureWidget.resetView()
-            self.show_first_frame = False
-
-        if isinstance(self.main_window, MainWindow):
-            self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
-        self.updateSliderValue(self.playback_manager.getFrameInd())
 
 
 

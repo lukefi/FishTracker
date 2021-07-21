@@ -109,9 +109,6 @@ class KalmanBoxTracker(object):
     self.last_det_ind = -1
     self.status = 0 # 0 = candidate, 1 = active, 2 = lost, 3 = removed
     self.search_radius_coeff = 1
-
-    self.mad = 0
-    self.first_angle = 0
   
   def update(self, z):
     self.kf.update(z)
@@ -134,9 +131,6 @@ class KalmanBoxTracker(object):
 
   def get_hit_streak(self):
     return self.hit_streak
-
-  def get_mad(self):
-    return self.mad
 
 def associate_detections_to_trackers(detections, trackers, search_radius=10):
 
@@ -177,21 +171,16 @@ def associate_detections_to_trackers(detections, trackers, search_radius=10):
 
 class Sort(object):
 
-  def __init__(self, max_age=1, min_hits=3, search_radius=10, im_width=500, im_height=1000):
+  def __init__(self, max_age=1, min_hits=3, search_radius=10):
     """
     Sets key parameters for SORT
     """
     self.max_age = max_age
     self.min_hits = min_hits
     self.search_radius = search_radius
+
     self.trackers = []
     self.frame_count = 0
-
-    self.im_width = im_width
-    self.im_height = im_height
-
-    print(im_width)
-    print(im_height)
   
   def update(self, detz=np.empty((0, 4))):
 
@@ -281,20 +270,13 @@ class Sort(object):
           if status == 2:
               status = 1
           
-          ret.append(np.concatenate((d[0]-10, d[1]-10, d[0]+10, d[1]+10, [trk.id], [status], [trk.get_hit_streak()], [d_ind], [self.search_radius], [trk.get_mad()])).reshape(1,-1))
+          ret.append(np.concatenate((d[0]-10, d[1]-10, d[0]+10, d[1]+10, [trk.id], [status], [trk.get_hit_streak()], [d_ind], [self.search_radius])).reshape(1,-1))
         i -= 1
  
         # Delete tracks
         if trk.time_since_update > self.max_age:
           self.trackers.pop(i)
           #trk.status = 3
-    
-    # Update MAD values
-    for trk in self.trackers:
-      angle = 180.0/3.1415926*np.arctan2(self.im_height-trk.get_state()[1],trk.get_state()[0]-self.im_width/2)
-      if trk.first_angle == 0:
-        trk.first_angle = angle
-      trk.mad = int(angle - trk.first_angle)
 
     if len(ret) > 0:
       return np.concatenate(ret)

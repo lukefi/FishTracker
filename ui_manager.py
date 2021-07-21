@@ -108,6 +108,9 @@ class UIManager():
         self.ui.action_Batch.setShortcut('Ctrl+B')
         self.ui.action_Batch.triggered.connect(self.runBatch)
 
+        self.ui.action_FlowDir.setShortcut('Ctrl+D')
+        self.ui.action_FlowDir.triggered.connect(self.changeFlowDirection)
+
         if fh.getTestFilePath() is not None:
             self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
             self.ui.action_OpenTest.setObjectName("action_OpenTest")
@@ -229,6 +232,13 @@ class UIManager():
         dialog = BatchDialog(self.playback, dparams, tparams)
         dialog.exec_()
 
+    def changeFlowDirection(self):
+        self.fish_manager.toggleUpDownInversion()
+        if self.playback.isMappingDone():
+            self.playback.refreshFrame()
+        else:
+            self.sonar_viewer.displayImage(None)
+
     def menuFileAboutToShow(self):
         file_open = self.playback.sonar is not None
         print(file_open)
@@ -254,7 +264,6 @@ def launch_ui():
     tracker.all_computed_signal.connect(playback_manager.refreshFrame)
 
     playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))
-    playback_manager.mapping_done.connect(lambda: tracker.setImageShape(*playback_manager.getImageShape()))
 
     playback_manager.frame_available_early.connect(detector.compute_from_event)
 

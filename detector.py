@@ -46,6 +46,8 @@ class Detector():
 
 		self.ts = 0
 
+		#TODO: Change Events to pyqtSignals.
+
 		# When detector parameters change.
 		self.state_changed_event = Event()
 		self.bg_subtractor.state_changed_signal.connect(self.state_changed_event)
@@ -583,7 +585,7 @@ class Detection:
 		LogObject().print(self.center)
 		self.length = length
 		self.distance = distance
-		self.angle = angle				
+		self.angle = angle
 
 	def visualize(self, image, colors, show_text, show_detection=True):
 		if self.corners is None:

@@ -32,14 +32,12 @@ class FishList(QtWidgets.QWidget):
                                  "border: none;\n"
                                  "}\n"
                                  "")
-        self.table.setColumnWidth(0, 40)
-        self.table.setColumnWidth(1, 60)
-        self.table.setColumnWidth(2, 80)
-        self.table.setColumnWidth(3, 80)
-        self.table.setColumnWidth(4, 80)
-        self.table.setColumnWidth(5, 80)
-        self.table.setColumnWidth(6, 80)
-        self.table.setColumnWidth(7, 80)
+        widths = [80 for i in range(self.fish_manager.columnCount())]
+        widths[0] = 40
+        widths[1] = 60
+        for i, w in enumerate(widths):
+            self.table.setColumnWidth(i, w)
+
 
         self.fish_manager.layoutChanged.connect(self.checkDropdowns)
         self.fish_manager.dataChanged.connect(self.onDataChanged)
@@ -147,12 +145,12 @@ class FishList(QtWidgets.QWidget):
         self.split_btn.clicked.connect(self.splitFishItem)
         self.split_btn.setToolTip("Split all selected fish in two at the current frame.")
 
-        self.invert_direction_btn = QtWidgets.QPushButton()
-        self.invert_direction_btn.setObjectName("invertDirectionButton")
-        self.invert_direction_btn.setText("Invert Up/Down")
-        self.invert_direction_btn.clicked.connect(self.fish_manager.toggleUpDownInversion)
-        self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
-        self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
+        #self.invert_direction_btn = QtWidgets.QPushButton()
+        #self.invert_direction_btn.setObjectName("invertDirectionButton")
+        #self.invert_direction_btn.setText("Invert Up/Down")
+        #self.invert_direction_btn.clicked.connect(self.fish_manager.toggleUpDownInversion)
+        #self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
+        #self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
 
         #self.test_save_btn = QtWidgets.QPushButton()
         #self.test_save_btn.setObjectName("testSaveButton")
@@ -167,7 +165,7 @@ class FishList(QtWidgets.QWidget):
         self.button_layout.addWidget(self.remove_btn, 1, 3)
         self.button_layout.addWidget(self.merge_btn, 0, 4)
         self.button_layout.addWidget(self.split_btn, 1, 4)
-        self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
+        #self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
         #self.button_layout.addWidget(self.test_save_btn, 1, 5)
         #self.button_layout.addStretch()
 

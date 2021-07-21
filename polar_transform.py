@@ -37,6 +37,7 @@ class PolarTransform:
 		self.angle_limits = (np.pi/2 - beam_angle/2, np.pi/2 + beam_angle/2)
 		self.center = (0, (self.cart_shape[1] - 1) / 2)
 		self.metric_cart_shape = (radius_limits[1], self.cart_shape[1] / self.cart_shape[0] * radius_limits[1])
+		self.pixels_per_meter = cart_height / radius_limits[1]
 
 		self.map_x = np.zeros(self.cart_shape, dtype=np.float32)
 		self.map_y = np.zeros(self.cart_shape, dtype=np.float32)

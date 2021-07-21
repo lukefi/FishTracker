@@ -30,6 +30,7 @@ class FSONAR_File():
     def __init__(self, filename):
         self.FILE_PATH = filename
         self.frameCount = None
+        self.frameRate = None
         self.BEAM_COUNT = None
         self.largeLens = None
         self.highResolution = None

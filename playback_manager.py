@@ -110,6 +110,8 @@ class PlaybackManager(QObject):
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar
+        #self.fps = sonar.frameRate
+
         # Initialize new PlaybackThread
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
 
@@ -382,6 +384,16 @@ class PlaybackManager(QObject):
         else:
             return 0
 
+    def getRecordFrameRate(self):
+        """
+        Return frame rate of the recording (ARIS file).
+        Note that this might differ from the playback frame rate.
+        """
+        if self.sonar:
+            return self.sonar.frameRate
+        else:
+            return None
+
     def getImageShape(self):
         """
         Returns (width, height) of the cartesian image in pixels.
@@ -389,6 +401,15 @@ class PlaybackManager(QObject):
         if self.playback_thread and self.playback_thread.polar_transform:
             shape = self.playback_thread.polar_transform.cart_shape
             return shape[1], shape[0]
+        else:
+            return None
+
+    def getPixelsPerMeter(self):
+        """
+        Return the conversion rate from world (meters) to image (pixels)
+        """
+        if self.playback_thread and self.playback_thread.polar_transform:
+            return self.playback_thread.polar_transform.pixels_per_meter
         else:
             return None
 

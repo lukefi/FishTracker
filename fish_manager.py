@@ -9,10 +9,17 @@ from enum import IntEnum
 from tracker import Tracker
 from log_object import LogObject
 
-fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections", "MAD", "Tortuosity"]
-fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count, lambda f: f.mad, lambda f: f.tortuosity]
-data_lambda_list = [lambda f: f.color_ind, lambda f: f.id, lambda f: f.length, lambda f: f.direction.name, lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count, lambda f: f.mad, lambda f: f.tortuosity]
-COLUMN_COUNT = 10
+fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections", "MAD",
+                "Tortuosity", "Speed"]
+
+fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(),
+                  lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count,
+                  lambda f: f.mad, lambda f: f.tortuosity, lambda f: f.speed]
+
+data_lambda_list = [lambda f: f.color_ind, lambda f: f.id, lambda f: f.length, lambda f: f.direction.name,
+                    lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: f.detection_count,
+                    lambda f: f.mad, lambda f: f.tortuosity, lambda f: f.speed]
+COLUMN_COUNT = 11
 
 N_COLORS = 16
 color_palette = sns.color_palette('bright', N_COLORS)
@@ -31,8 +38,8 @@ class FishManager(QtCore.QAbstractTableModel):
         super().__init__()
         self.playback_manager = playback_manager
         if self.playback_manager is not None:
-            self.playback_manager.file_opened.connect(lambda x: self.clear())
-            self.playback_manager.file_closed.connect(lambda: self.clear())
+            self.playback_manager.file_opened.connect(self.onFileOpened)
+            self.playback_manager.file_closed.connect(self.onFileClosed)
 
         self.tracker = tracker
         if tracker is not None:
@@ -69,6 +76,9 @@ class FishManager(QtCore.QAbstractTableModel):
         # If fish (tracks) are shown in Echogram.
         self.show_echogram_fish = True
 
+        self.frame_rate = None
+        self.frame_time = None
+
         self.show_bounding_box = True
         self.show_id = True
         self.show_detection_size = True
@@ -99,7 +109,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def refreshAllFishData(self):
         for f in self.all_fish.values():
-            f.refreshData(self.up_down_inverted)
+            self.refreshData(f)
 
     def trimFishList(self, force_color_update=False):
         """
@@ -128,6 +138,16 @@ class FishManager(QtCore.QAbstractTableModel):
         if self.update_fish_colors or force_color_update:
             self.updateFishColors()
         self.refreshLayout()
+
+    def onFileOpened(self):
+        self.clear()
+        self.frame_rate = self.playback_manager.getRecordFrameRate()
+        self.frame_time = (1.0 / self.frame_rate) if self.frame_rate is not None else None
+
+    def onFileClosed(self):
+        self.clear()
+        self.frame_rate = None
+        self.frame_time = None
 
     def clear(self):
         self.all_fish = {}
@@ -244,7 +264,7 @@ class FishManager(QtCore.QAbstractTableModel):
             fish = self.fish_list[row]
             new_fish.merge(fish)
 
-        new_fish.refreshData(self.up_down_inverted)
+        self.refreshData(new_fish)
         self.removeFish(rows, False)
         self.all_fish[new_fish.id] = new_fish
         self.trimFishList()
@@ -263,8 +283,8 @@ class FishManager(QtCore.QAbstractTableModel):
                 new_fish.forceLengthByPercentile(self.length_percentile)
                 self.all_fish[id] = new_fish
 
-                fish.refreshData()
-                new_fish.refreshData()
+                self.refreshData(fish)
+                self.refreshData(new_fish)
 
         self.trimFishList()
 
@@ -383,10 +403,14 @@ class FishManager(QtCore.QAbstractTableModel):
         # Refresh values
         for fish in self.all_fish.values():
             fish.setLengthByPercentile(self.length_percentile)
-            fish.refreshData(self.up_down_inverted)
-            #fish.setDirection(self.up_down_inverted)
+            self.refreshData(fish)
 
         self.trimFishList(force_color_update=True)
+
+    def refreshData(self, fish):
+        fish.setFrames()
+        fish.setPathVariables(self.up_down_inverted, self.frame_time, 1.0/self.playback_manager.getPixelsPerMeter())
+        fish.setLengths()
 
     def updateFishColors(self):
         color_ind = 0
@@ -428,8 +452,9 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def setUpDownInversion(self, value):
         self.up_down_inverted = value
+        meters_per_pixel = 1.0 / self.playback_manager.getPixelsPerMeter()
         for fish in self.all_fish.values():
-            fish.setDirection(self.up_down_inverted)
+            fish.setPathVariables(self.up_down_inverted, self.frame_time, meters_per_pixel)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def setShowFish(self):
@@ -654,6 +679,7 @@ class FishEntry():
         self.duration = frame_out - frame_in + 1
         self.mad = 0
         self.tortuosity = 1
+        self.speed = 0
 
         # tracks: Dictionary {frame index : (track, detection)}
         self.tracks = {}
@@ -703,6 +729,7 @@ class FishEntry():
         f.color_ind = self.color_ind
         f.mad = self.mad
         f.tortuosity = self.tortuosity
+        f.speed = self.speed
         return f
 
     def merge(self, other):
@@ -756,11 +783,6 @@ class FishEntry():
                 tail = []
         return tail
 
-    def refreshData(self, direction):
-        self.setFrames()
-        self.setDirection(direction)
-        self.setLengths()
-
     def setFrames(self):
         inds = self.tracks.keys()
         if len(inds) > 0:
@@ -769,12 +791,17 @@ class FishEntry():
             self.duration = self.frame_out - self.frame_in + 1
         self.detection_count = len([det for _, det in self.tracks.values() if det is not None])
 
-    def setDirection(self, inverted):
+    def setPathVariables(self, inverted, frame_time, meters_per_pixel):
+        """
+        Calculates variables from the path of the fish,
+        i.e. swim direction, mad, tortuosity and speed.
+        """
         valid_dets = [d for _, d in self.tracks.values() if d is not None]
         if len(valid_dets) <= 1:
             self.direction = SwimDirection.NONE
             self.mad = 0
             self.tortuosity = 1
+            self.speed = 0
         else:
             end_point_distance = valid_dets[-1].center - valid_dets[0].center
             if inverted:
@@ -785,7 +812,10 @@ class FishEntry():
             self.mad = abs(valid_dets[-1].angle - valid_dets[0].angle)
             path_length = self.calculatePathLength(valid_dets)
             self.tortuosity = float(path_length / np.linalg.norm(end_point_distance))
-            print(f"{path_length} {self.tortuosity}")
+            if frame_time is not None:
+                self.speed = float(path_length * meters_per_pixel / ((self.frame_out - self.frame_in) * frame_time))
+            else:
+                self.speed = 0
 
     def calculatePathLength(self, dets):
         dist_sum = 0
@@ -794,8 +824,7 @@ class FishEntry():
             new_point = dets[i].center
             dist_sum += np.linalg.norm(new_point - prev_point)
             prev_point = new_point
-        return dist_sum
-
+        return float(dist_sum)
 
     def setLengths(self):
         self.lengths = sorted([det.length for _, det in self.tracks.values() if det is not None])

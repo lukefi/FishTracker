@@ -313,7 +313,7 @@ def v5_getAllFramesData(fhand, version, cls):
     
     cls.version = "ARIS"
     fileAttributesList = ["numRawBeams", "samplesPerChannel", "frameCount"]
-    frameAttributesList = ["largeLens", "sampleStartDelay", "soundSpeed", "samplePeriod"]
+    frameAttributesList = ["largeLens", "sampleStartDelay", "soundSpeed", "samplePeriod", "frameRate"]
 
     fileHeader = utils.getFileHeaderValue(version, fileAttributesList)
     frameHeader = utils.getFrameHeaderValue(version, frameAttributesList)
@@ -335,6 +335,12 @@ def v5_getAllFramesData(fhand, version, cls):
     cls.samplesPerBeam = struct.unpack(
             utils.cType[fileHeader["samplesPerChannel"]["size"]],
             fhand.read(utils.c(fileHeader["samplesPerChannel"]["size"])))[0]
+
+    #   Reading Frame Rate [from frame header]
+    fhand.seek(cls.FILE_HEADER_SIZE + fhand.seek(frameHeader["frameRate"]["location"], 0))
+    cls.frameRate = struct.unpack(
+            utils.cType[frameHeader["frameRate"]["size"]],
+            fhand.read(utils.c(frameHeader["frameRate"]["size"])))[0]
 
     #   Reading Sample Period [from frame header]
     fhand.seek(cls.FILE_HEADER_SIZE + fhand.seek(frameHeader["samplePeriod"]["location"], 0))

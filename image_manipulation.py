@@ -61,29 +61,30 @@ class ImageProcessor:
         y1 = np.cos(2 * np.pi * x1) * np.exp(-x1)
         self.line, = plt.plot(x1, y1, 'ko-')
 
-    def processImage(self, tuple):
-        ind, img = tuple
-
+    def processImage(self, ind, image):
         if not self.use_any:
-            return img
+            return image
 
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
         if self.use_clahe:
-            img = ImageManipulation.CLAHE(img)
+            image = ImageManipulation.CLAHE(image)
 
         if self.gamma != 1:
-            img = ImageManipulation.adjustGamma(img, self.gamma)
+            image = ImageManipulation.adjustGamma(image, self.gamma)
 
         if self.use_colormap:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image = cv2.applyColorMap(image, cv2.COLORMAP_OCEAN)
 
         if len(self.additional) > 0:
             for f in self.additional:
-                img = f((ind, img))
+                image = f((ind, image))
 
-        return img
+        return image
+
+    def processGrayscaleImage(self, image):
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
     def distancePlot(self, image):
         print(image.shape)

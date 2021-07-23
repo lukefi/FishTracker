@@ -150,8 +150,9 @@ class SonarViewer(QtWidgets.QDialog):
 
             if self.detector.show_bgsub:
                 image = self.detector.bgSubtraction(frame)
+                image = self.image_processor.processGrayscaleImage(image)
             else:
-                image = self.image_processor.processImage(tuple)
+                image = self.image_processor.processImage(ind, frame)
             
             if self.detector._show_detections:
                 image = self.detector.overlayDetections(image)
@@ -712,6 +713,7 @@ if __name__ == "__main__":
     def startDetector():
         detector.initMOG()
         detector.setShowDetections(True)
+        detector.setShowBGSubtraction(True)
 
     def test():
         LogObject().print("Polars loaded test print")

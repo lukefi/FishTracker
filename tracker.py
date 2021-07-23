@@ -14,14 +14,11 @@ PARAMETER_TYPES = {
 
 class Tracker(QtCore.QObject):
 
-    # When new computation is started
-    init_signal = QtCore.pyqtSignal()
+    # When new computation is started. Parameter: clear previous results.
+    init_signal = QtCore.pyqtSignal(bool)
 
     # When tracker parameters change.
     state_changed_signal = QtCore.pyqtSignal()
-
-    # When the results change
-    data_changed_signal = QtCore.pyqtSignal(int)
 
     # When tracker has computed all available frames.
     all_computed_signal = QtCore.pyqtSignal()
@@ -43,25 +40,21 @@ class Tracker(QtCore.QObject):
     def clear(self):
         self.applied_parameters = None
         self.applied_detector_parameters = None
-        self.mot_tracker = None
         self.tracks_by_frame = {}
 
     def resetParameters(self):
         self.parameters = TrackerParameters()
 
 
-    def trackAllDetectorFrames(self):
-        self.trackAll(self.detector.detections)
+    def primaryTrack(self):
+        """
+        Tracks all detections from detector and stores the results in tracks_by_frame dictionary.
+        Signals when the computation has finished.
+        """
 
-    def trackAll(self, detection_frames):
-        """
-        Tracks all detections in the given frames. Updates tracks_by_frame and
-        signals when the computation has finished.
-        """
         self.tracking = True
-        self.stop_tracking = False
         self.state_changed_signal.emit()
-        self.init_signal.emit()
+        self.init_signal.emit(True)
 
         if self.detector.allCalculationAvailable():
             self.detector.computeAll()
@@ -72,51 +65,108 @@ class Tracker(QtCore.QObject):
                 self.abortComputing(True)
                 return
 
+        print(f"First:  {self.detectionCount(self.detector.detections)}")
+        self.tracks_by_frame = self.trackDetections(self.detector.detections, self.parameters, reset_count=True)
 
+        self.applied_parameters = self.parameters.copy()
+        self.applied_detector_parameters = self.detector.parameters.copy()
+
+        self.tracking = False
+        self.state_changed_signal.emit()
+        self.all_computed_signal.emit()
+
+    def secondaryTrack(self, used_detections, tracker_parameters):
+        """
+        Tracks all detections from detector, excluding used_detections using the given
+        tracker parameters. Previous results are replaced with the new results.
+        Signals when the computation has finished.
+
+        used_detections: Dictionary: frame_index -> list of detections in that frame.
+        tracker_parameters: TrackerParameters object containing the parameters for tracking. 
+        """
+
+        self.tracking = True
+        self.state_changed_signal.emit()
+        self.init_signal.emit(False)
+
+        detections = [[] for i in range(len(self.detector.detections))]
+        for frame, dets in enumerate(self.detector.detections):
+            if frame in used_detections:
+                used_dets = used_detections[frame]
+                for det in dets:
+                    if det not in used_dets:
+                        detections[frame].append(det)
+                    #    print(f"Added {det} at: {frame}")
+                    #else:
+                    #    print(f"Ignored {det} at: {frame}")
+            else:
+                detections[frame] = dets
+
+
+        print(f"Second: {self.detectionCount(detections)}")
+        self.tracks_by_frame = self.trackDetections(detections, tracker_parameters, reset_count=False)
+
+        self.tracking = False
+        self.state_changed_signal.emit()
+        self.all_computed_signal.emit()
+
+    def detectionCount(self, detections):
+        count = 0
+        for dets in detections:
+            for det in dets:
+                count += 1
+        return count
+        
+
+    def trackDetections(self, detection_frames, tracker_parameters, reset_count=False):
+        """
+        Tracks all detections in the given frames.
+        Returns a dictionary containing tracks by frame.
+        """
+
+        self.stop_tracking = False
         count = len(detection_frames)
-        self.tracks_by_frame = {}
-        self.mot_tracker = Sort(max_age = self.parameters.max_age,
-                                min_hits = self.parameters.min_hits,
-                                search_radius = self.parameters.search_radius)
+        returned_tracks_by_frame = {}
+        mot_tracker = Sort(max_age = tracker_parameters.max_age,
+                           min_hits = tracker_parameters.min_hits,
+                           search_radius = tracker_parameters.search_radius)
 
-        KalmanBoxTracker.count = 0
+        if reset_count:
+            KalmanBoxTracker.count = 0
+
         ten_perc = 0.1 * count
         print_limit = 0
+
         for i, dets in enumerate(detection_frames):
             if i > print_limit:
                 LogObject().print("Tracking:", int(float(i) / count * 100), "%")
                 print_limit += ten_perc
+
             if self.stop_tracking:
                 LogObject().print("Stopped tracking at", i)
                 self.abortComputing(False)
                 return
 
-            self.tracks_by_frame[i] = self.trackBase(dets, i)
+            returned_tracks_by_frame[i] = self.trackBase(mot_tracker, dets, i)
                 
+        LogObject().print("Tracking: 100 %")    
+        return returned_tracks_by_frame
 
-        LogObject().print("Tracking: 100 %")
-        self.tracking = False
-        self.applied_parameters = self.parameters.copy()
-        self.applied_detector_parameters = self.detector.parameters.copy()
-        
-        self.state_changed_signal.emit()
-        self.all_computed_signal.emit()
-
-    def trackBase(self, frame, ind):
+    def trackBase(self, mot_tracker, frame, ind):
         """
         Performs tracking step for a single frame.
         Returns (track, detection) if the track was updated this frame, otherwise (track, None).
         """
         if frame is None:
             LogObject().print("Invalid detector results encountered at frame " + str(ind) +". Consider rerunning the detector.")
-            return self.mot_tracker.update()
+            return mot_tracker.update()
 
         detections = [d for d in frame if d.corners is not None]
         if len(detections) > 0:
             dets = np.array([np.min(d.corners,0).flatten().tolist() + np.max(d.corners,0).flatten().tolist() for d in detections])
-            tracks = self.mot_tracker.update(dets)
+            tracks = mot_tracker.update(dets)
         else:
-            tracks = self.mot_tracker.update()
+            tracks = mot_tracker.update()
 
         return [(tr, detections[int(tr[7])]) if tr[7] >= 0 else (tr, None) for tr in tracks]
 
@@ -138,7 +188,8 @@ class Tracker(QtCore.QObject):
 
             if self._show_id:
                 center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
-                image = cv2.putText(image, "ID: " + str(int(tr[4])), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+                image = cv2.putText(image, "ID: " + str(int(tr[4])), (int(center[1])-20, int(center[0])+25),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
             if self._show_detection_size and det is not None:
                 det.visualize(image, colors, True, False)
@@ -242,6 +293,7 @@ if __name__ == "__main__":
     from PyQt5 import QtCore, QtGui, QtWidgets
     from playback_manager import PlaybackManager, TestFigure
     from detector import Detector, DetectorParameters
+    from fish_manager import FishManager
 
     def test1():
         """
@@ -269,9 +321,9 @@ if __name__ == "__main__":
         detector = DetectorTest()
         tracker = Tracker(detector)
         detection_frames = [[DetectionTest() for j in range(int(np.random.uniform(0,5)))] for i in range(50)]
-        tracker.trackAll(detection_frames)
+        tracker.trackDetections(detection_frames)
 
-    def playbackTest():
+    def playbackTest(secondary):
         """
         Test code to assure tracker works with detector.
         """
@@ -287,7 +339,13 @@ if __name__ == "__main__":
         def startDetector():
             detector.initMOG()
             detector.computeAll()
-            tracker.trackAll(detector.detections)
+            tracker.primaryTrack()
+
+            if secondary:
+                LogObject().print("Secondary track...")
+                used_dets = fish_manager.applyFiltersAndGetUsedDetections()
+                tracker.secondaryTrack(used_dets, tracker.parameters)
+
             playback_manager.play()
 
         app = QtWidgets.QApplication(sys.argv)
@@ -295,6 +353,7 @@ if __name__ == "__main__":
         playback_manager = PlaybackManager(app, main_window)
         detector = Detector(playback_manager)
         tracker = Tracker(detector)
+        fish_manager = FishManager(playback_manager, tracker)
 
         playback_manager.fps = 10
         playback_manager.openTestFile()
@@ -314,4 +373,4 @@ if __name__ == "__main__":
         sys.exit(app.exec_())
 
     #test1()
-    playbackTest()
+    playbackTest(True)

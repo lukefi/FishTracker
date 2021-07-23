@@ -3,7 +3,6 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from tracker import Tracker
 from detector_parameters import LabeledSlider
-from fish_manager import FishManager
 
 import json
 import os.path
@@ -12,11 +11,12 @@ import numpy as np
 PARAMETERS_PATH = "tracker_parameters.json"
 
 class TrackerParametersView(QWidget):
-    def __init__(self, playback_manager, tracker, detector):
+    def __init__(self, playback_manager, tracker, detector, fish_manager=None):
         super().__init__()
         self.playback_manager = playback_manager
         self.tracker = tracker
         self.detector = detector
+        self.fish_manager = fish_manager
 
         self.initUI()
 
@@ -29,17 +29,45 @@ class TrackerParametersView(QWidget):
     def setButtonsEnabled(self):
         detector_active = self.detector.bg_subtractor.initializing or self.detector.computing
         all_value = self.tracker.parametersDirty() and self.playback_manager.isPolarsDone() and (not detector_active or self.tracker.tracking)
-        self.track_all_btn.setEnabled(all_value)
+        self.primary_track_btn.setEnabled(all_value)
 
     def setButtonTexts(self):
         if self.tracker.tracking:
-            self.track_all_btn.setText("Cancel")
+            self.primary_track_btn.setText("Cancel")
         else:
-            self.track_all_btn.setText("Track All")
+            self.primary_track_btn.setText("Track All")
 
-    def trackAll(self):
+    def primaryTrack(self):
+        """
+        Either starts the first tracking iteration, or cancels the process
+        if one is already started.
+        """
+
         if not self.tracker.tracking:
-            self.playback_manager.runInThread(self.tracker.trackAllDetectorFrames)
+            if self.fish_manager:
+                self.fish_manager.clear_old_data = True
+            self.playback_manager.runInThread(self.tracker.primaryTrack)
+        else:
+            if self.detector.bg_subtractor.initializing:
+                self.detector.bg_subtractor.stop_initializing = True
+            elif self.detector.computing:
+                self.detector.stop_computing = True
+            else:
+                self.tracker.stop_tracking = True
+
+    def secondaryTrack(self):
+        """
+        Either starts the second (or nth) tracking iteration, or cancels the process
+        if one is already started. A FishManager is required for this action.
+        """
+
+        if self.fish_manager is None:
+            return
+
+        if not self.tracker.tracking:
+            self.fish_manager.clear_old_data = False
+            used_dets = self.fish_manager.applyFiltersAndGetUsedDetections()
+            self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.parameters))
         else:
             if self.detector.bg_subtractor.initializing:
                 self.detector.bg_subtractor.stop_initializing = True
@@ -76,12 +104,19 @@ class TrackerParametersView(QWidget):
         self.vertical_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
         self.vertical_layout.addItem(self.vertical_spacer2)
 
-        self.track_all_btn = QPushButton()
-        self.track_all_btn.setObjectName("trackAllButton")
-        self.track_all_btn.setText("Track all")
-        self.track_all_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
-        self.track_all_btn.clicked.connect(self.trackAll)
-        self.track_all_btn.setMinimumWidth(150)
+        self.primary_track_btn = QPushButton()
+        self.primary_track_btn.setObjectName("primaryTrackButton")
+        self.primary_track_btn.setText("Primary Track")
+        self.primary_track_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
+        self.primary_track_btn.clicked.connect(self.primaryTrack)
+        self.primary_track_btn.setMinimumWidth(150)
+
+        self.secondary_track_btn = QPushButton()
+        self.secondary_track_btn.setObjectName("secondaryTrackButton")
+        self.secondary_track_btn.setText("Secondary Track")
+        self.secondary_track_btn.setToolTip("Start a process that detects fish and tracks them in all the frames")
+        self.secondary_track_btn.clicked.connect(self.secondaryTrack)
+        self.secondary_track_btn.setMinimumWidth(150)
 
         self.track_button_layout = QHBoxLayout()
         self.track_button_layout.setObjectName("buttonLayout")
@@ -89,7 +124,8 @@ class TrackerParametersView(QWidget):
         self.track_button_layout.setContentsMargins(0,0,0,0)
 
         self.track_button_layout.addStretch()
-        self.track_button_layout.addWidget(self.track_all_btn)
+        self.track_button_layout.addWidget(self.primary_track_btn)
+        self.track_button_layout.addWidget(self.secondary_track_btn)
 
         self.vertical_layout.addLayout(self.track_button_layout)
 

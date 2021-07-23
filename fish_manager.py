@@ -30,7 +30,7 @@ pyqt_palette = [QtGui.QColor.fromRgbF(c[2], c[1], c[0]) for c in color_palette]
 color_palette_deep = [[c[2], c[1], c[0]] for c in sns.color_palette('deep', N_COLORS)]
 pyqt_palette_deep = [QtGui.QColor.fromRgbF(c[2], c[1], c[0]) for c in color_palette_deep]
 
-# Implements functionality to store and manage the tracked fish items.
+# Stores and manages tracked fish items.
 # Items can be edited with the functions defined here through e.g. fish_list.py.
 class FishManager(QtCore.QAbstractTableModel):
     updateContentsSignal = QtCore.pyqtSignal()
@@ -45,7 +45,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
         self.tracker = tracker
         if tracker is not None:
-            self.tracker.init_signal.connect(self.clear)
+            self.tracker.init_signal.connect(self.onTrackingInitialized)
             self.tracker.all_computed_signal.connect(self.updateDataFromTracker)
 
         # All fish items currently stored.
@@ -71,6 +71,9 @@ class FishManager(QtCore.QAbstractTableModel):
 
         # Percentile with which the shown length is determined
         self.length_percentile = 50
+
+        # Clear previous fish entries when new data is acquired.
+        self.clear_old_data = True
 
         # If fish (tracks) are shown.
         self.show_fish = True
@@ -146,6 +149,10 @@ class FishManager(QtCore.QAbstractTableModel):
         self.clear()
         self.frame_rate = None
         self.frame_time = None
+
+    def onTrackingInitialized(self, clearData):
+        if clearData:
+            self.clear()
 
     def clear(self):
         self.all_fish = {}
@@ -379,7 +386,11 @@ class FishManager(QtCore.QAbstractTableModel):
     def updateDataFromTracker(self):
         """
         Iterates through the results of the tracker and updates the data in FishManager.
+        If clear_old_data is set, the old data is first removed.
         """
+
+        if self.clear_old_data:
+            self.clear()
 
         # Iterate through all frames.
         for frame, tracks in self.tracker.tracks_by_frame.items():
@@ -400,12 +411,60 @@ class FishManager(QtCore.QAbstractTableModel):
 
         # Refresh values
         for fish in self.all_fish.values():
-            fish.setLengthByPercentile(self.length_percentile)
             self.refreshData(fish)
+            fish.setLengthByPercentile(self.length_percentile)
 
         self.trimFishList(force_color_update=True)
 
+    def applyFilters(self):
+        """
+        Applies the current filters by replacing the contents of all_fish
+        with the contents of fish_list. fish_list is the "filtered version"
+        of all_fish.
+        """
+
+        self.trimFishList()
+        self.all_fish = {}
+        for fish in self.fish_list:
+            self.all_fish[fish.id] = fish
+
+    def getDetectionsInFish(self):
+        """
+        Returns detections that have been associated with the current fish.
+        """
+        detections = {}
+        for fish in self.all_fish.values():
+            for frame, (_, det) in fish.tracks.items():
+                if det is None:
+                    continue
+
+                if frame not in detections:
+                    detections[frame] = [det]
+                else:
+                    detections[frame].append(det)
+
+        return detections
+
+    def applyFiltersAndGetUsedDetections(self):
+        """
+        Applies filters and returns the detections associated to the remaining fish.
+        """
+        print(f"Fish before applying: {len(self.all_fish)}")
+        self.applyFilters()
+        print(f"Fish after applying: {len(self.all_fish)}")
+
+        used_dets = self.getDetectionsInFish()
+        count = 0
+        for frame, dets in used_dets.items():
+            count += len(dets)
+        print(f"Total used: {count}")
+
+        return used_dets
+
     def refreshData(self, fish):
+        """
+        Refresh calculated variables of the given fish.
+        """
         fish.setFrames()
         fish.setPathVariables(self.up_down_inverted, self.frame_time, 1.0/self.playback_manager.getPixelsPerMeter())
         fish.setLengths()

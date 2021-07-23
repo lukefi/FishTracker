@@ -71,7 +71,7 @@ class UIManager():
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
 
-        self.tracker_parameters = TrackerParametersView(self.playback, self.tracker, self.detector)
+        self.tracker_parameters = TrackerParametersView(self.playback, self.tracker, self.detector, self.fish_manager)
         self.save_manager.file_loaded_event.connect(self.tracker_parameters.refreshValues)
 
         self.output = OutputViewer()

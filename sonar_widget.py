@@ -8,7 +8,7 @@ from image_manipulation import ImageProcessor
 from zoomable_qlabel import ZoomableQLabel
 from detector import Detector
 from tracker import Tracker
-from fish_manager import FishManager
+from fish_manager import FishManager, FishEntry, pyqt_palette, color_palette_deep, N_COLORS
 from playback_manager import Event
 from log_object import LogObject
 
@@ -18,6 +18,7 @@ import json
 ## }
 
 import cv2
+import seaborn as sns
 import iconsLauncher as uiIcons      # UI/iconsLauncher
 # uif : (u)ser (i)nterface (f)unction
 import UI_utils as uif              # UI/UI_utils
@@ -109,16 +110,16 @@ class SonarViewer(QtWidgets.QDialog):
 
         self.F_BGS_ValueLabel = QtWidgets.QLabel()
         
-        self.MyFigureWidget = SonarFigure(self)
-        self.MyFigureWidget.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.MyFigureWidget.setMouseTracking(True)        
+        self.sonar_figure = SonarFigure(self)
+        self.sonar_figure.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.sonar_figure.setMouseTracking(True)        
 
         self.FSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.updateSliderLimits(0,0,0)
         self.FSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
         self.FSlider.valueChanged.connect(self.playback_manager.setFrameInd)
 
-        self.FLayout.addWidget(self.MyFigureWidget,0,1,1,3)
+        self.FLayout.addWidget(self.sonar_figure,0,1,1,3)
         self.FLayout.addWidget(self.FSlider,1,1,1,3)
         self.FLayout.addWidget(FPreviousBTN, 2,1)
         self.FLayout.addWidget(self.FPlayBTN, 2,2)
@@ -143,34 +144,58 @@ class SonarViewer(QtWidgets.QDialog):
         if tuple is not None:
             ind, frame = tuple
 
-            ffigure = self.MyFigureWidget
-            font = cv2.FONT_HERSHEY_SIMPLEX          
-            ffigure.setUpdatesEnabled(False)
-            ffigure.clear()
+            sfig = self.sonar_figure
+            sfig.setUpdatesEnabled(False)
+            sfig.clear()
+            sfig.visualized_id = ind
 
+            # Apply background subtraction
             if self.detector.show_bgsub:
                 image = self.detector.bgSubtraction(frame)
                 image = self.image_processor.processGrayscaleImage(image)
             else:
                 image = self.image_processor.processImage(ind, frame)
-            
-            if self.detector._show_detections:
-                image = self.detector.overlayDetections(image)
 
-            if self.fish_manager.show_fish:
-                image = self.fish_manager.visualize(image, ind)
+            if sfig.show_tracks or sfig.show_track_id:
+                sfig.visualized_tracks = self.fish_manager.getFishInFrame(ind)
+
+            # Overlay detections used in tracking and remove them from other detections
+            if sfig.show_tracks:
+                dets_in_tracks = set()
+                for fish in sfig.visualized_tracks:
+                    _, det = fish.tracks[ind]
+                    if det is not None:
+                        dets_in_tracks.add(det)
+                        if sfig.show_detections:
+                            image = det.visualizeArea(image, color_palette_deep[fish.color_ind])
+                    
+                detections = [d for d in self.detector.getCurrentDetection() if d not in dets_in_tracks]
+            else:
+                detections = self.detector.getCurrentDetection()
+            
+            # Overlay rest of the detections
+            if sfig.show_detections or (sfig.show_detection_size and not sfig.show_tracks):
+                sfig.visualized_dets = detections
+                if sfig.show_detections:
+                    if sfig.show_tracks:
+                        for det in detections:
+                            image = det.visualizeArea(image, [0.9] * 3)
+                    else:
+                        colors = sns.color_palette('deep', max([0] + [det.label + 1 for det in detections]))
+                        for det in detections:
+                            image = det.visualizeArea(image, colors[det.label])
         
             if self.show_first_frame:
-                ffigure.resetViewToShape(image.shape)
+                sfig.resetViewToShape(image.shape)
 
-            ffigure.setImage(image)
-            ffigure.setUpdatesEnabled(True)
+            sfig.setImage(image)
+            sfig.setUpdatesEnabled(True)
         else:
-            self.MyFigureWidget.clear()
+            self.sonar_figure.clear()
 
         if self.show_first_frame:
             LogObject().print("First frame shown")
-            self.MyFigureWidget.resetView()
+            self.sonar_figure.resetView()
             self.show_first_frame = False
 
         if isinstance(self.main_window, MainWindow):
@@ -197,14 +222,14 @@ class SonarViewer(QtWidgets.QDialog):
         self.show_first_frame = True
 
     def onFileClose(self):
-        self.MyFigureWidget.clear()
+        self.sonar_figure.clear()
         self.polar_transform = None
 
     def onMappingDone(self):
         self.polar_transform = self.playback_manager.playback_thread.polar_transform
 
     def measureDistance(self, value):
-        self.MyFigureWidget.setMeasuring(value)
+        self.sonar_figure.setMeasuring(value)
     
     def FBackgroundSubtract(self):
         """
@@ -485,7 +510,7 @@ class SonarViewer(QtWidgets.QDialog):
         self.automatic_contrast = value
 
     def resizeEvent(self, event):
-        self.MyFigureWidget.resizeEvent(event)
+        self.sonar_figure.resizeEvent(event)
 
     def setStatusBarMousePos(self, x, y):
         if not isinstance(self.main_window, MainWindow):
@@ -552,6 +577,18 @@ class SonarFigure(ZoomableQLabel):
 
         self.measure_toggle = Event()
 
+        self.visualized_dets = []
+        self.visualized_tracks = []
+        self.visualized_id = 0
+
+        self.show_detections = True
+        self.show_tracks = True
+        self.show_detection_size = True
+        self.show_track_id = True
+        self.show_track_bounding_box = True
+
+        self.font_metrics = None
+
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
@@ -597,16 +634,22 @@ class SonarFigure(ZoomableQLabel):
             if self.pixmap():
                 self.sonar_viewer.setStatusBarMousePos(xs,ys)
 
-    def keyPressEvent(self, event):
-        super().keyPressEvent(event)
-        LogObject().print("Key")
-        if event.key() == Qt.Key_Space:
-            LogObject().print("Space")
-
     def paintEvent(self, event):
         super().paintEvent(event)
 
         painter = QtGui.QPainter(self)
+        font = painter.font()
+        self.font_metrics = QtGui.QFontMetrics(font)
+        
+        self.drawUpDown(painter)
+        self.drawDepthAxis(painter)
+        self.drawMeasurementLine(painter)
+
+        self.visualizeDetections(painter, self.visualized_dets)
+        self.visualizeFishTracks(painter, self.visualized_tracks)
+
+
+    def drawUpDown(self, painter):
         painter.setPen(QtCore.Qt.white)
         if self.sonar_viewer.getSwimDirection():
             painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "UP")
@@ -615,6 +658,7 @@ class SonarFigure(ZoomableQLabel):
             painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "DOWN")
             painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 10, 0.95 * self.window_height, "UP")
 
+    def drawDepthAxis(self, painter):
         # Draw depth axis
         painter.setPen(QtCore.Qt.white)
         axisBase = self.sonar_viewer.getAxisBase()
@@ -655,8 +699,7 @@ class SonarFigure(ZoomableQLabel):
                 painter.drawText(*li + np.array((-15 - text_width, 5)), text)
                 painter.drawText(*ri + np.array((15, 5)), text)
 
-
-        # Draw measurement line:
+    def drawMeasurementLine(self, painter):
         if self.measure_origin is None or self.measure_point is None:
             return
 
@@ -666,6 +709,79 @@ class SonarFigure(ZoomableQLabel):
 
         painter.drawLine(x[0], y[0] ,x[1] ,y[1])
 
+    def visualizeDetections(self, painter, detections):
+        painter.setPen(QtCore.Qt.white)
+
+        for det in detections:
+            if det.corners is None:
+                continue
+
+            # Draw size text
+            if self.show_detection_size:
+                self.drawDetectionSizeText(painter, det)
+
+            # Draw detection bounding box
+            if self.show_detections:
+                corners_x = self.image2viewX(det.corners[:,1])
+                corners_y = self.image2viewY(det.corners[:,0])
+                for i in range(0,3):
+                    painter.drawLine(corners_x[i], corners_y[i], corners_x[i+1], corners_y[i+1])
+                painter.drawLine(corners_x[3], corners_y[3], corners_x[0], corners_y[0])
+
+    def visualizeFishTracks(self, painter, fish_by_frame):
+        for fish in fish_by_frame:
+            tr, det = fish.tracks[self.visualized_id]
+
+            painter.setPen(QtCore.Qt.white)
+            center = FishEntry.trackCenter(tr)
+
+            # Draw track ID
+            if self.show_track_id:
+                text = f"ID: {fish.id}"
+                text_width = self.font_metrics.boundingRect(text).width()
+
+                x = self.image2viewX(center[1]) - text_width / 2
+                y = self.image2viewY(center[0] + 10) + 11
+                point = QtCore.QPoint(x, y)
+
+                painter.drawText(point, text)
+
+            if self.show_tracks:
+                # Draw detection size
+                if self.show_detection_size and det is not None:
+                    x = self.image2viewX(center[1])
+                    y = self.image2viewY(center[0] - 10) - 1
+                    self.drawDetectionSizeText(painter, det, (x,y))
+
+                # Draw track bounding box
+                corners_x = self.image2viewX(np.array([tr[1], tr[3]]))
+                corners_y = self.image2viewY(np.array([tr[0], tr[2]]))
+
+                painter.setPen(pyqt_palette[fish.color_ind])
+                painter.drawLine(corners_x[0], corners_y[0], corners_x[0], corners_y[1])
+                painter.drawLine(corners_x[0], corners_y[1], corners_x[1], corners_y[1])
+                painter.drawLine(corners_x[1], corners_y[1], corners_x[1], corners_y[0])
+                painter.drawLine(corners_x[1], corners_y[0], corners_x[0], corners_y[0])
+
+    def drawDetectionSizeText(self, painter, det, pos=None):
+        if det.length > 0:
+            text = det.getSizeText()
+            text_width = self.font_metrics.boundingRect(text).width()
+
+            if pos is None:
+                x = self.image2viewX(int(det.center[1])) - text_width / 2
+                y = self.image2viewY(int(det.center[0] - det.diff[0])) - 6
+            else:
+                x,y = pos
+                x -= text_width / 2
+            point = QtCore.QPoint(x, y)
+            painter.drawText(point, text)
+
+    def clear(self):
+        super().clear()
+        self.visualized_dets = []
+        self.visualized_tracks = []
+        self.visualized_id = 0
 
 class FFishListItem():
     def __init__(self, cls, inputDict, fishNumber):
@@ -712,8 +828,8 @@ if __name__ == "__main__":
 
     def startDetector():
         detector.initMOG()
-        detector.setShowDetections(True)
-        detector.setShowBGSubtraction(True)
+        detector.setShowBGSubtraction(False)
+
 
     def test():
         LogObject().print("Polars loaded test print")
@@ -729,6 +845,8 @@ if __name__ == "__main__":
     playback_manager.mapping_done.connect(startDetector)
     playback_manager.frame_available_early.connect(detector.compute_from_event)
     sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker, fish_manager)
+    sonar_viewer.sonar_figure.show_detections = True
+    sonar_viewer.image_processor.setColorMap(False)
 
     main_window.setCentralWidget(sonar_viewer)
     main_window.show()

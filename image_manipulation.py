@@ -63,7 +63,7 @@ class ImageProcessor:
 
     def processImage(self, ind, image):
         if not self.use_any:
-            return image
+            return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 

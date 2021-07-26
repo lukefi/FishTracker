@@ -56,9 +56,7 @@ class Detector():
 		# When detector has computed all available frames.
 		self.all_computed_event = Event()
 
-		self._show_detections = False
 		self._show_echogram_detections = False
-		self._show_detection_size = False
 		self.show_bgsub = False
 
 		self.applied_parameters = None
@@ -109,7 +107,7 @@ class Detector():
 		else:
 			return None
 
-	def computeBase(self, ind, image, get_images=False):
+	def computeBase(self, ind, image, get_images=False, show_size=True):
 		# Update timestamp, TODO read from data
 		self.ts += 0.1
 
@@ -151,7 +149,7 @@ class Detector():
 				if get_images:
 					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
 					for d in detections:
-						image_o_rgb = d.visualize(image_o_rgb, colors, self._show_detection_size)
+						image_o_rgb = d.visualize(image_o_rgb, colors[d.label], show_size)
 
 		self.detections[ind] = detections
 		#self.detections_clearable = True
@@ -223,13 +221,23 @@ class Detector():
 		self.compute_on_event = True
 		self.state_changed_event()
 		
-	def overlayDetections(self, image, detections=None):
+	def overlayDetections(self, image, detections=None, show_size=True):
 		if detections is None:
 			detections = self.getCurrentDetection()
 
 		colors = sns.color_palette('deep', max([0] + [d.label + 1 for d in detections]))
 		for d in detections:
-			image = d.visualize(image, colors, self._show_detection_size)
+			image = d.visualize(image, colors[d.label], show_size)
+
+		return image
+
+	def overlayDetectionColors(self, image, detections=None):
+		if detections is None:
+			detections = self.getCurrentDetection()
+
+		colors = sns.color_palette('deep', max([0] + [d.label + 1 for d in detections]))
+		for d in detections:
+			image = d.visualizeArea(image, colors[d.label])
 
 		return image
 
@@ -289,18 +297,10 @@ class Detector():
 		except ValueError as e:
 			LogObject().print(e)
 
-	def setShowDetections(self, value):
-		self._show_detections = value
-		if not self._show_detections:
-			self.data_changed_event(0)
-
 	def setShowEchogramDetections(self, value):
 		self._show_echogram_detections = value
 		if not self._show_echogram_detections:
 			self.data_changed_event(0)
-
-	def setShowSize(self, value):
-		self._show_detection_size = value
 
 	def toggleShowBGSubtraction(self):
 		self.show_bgsub = not self.show_bgsub
@@ -446,7 +446,6 @@ class Detector():
 		self.bg_subtractor.setParameters(self.parameters.mog_parameters)
 
 		self.updateVerticalDetections()
-		#print("---", self.vertical_detections)
 		self.compute_on_event = False
 		self.state_changed_event()
 		self.all_computed_event()
@@ -477,7 +476,6 @@ class DetectorParameters:
 			and self.dbscan_eps == other.dbscan_eps \
 			and self.dbscan_min_samples == other.dbscan_min_samples
 
-		#LogObject().print(self, other, value)
 		return value
 
 	def __repr__(self):
@@ -557,8 +555,8 @@ class Detection:
 			corners = np.array([center+[-diff[0],-diff[1]], \
 								center+[diff[0],-diff[1]], \
 								center+[diff[0],diff[1]], \
-								center+[-diff[0],diff[1]], \
-								center+[-diff[0],-diff[1]]])
+								center+[-diff[0],diff[1]]])#, \
+								#center+[-diff[0],-diff[1]]])
 
 			self.diff = diff
 
@@ -583,29 +581,38 @@ class Detection:
 		LogObject().print(self.center)
 		self.length = length
 		self.distance = distance
-		self.angle = angle				
+		self.angle = angle
 
-	def visualize(self, image, colors, show_text, show_detection=True):
+	def visualize(self, image, color, show_text, show_detection=True):
 		if self.corners is None:
 			return image
 
-		# Visualize results	
+		# Draw size text
 		if show_text:
 			if self.length > 0:
-				size_txt = 'Size: ' + str(int(100*self.length))
-
+				size_txt = self.getSizeText()
 				image = cv2.putText(image, size_txt, (int(self.center[1])-20, int(self.center[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
+		# Draw detection area and bounding box
 		if show_detection:
-			if self.data is not None:
-				for i in range(self.data.shape[0]):
-					cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), \
-						(int(255*colors[self.label][0]), int(255*colors[self.label][1]), int(255*colors[self.label][2])), 2)						
+			self.visualizeArea(image, color)
+
 			for i in range(0,3):
 				cv2.line(image, (int(self.corners[i,1]),int(self.corners[i,0])), (int(self.corners[i+1,1]),int(self.corners[i+1,0])),  (255,255,255), 1)
 			cv2.line(image, (int(self.corners[3,1]),int(self.corners[3,0])), (int(self.corners[0,1]),int(self.corners[0,0])),  (255,255,255), 1)
 
 		return image
+
+	def visualizeArea(self, image, color):
+		if self.data is not None:
+			_color = (int(255*color[0]), int(255*color[1]), int(255*color[2]))
+			for i in range(self.data.shape[0]):
+				cv2.line(image, (self.data[i,1], self.data[i,0]), (self.data[i,1], self.data[i,0]), _color, 2)
+
+		return image
+
+	def getSizeText(self):
+		return 'Size: ' + str(int(100*self.length))
 	
 	def getMessage(self):
 		# This message was used to send data to tracker process (C++) or save detections to file
@@ -720,8 +727,7 @@ def playbackTest():
 	playback_manager.frame_available.connect(forwardImage)
 	detector = Detector(playback_manager)
 	detector.bg_subtractor.mog_parameters.nof_bg_frames = 100
-	detector._show_detections = True
-	detector._show_echogram_detections = True
+	detector.setShowEchogramDetections(True)
 	playback_manager.mapping_done.connect(startDetector)
 	playback_manager.frame_available_early.connect(detector.compute_from_event)
 

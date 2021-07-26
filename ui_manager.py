@@ -231,7 +231,6 @@ class UIManager():
 
     def menuFileAboutToShow(self):
         file_open = self.playback.sonar is not None
-        print(file_open)
         self.ui.action_save_as.setEnabled(file_open)
         self.ui.action_save.setEnabled(file_open)
         self.ui.action_export_detections.setEnabled(file_open)

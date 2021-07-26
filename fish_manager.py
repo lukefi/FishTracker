@@ -13,11 +13,13 @@ fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Durat
 fish_sort_keys = [lambda f: f.color_ind, lambda f: f.id, lambda f: -f.length, lambda f: f.dirSortValue(), lambda f: f.frame_in, lambda f: f.frame_out, lambda f: f.duration, lambda f: len(f.tracks)]
 
 N_COLORS = 16
-color_palette = sns.color_palette('bright', N_COLORS)
-pyqt_palette = [QtGui.QColor.fromRgbF(*c) for c in color_palette]
+#color_palette = sns.color_palette('bright', N_COLORS)
+color_palette = [[c[2], c[1], c[0]] for c in sns.color_palette('bright', N_COLORS)]
+pyqt_palette = [QtGui.QColor.fromRgbF(c[2], c[1], c[0]) for c in color_palette]
 
-color_palette_deep = sns.color_palette('deep', N_COLORS)
-pyqt_palette_deep = [QtGui.QColor.fromRgbF(*c) for c in color_palette_deep]
+#color_palette_deep = sns.color_palette('deep', N_COLORS)
+color_palette_deep = [[c[2], c[1], c[0]] for c in sns.color_palette('deep', N_COLORS)]
+pyqt_palette_deep = [QtGui.QColor.fromRgbF(c[2], c[1], c[0]) for c in color_palette_deep]
 
 # Implements functionality to store and manage the tracked fish items.
 # Items can be edited with the functions defined here through e.g. fish_list.py.
@@ -64,9 +66,6 @@ class FishManager(QtCore.QAbstractTableModel):
         # If fish (tracks) are shown in Echogram.
         self.show_echogram_fish = True
 
-        self.show_bounding_box = True
-        self.show_id = True
-        self.show_detection_size = True
         self.update_fish_colors = False
 
         # Inverted upstream / downstream.
@@ -421,46 +420,30 @@ class FishManager(QtCore.QAbstractTableModel):
             fish.setDirection(self.up_down_inverted)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
-    def setShowFish(self):
-        self.show_fish = self.show_bounding_box or self.show_id or self.show_detection_size
-        if not self.show_fish:
-            #self.data_changed_signal.emit(0)
-            pass
-
     def setShowEchogramFish(self, value):
         self.show_echogram_fish = value
 
-    def setShowBoundingBox(self, value):
-        self.show_bounding_box = value
-        self.setShowFish()
+    def visualize(self, image, frame_ind, show_size=True, show_id=True, show_bounding_box=True):
+        """
+        Draws the tracked fish to the full sized image using opencv.
+        Returns the modified image.
+        """
 
-    def setShowTrackingIDs(self, value):
-        self.show_id = value
-        self.setShowFish()
-
-    def setShowTrackingSize(self, value):
-        self.show_detection_size = value
-        self.setShowFish()
-
-    def visualize(self, image, ind):
-        fish_by_frame = [f for f in self.fish_list if ind in f.tracks.keys()]
+        fish_by_frame = self.getFishInFrame(frame_ind)
         if len(fish_by_frame) == 0:
             return image
-
         
-        #colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in fish_by_frame]))
         colors = sns.color_palette('deep', max(0, len(fish_by_frame)))
         for fish in fish_by_frame:
-            tr, det = fish.tracks[ind]
-            if self.show_id:
-                #center = [(tr[0] + tr[2]) / 2, (tr[1] + tr[3]) / 2]
+            tr, det = fish.tracks[frame_ind]
+            if show_id:
                 center = FishEntry.trackCenter(tr)
-                image = cv2.putText(image, "ID: " + str(fish.id), (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
+                image = cv2.putText(image, f"ID: {fish.id}", (int(center[1])-20, int(center[0])+25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
 
-            if self.show_detection_size and det is not None:
+            if show_size and det is not None:
                 det.visualize(image, colors, True, False)
 
-            if self.show_bounding_box:
+            if show_bounding_box:
                 corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
 
                 for i in range(0,3):
@@ -468,6 +451,9 @@ class FishManager(QtCore.QAbstractTableModel):
                 cv2.line(image, (int(corners[3,1]),int(corners[3,0])), (int(corners[0,1]),int(corners[0,0])),  (255,255,255), 1)
 
         return image
+
+    def getFishInFrame(self, ind):
+        return [f for f in self.fish_list if ind in f.tracks.keys()]
 
     def saveToFile(self, path):
         """
@@ -651,7 +637,7 @@ class FishEntry():
         self.color_ind = 0
 
     def __repr__(self):
-        return "Fish {}: {:.1f} {}".format(self.id, self.length, self.direction.name)
+        return "FishEntry {}: {:.1f} {}".format(self.id, self.length, self.direction.name)
 
     def dirSortValue(self):
         return self.direction.value * 10**8 + self.id

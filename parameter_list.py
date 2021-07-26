@@ -14,36 +14,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.echogram = echogram
 
         self.setOrientation(QtCore.Qt.Vertical)
-
         btn_size = QtCore.QSize(30,30)
-
-        #self.image_controls_label = QtWidgets.QLabel(self)
-        #self.image_controls_label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
-        #self.image_controls_label.setText("Image options")
-
-        #self.verticalLayout = QtWidgets.QVBoxLayout()
-        #self.verticalLayout.setObjectName("verticalLayout")
-        #self.verticalLayout.setSpacing(5)
-        #self.verticalLayout.setContentsMargins(7,7,7,7)
-
-        #self.distance_tick = QtWidgets.QCheckBox("Distance compensation")
-        #self.distance_tick.setChecked(False)
-        #self.distance_tick.stateChanged.connect(self.playback_manager.setDistanceCompensation)
-        #self.distance_tick.stateChanged.connect(self.playback_manager.refreshFrame)
-
-        #self.contrast_tick = QtWidgets.QCheckBox("Automatic contrast")
-        #self.contrast_tick.setChecked(False)
-        #self.contrast_tick.stateChanged.connect(self.sonar_processor.setAutomaticContrast)
-        #self.contrast_tick.stateChanged.connect(self.playback_manager.refreshFrame)
-
-        #self.gamma_layout = QtWidgets.QVBoxLayout()
-        #self.gamma_layout.setObjectName("gammaLayout")
-        #self.gamma_layout.setSpacing(5)
-        #self.gamma_layout.setContentsMargins(0,0,0,0)
-
-        #self.gamma_label = QtWidgets.QLabel("Gamma", self)
-        #self.gamma_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        #self.gamma_label.setMinimumWidth(50)
 
 
         # --- Echogram options ---
@@ -86,6 +57,7 @@ class ParameterList(QtWidgets.QToolBar):
 
         # --- Sonar view options ---
 
+        # SonarView gamma slider + value
         self.gamma_value = QtWidgets.QLabel("1.0", self)
         self.gamma_value.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignTop)
         self.gamma_value.setMinimumWidth(30)
@@ -102,14 +74,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.gamma_slider.setMinimumHeight(100)
         self.gamma_slider.setToolTip("Gamma\nGamma value for Sonar View")
 
-        #self.gamma_layout.addWidget(self.gamma_value)
-        #self.gamma_layout.addWidget(self.gamma_slider)
-
-        #self.bgsub_tick = QtWidgets.QCheckBox("BG Subtraction")
-        #self.bgsub_tick.setChecked(False)
-        #self.bgsub_tick.stateChanged.connect(self.detector.setShowBGSubtraction)
-        #self.bgsub_tick.stateChanged.connect(self.playback_manager.refreshFrame)
-
+        # SonarView background subtraction
         self.bgsub_btn = QtWidgets.QPushButton(self)
         self.bgsub_btn.setObjectName("subtractBackground")
         self.bgsub_btn.setFlat(True)
@@ -120,6 +85,7 @@ class ParameterList(QtWidgets.QToolBar):
         self.bgsub_btn.clicked.connect(self.playback_manager.refreshFrame)
         self.bgsub_btn.setToolTip("Background subtraction\nShow background subtraction used in detector")
   
+        # SonarView distance measurement
         self.measure_btn = QtWidgets.QPushButton(self)
         self.measure_btn.setObjectName("measureDistance")
         self.measure_btn.setFlat(True)
@@ -128,15 +94,10 @@ class ParameterList(QtWidgets.QToolBar):
         self.measure_btn.setIconSize(btn_size)
         if self.sonar_viewer is not None:
             self.measure_btn.clicked.connect(self.sonar_viewer.measureDistance)
-            self.sonar_viewer.MyFigureWidget.measure_toggle.append(self.toggleMeasureBtn)
+            self.sonar_viewer.sonar_figure.measure_toggle.append(self.toggleMeasureBtn)
         self.measure_btn.setToolTip("Measure distance\nDraw a line in Sonar View to measure a distance between two points")
 
-        #self.colormap_tick = QtWidgets.QCheckBox("Use colormap")
-        #self.colormap_tick.setChecked(True)
-        #self.colormap_tick.stateChanged.connect(self.sonar_processor.setColorMap)
-        #self.colormap_tick.stateChanged.connect(self.playback_manager.refreshFrame)
-        #self.colormap_tick.setToolTip("Color map\nColor Sonar View with a blue colormap")
-
+        # SonarView colormap
         self.colormap_btn = QtWidgets.QPushButton(self)
         self.colormap_btn.setObjectName("setColormap")
         self.colormap_btn.setFlat(True)
@@ -148,63 +109,46 @@ class ParameterList(QtWidgets.QToolBar):
         self.colormap_btn.clicked.connect(self.playback_manager.refreshFrame)
         self.colormap_btn.setToolTip("Color map\nColor Sonar View with a blue colormap")
 
+        # SonarView detections
         self.show_detections_btn = QtWidgets.QPushButton()
         self.show_detections_btn.setObjectName("showDetections")
         self.show_detections_btn.setFlat(True)
         self.show_detections_btn.setCheckable(True)
-        self.show_detections_btn.setChecked(False)
+        self.show_detections_btn.setChecked(self.sonar_viewer.sonar_figure.show_detections)
         self.show_detections_btn.clicked.connect(self.showDetectionsChanged)
         self.show_detections_btn.setToolTip("Show detections\nOverlay the results from detector to Sonar View")
         self.show_detections_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("detections")))
         self.show_detections_btn.setIconSize(btn_size)
-        #self.show_detections_checkbox.setEnabled(False)
-        #self.detector.state_changed_event.append(lambda: self.show_detections_checkbox.setEnabled(self.detector.mog_ready))
 
+        # SonarView detection size
         self.show_detection_size_btn = QtWidgets.QPushButton()
         self.show_detection_size_btn.setObjectName("showDetectionSize")
         self.show_detection_size_btn.setFlat(True)
         self.show_detection_size_btn.setCheckable(True)
-        self.show_detection_size_btn.setChecked(True)
-        self.show_detection_size_btn.clicked.connect(self.fish_manager.setShowTrackingSize)
-        self.show_detection_size_btn.clicked.connect(self.playback_manager.refreshFrame)
-        #self.show_detection_size_btn.setEnabled(False)
+        self.show_detection_size_btn.setChecked(self.sonar_viewer.sonar_figure.show_detection_size)
+        self.show_detection_size_btn.clicked.connect(self.showDetectionSizeChanged)
         self.show_detection_size_btn.setToolTip("Show detection size\nShow also the length of the detection")
         self.show_detection_size_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("det_size")))
         self.show_detection_size_btn.setIconSize(btn_size)
 
-        #self.show_tracks_checkbox = QtWidgets.QCheckBox("Show tracks")
-        #self.show_tracks_checkbox.setChecked(False)
-        #self.show_tracks_checkbox.stateChanged.connect(self.showTracksChanged)
-        #self.show_tracks_checkbox.setToolTip("Show tracks\nOverlay the results from tracker to Sonar View")
-
+        # SonarView tracks
         self.show_tracks_btn = QtWidgets.QPushButton()
         self.show_tracks_btn.setObjectName("showTracks")
         self.show_tracks_btn.setFlat(True)
         self.show_tracks_btn.setCheckable(True)
-        self.show_tracks_btn.setChecked(True)
+        self.show_tracks_btn.setChecked(self.sonar_viewer.sonar_figure.show_tracks)
         self.show_tracks_btn.clicked.connect(self.showTracksChanged)
         self.show_tracks_btn.setToolTip("Show tracks\nOverlay the results from tracker to Sonar View")
         self.show_tracks_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("tracks")))
         self.show_tracks_btn.setIconSize(btn_size)
 
-        #self.show_tracks_checkbox.setEnabled(False)
-        #self.tracker.state_changed_event.append(lambda: self.show_tracks_checkbox.setEnabled(self.detector.mog_ready))
-
-        #self.show_trackingIDs_checkbox = QtWidgets.QCheckBox("Show tracking IDs")
-        #self.show_trackingIDs_checkbox.setChecked(True)
-        #self.show_trackingIDs_checkbox.stateChanged.connect(self.tracker.setShowTrackingIDs)
-        #self.show_trackingIDs_checkbox.stateChanged.connect(self.playback_manager.refreshFrame)
-        #self.show_trackingIDs_checkbox.setEnabled(False)
-        #self.show_trackingIDs_checkbox.setToolTip("Show track IDs\nShow also the IDs of the tracked fish")
-
+        # SonarView track IDs
         self.show_trackingIDs_btn = QtWidgets.QPushButton()
         self.show_trackingIDs_btn.setObjectName("showTrackID")
         self.show_trackingIDs_btn.setFlat(True)
         self.show_trackingIDs_btn.setCheckable(True)
-        self.show_trackingIDs_btn.setChecked(True)
-        self.show_trackingIDs_btn.clicked.connect(self.fish_manager.setShowTrackingIDs)
-        self.show_trackingIDs_btn.clicked.connect(self.playback_manager.refreshFrame)
-        #self.show_trackingIDs_btn.setEnabled(False)
+        self.show_trackingIDs_btn.setChecked(self.sonar_viewer.sonar_figure.show_track_id)
+        self.show_trackingIDs_btn.clicked.connect(self.showTrackIDsChanged)
         self.show_trackingIDs_btn.setToolTip("Show track IDs\nShow also the IDs of the tracked fish")
         self.show_trackingIDs_btn.setIcon(QtGui.QIcon(uiIcons.FGetIcon("track_id")))
         self.show_trackingIDs_btn.setIconSize(btn_size)
@@ -217,11 +161,7 @@ class ParameterList(QtWidgets.QToolBar):
         line2.setFrameShape(QtWidgets.QFrame.HLine);
         line2.setFrameShadow(QtWidgets.QFrame.Sunken)
 
-        #self.verticalLayout.addWidget(self.image_controls_label)
-        #self.verticalLayout.addWidget(self.distance_tick)
-        #self.verticalLayout.addWidget(self.contrast_tick)
-        #self.verticalLayout.addWidget(self.gamma_label)
-
+        # Add widgets from top to bottom
         self.addWidget(self.echogram_bgsub_btn)
         self.addWidget(self.show_echogram_detections_btn)
         self.addWidget(self.show_echogram_tracks_btn)
@@ -243,11 +183,19 @@ class ParameterList(QtWidgets.QToolBar):
         self.gamma_value.setText(str(applied_value))
 
     def showDetectionsChanged(self, value):
-        self.detector.setShowDetections(value)
+        self.sonar_viewer.sonar_figure.show_detections = value
+        self.playback_manager.refreshFrame()
+
+    def showDetectionSizeChanged(self, value):
+        self.sonar_viewer.sonar_figure.show_detection_size = value
         self.playback_manager.refreshFrame()
 
     def showTracksChanged(self, value):
-        self.fish_manager.setShowBoundingBox(value)
+        self.sonar_viewer.sonar_figure.show_tracks = value
+        self.playback_manager.refreshFrame()
+
+    def showTrackIDsChanged(self, value):
+        self.sonar_viewer.sonar_figure.show_track_id = value
         self.playback_manager.refreshFrame()
 
     def showEchogramDetectionsChanged(self, value):
@@ -274,19 +222,18 @@ if __name__ == "__main__":
     from fish_manager import FishManager
     from detector import Detector
     from tracker import Tracker
+    from sonar_widget import SonarViewer
 
     app = QtWidgets.QApplication(sys.argv)
     main_window = QtWidgets.QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    #playback_manager.openTestFile()
     fish_manager = FishManager(None, None)
-    #fish_manager.testPopulate(100)
-    #info_w = InfoWidget(playback_manager, fish_manager)
     sonar_processor = ImageProcessor()
     detector = Detector(playback_manager)
     tracker = Tracker(detector)
+    sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker, fish_manager)
 
-    parameter_list = ParameterList(playback_manager, sonar_processor, None, fish_manager, detector, tracker, None)
+    parameter_list = ParameterList(playback_manager, sonar_processor, sonar_viewer, fish_manager, detector, tracker, None)
     main_window.setCentralWidget(parameter_list)
     main_window.show()
     sys.exit(app.exec_())

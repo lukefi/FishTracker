@@ -522,7 +522,6 @@ class PlaybackThread(QRunnable):
         if self.alive:
             self.polar_transform = result
             self.signals.mapping_done_signal.emit()
-            LogObject().print("Polar mapping done")
             self.displayFrame()
 
     def testF(self):

@@ -31,6 +31,7 @@ class PolarTransform:
 		beam_angle -- Angle covered by the beam (radians).
 		"""
 		LogObject().print("Init mapping")
+		print(pol_shape, cart_height, radius_limits, beam_angle)
 		self.pol_shape = pol_shape
 		self.setCartShape(cart_height, beam_angle)
 		self.radius_limits = radius_limits
@@ -43,11 +44,12 @@ class PolarTransform:
 		self.map_y = np.zeros(self.cart_shape, dtype=np.float32)
 
 		for j in range(self.cart_shape[0]):	
+			_j = self.cart_shape[0] - j - 1
 			if j % 100 == 0:
 				LogObject().print("Mapping:", j)
 			for i in range(self.cart_shape[1]):
-				_j = self.cart_shape[0] - j - 1
-				self.map_y[j, i], self.map_x[j, i] = self.cart2polImage(_j, i)
+				_i = self.cart_shape[1] - i - 1
+				self.map_y[j, i], self.map_x[j, i] = self.cart2polImage(j, i)
 		LogObject().print("End mapping")
 
 	def setCartShape(self, height, angle):
@@ -119,10 +121,10 @@ class PolarTransform:
 			by first transforming the pixel coordinates to cartesian metric coordinates,
 			then to polar metric coordinates and finally to polar pixel coordinates.
 		"""
-		y_met, x_met = self.pix2metC(y-self.center[0], self.center[1]-x)
+		y_met, x_met = self.pix2metC(self.cart_shape[0]-(y-self.center[0])-1, self.center[1]-x)
 		rho_met, phi_met = cart2pol(x_met, y_met)
 		rho, phi = self.met2pixP(rho_met, phi_met)
-		return rho, phi
+		return self.pol_shape[0] - rho - 1, self.pol_shape[1] - phi - 1
 
 	def pol2cartMetric(self, rho, phi, invert_y=False):
 		""" Transforms polar metric coordinates to cartesian pixel coordinates
@@ -142,7 +144,8 @@ class PolarTransform:
 			raise ValueError("Passed array is not of the right shape")
 
 		#return cv2.remap(cv2.flip(image,0), self.map_x, self.map_y, interpolation)
-		return cv2.remap(cv2.flip(image,-1), self.map_x, self.map_y, interpolation)
+		#return cv2.remap(cv2.flip(image,-1), self.map_x, self.map_y, interpolation)
+		return cv2.remap(image, self.map_x, self.map_y, interpolation)
 
 	def getOuterEdge(self, distance, right=True):
 		"""
@@ -155,14 +158,36 @@ class PolarTransform:
 		return np.stack((p1, p2), axis=0)
 
 if __name__ == "__main__":
-	pt = PolarTransform((100,100), 100, (0,50), np.pi/3)
-	point_c = np.array((80, 50))
-	point_p = pt.cart2polMetric(*point_c)
-	point_c2 = pt.pol2cartMetric(*point_p)
-	LogObject().print(point_c, point_p, point_c2)
+	def inverseOperations():
+		pt = PolarTransform((100,100), 100, (0,50), np.pi/3)
+		point_c = np.array((80, 50))
+		point_p = pt.cart2polMetric(*point_c)
+		point_c2 = pt.pol2cartMetric(*point_p)
+		LogObject().print(point_c, point_p, point_c2)
 
-	point_p = np.array((40, 1))
-	point_c = pt.pol2cartMetric(*point_p,True)
-	point_p2 = pt.cart2polMetric(*point_c, True)
-	LogObject().print(point_p, point_c, point_p2)
+		point_p = np.array((40, 1))
+		point_c = pt.pol2cartMetric(*point_p,True)
+		point_p2 = pt.cart2polMetric(*point_c, True)
+		LogObject().print(point_p, point_c, point_p2)
 
+	def mappingTest():
+		polar_img_path = "out/Teno1_2019-07-02_153000_polar/Teno1_2019-07-02_153000_polar_000000.png"
+		polar_img = cv2.imread(polar_img_path, 0)
+		pt = PolarTransform((1661, 48), 400, (2.454105, 50.837113), 0.479616)
+
+		cv2.namedWindow('polar', 1)
+		cv2.namedWindow('cartesian', 1)
+
+		cv2.moveWindow("polar", 400, 200);
+		cv2.moveWindow("cartesian", 600, 200);
+
+		for i in range(100):
+			pt.remap(polar_img)
+		cv2.imshow('polar', cv2.resize(polar_img, (200,400), interpolation=cv2.INTER_LINEAR))
+		cv2.imshow('cartesian', pt.remap(polar_img))
+
+
+		cv2.waitKey(0)
+
+	#inverseOperations()
+	mappingTest()

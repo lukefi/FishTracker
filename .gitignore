@@ -2,6 +2,7 @@
 *.pyproj
 *.aris
 *.fish
+*.prof
 conf.json
 
 .vs

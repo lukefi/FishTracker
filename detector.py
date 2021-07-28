@@ -120,7 +120,6 @@ class Detector():
 
 		fg_mask_cpy = fg_mask_mog
 		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
-		image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
 
 		data_tr = np.nonzero(np.asarray(fg_mask_filt))
 		data = np.asarray(data_tr).T
@@ -149,12 +148,12 @@ class Detector():
 					detections.append(d)
 
 				if get_images:
+					image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
 					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
 					for d in detections:
 						image_o_rgb = d.visualize(image_o_rgb, colors[d.label], show_size)
 
 		self.detections[ind] = detections
-		#self.detections_clearable = True
 
 		if get_images:
 			return (fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt)
@@ -739,7 +738,23 @@ def playbackTest():
 	main_window.show()
 	sys.exit(app.exec_())
 
+def benchmark():
+	def runDetector():
+		detector.computeAll()
+		print("All done.")
+		main_window.close()
+
+	app = QtWidgets.QApplication(sys.argv)
+	main_window = QtWidgets.QMainWindow()
+	playback_manager = PlaybackManager(app, main_window)
+	detector = Detector(playback_manager)
+	playback_manager.mapping_done.connect(runDetector)
+	main_window.show()
+	playback_manager.openTestFile()
+	sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
 	#simpleTest()
-	playbackTest()
+	#playbackTest()
+	benchmark()

@@ -55,7 +55,7 @@ def iou_batch(bb_test, bb_gt):
     + (bb_gt[..., 2] - bb_gt[..., 0]) * (bb_gt[..., 3] - bb_gt[..., 1]) - wh)                                              
   return o
  
-def eucl_batch2(bb_test, bb_gt, radius=10):                                                                                                   
+def eucl_batch(bb_test, bb_gt, radius=10):                                                                                                   
                                                                                                                     
   bb_gt = np.expand_dims(bb_gt, 0)                                                                                         
   bb_test = np.expand_dims(bb_test, 1)                                                                                     
@@ -137,7 +137,7 @@ def associate_detections_to_trackers(detections, trackers, search_radius=10):
   if len(trackers) == 0:
     return np.empty((0,2), dtype=int), np.arange(len(detections)), np.empty((0,2), dtype=int)
 
-  cost_matrix = eucl_batch2(detections, trackers, search_radius)
+  cost_matrix = eucl_batch(detections, trackers, search_radius)
   
   if min(cost_matrix.shape) > 0:
     matched_indices = linear_assignment(cost_matrix)
@@ -250,10 +250,11 @@ class Sort(object):
       new_allowed = True
       for trk in self.trackers:
         bb = np.array([trk.get_state()[0], trk.get_state()[1]]).reshape(1, -1)
-        cost = eucl_batch2(bb, [dets[i, :]], self.search_radius)
+        cost = eucl_batch(bb, [dets[i, :]], self.search_radius)
         if cost[0, 0] < self.search_radius ** 2:
           new_allowed = False
-      if new_allowed == True:
+
+      if new_allowed:
         trk = KalmanBoxTracker(dets[i, :])
         trk.last_det_ind = i
         trk.last_det_frame = self.frame_count

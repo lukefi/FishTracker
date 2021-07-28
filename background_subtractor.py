@@ -130,7 +130,7 @@ class BackgroundSubtractor(QtCore.QObject):
         self.applied_mog_parameters = None
 
 class MOGParameters:
-	def __init__(self, mog_var_thresh=11, nof_bg_frames=1000, learning_rate=0.01):
+	def __init__(self, mog_var_thresh=11, nof_bg_frames=100, learning_rate=0.01):
 		self.mog_var_thresh = mog_var_thresh
 		self.nof_bg_frames = nof_bg_frames
 		self.learning_rate = learning_rate

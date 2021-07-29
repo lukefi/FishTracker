@@ -705,7 +705,6 @@ def playbackTest():
 
 	def forwardImage(tuple):
 		ind, frame = tuple
-		# detections = detector.compute(ind, frame)
 		detections = detector.getCurrentDetection()
 
 		image = cv2.applyColorMap(frame, cv2.COLORMAP_OCEAN)
@@ -716,9 +715,6 @@ def playbackTest():
 	def startDetector():
 		detector.initMOG()
 		playback_manager.play()
-
-	#LogObject().disconnectDefault()
-	#LogObject().connect(LogObject().defaultPrint)
 
 	app = QtWidgets.QApplication(sys.argv)
 	main_window = QtWidgets.QMainWindow()
@@ -748,6 +744,7 @@ def benchmark():
 	main_window = QtWidgets.QMainWindow()
 	playback_manager = PlaybackManager(app, main_window)
 	detector = Detector(playback_manager)
+	detector.setNofBGFrames(1000)
 	playback_manager.mapping_done.connect(runDetector)
 	main_window.show()
 	playback_manager.openTestFile()

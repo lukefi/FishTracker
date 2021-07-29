@@ -655,19 +655,34 @@ class Event(list):
 
 
 if __name__ == "__main__":
-    def loadFile():
-        playback_manager.openTestFile()
-        playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+    def playback_test():
+        def loadFile():
+            playback_manager.openTestFile()
+            playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
 
-    app = QApplication(sys.argv)
-    main_window = QMainWindow()
+        app = QApplication(sys.argv)
+        main_window = QMainWindow()
 
-    playback_manager = PlaybackManager(app, main_window)
-    figure = TestFigure(playback_manager.togglePlay, loadFile)
-    playback_manager.frame_available.connect(figure.displayImage)
-    main_window.setCentralWidget(figure)
+        playback_manager = PlaybackManager(app, main_window)
+        figure = TestFigure(playback_manager.togglePlay, loadFile)
+        playback_manager.frame_available.connect(figure.displayImage)
+        main_window.setCentralWidget(figure)
 
-    loadFile()
+        loadFile()
 
-    main_window.show()
-    sys.exit(app.exec_())
+        main_window.show()
+        sys.exit(app.exec_())
+
+    def benchmark_loading():
+        app = QApplication(sys.argv)
+        main_window = QMainWindow()
+
+        playback_manager = PlaybackManager(app, main_window)
+        path = fh.getTestFilePath()
+        sonar = fh.FOpenSonarFile(path)
+        sonar.frameCount = min(1000, sonar.frameCount)
+        playback_thread = PlaybackThread(path, sonar, playback_manager.thread_pool)
+        playback_thread.loadPolarFrames()
+
+    #playback_test()
+    benchmark_loading()

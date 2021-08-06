@@ -227,17 +227,14 @@ class Sort(object):
       tr.time_since_update = 0
       tr.hit_streak += 1
 
+      tr.last_det_ind = m[0]
+      tr.last_det_frame = self.frame_count
+
       if tr.get_status() == 0 and tr.get_hit_streak() > self.min_hits:
         tr.set_status(1)
 
-      if tr.get_status() == 1:
-        tr.last_det_ind = m[0]
-        tr.last_det_frame = self.frame_count
-
       if tr.get_status() == 2:
         tr.set_status(1)
-        tr.last_det_ind = m[0]
-        tr.last_det_frame = self.frame_count
     
     for m in unmatched_trks:
       tr = self.trackers[m]

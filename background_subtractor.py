@@ -38,7 +38,6 @@ class BackgroundSubtractor(QtCore.QObject):
         self.mog_parameters = MOGParameters()
 
     def initMOG(self):
-        LogObject().print("Init mog")
         if hasattr(self.image_provider, "pausePolarLoading"):
             self.image_provider.pausePolarLoading(True)
 
@@ -62,18 +61,11 @@ class BackgroundSubtractor(QtCore.QObject):
         # Count step based on number of frames
         step = nof_frames / nof_bg_frames
 
-        ten_perc = 0.1 * nof_bg_frames
-        print_limit = 0
-
         for i in range(nof_bg_frames):
-            if i > print_limit:
-                LogObject().print("Initializing:", int(float(print_limit) / nof_bg_frames * 100), "%")
-                print_limit += ten_perc
-
             ind = floor(i * step)
             
             if self.stop_initializing:
-                LogObject().print("Stopped initializing at", ind)
+                LogObject().print("Stopped initializing (BG subtraction) at", ind)
                 self.stop_initializing = False
                 self.mog_ready = False
                 self.initializing = False
@@ -95,7 +87,7 @@ class BackgroundSubtractor(QtCore.QObject):
         self.applied_mog_parameters = self.mog_parameters.copy()
 
         self.state_changed_signal.emit()
-        LogObject().print("Initializing: 100 %")
+        LogObject().print("BG Subtractor Initialized")
 
         if hasattr(self.image_provider, "pausePolarLoading"):
             self.image_provider.pausePolarLoading(False)

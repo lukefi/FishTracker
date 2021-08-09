@@ -243,7 +243,7 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.playback_manager.file_opened.connect(self.onFileOpen)
         self.playback_manager.frame_available.connect(self.onImageAvailable)
-        self.playback_manager.polars_loaded.connect(self.processEchogram)
+        self.playback_manager.polars_loaded.connect(lambda: self.playback_manager.runInThread(self.processEchogram))
         self.playback_manager.file_closed.connect(self.onFileClose)
 
         self.update_timer = None

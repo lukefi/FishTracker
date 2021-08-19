@@ -844,7 +844,7 @@ if __name__ == "__main__":
     fish_manager = FishManager(playback_manager, tracker)
     playback_manager.mapping_done.connect(test)
     playback_manager.mapping_done.connect(startDetector)
-    playback_manager.frame_available_early.connect(detector.compute_from_event)
+    playback_manager.frame_available_immediate.append(detector.compute_from_event)
     sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker, fish_manager)
     sonar_viewer.sonar_figure.show_detections = True
     sonar_viewer.image_processor.setColorMap(False)

@@ -15,13 +15,21 @@ from log_object import LogObject
 
 FRAME_SIZE = 1.5
 
+class Event(list):
+    def __call__(self, *args, **kwargs):
+        for f in self:
+            f(*args, **kwargs)
+
+    def __repr__(self):
+        return "Event(%s)" % list.__repr__(self)
+
 class PlaybackManager(QObject):
 
     mapping_done = pyqtSignal()
     # Signals that all polar frames are loaded.
     polars_loaded = pyqtSignal()
-    # Called before frame_available
-    frame_available_early = pyqtSignal(tuple)
+    # Called before frame_available. This is done in the main thread for every frame, no heavy calculation here.
+    frame_available_immediate = Event()
     # Signal that passes the current frame (cartesian) to all connected functions.
     frame_available = pyqtSignal(tuple)
     # Signal that passes the current sonar file to all connected functions.
@@ -115,9 +123,6 @@ class PlaybackManager(QObject):
         # Initialize new PlaybackThread
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
 
-        # Initialize thread process forwarding
-        self.playback_thread.signals.start_thread_signal.connect(self.startThread)
-
         # Initialize frame forwarding
         self.playback_thread.signals.frame_available_signal.connect(self.frame_available_f)
 
@@ -157,7 +162,8 @@ class PlaybackManager(QObject):
         """
         Forwards signal form PlaybackThread to the two signals below.
         """
-        self.frame_available_early.emit(value)
+        #self.frame_available_early.emit(value)
+        self.frame_available_immediate(value)
         self.frame_available.emit(value)
 
     def closeFile(self):
@@ -193,26 +199,9 @@ class PlaybackManager(QObject):
         else:
             self.main_window.setWindowTitle(path)
 
-    def startThread(self, tuple):
-        """
-        Used to start threads from another thread running in thread_pool.
-
-        Parameter tuple contains:
-        thread: Worker object containing the function being executed
-        receiver: Function that is attached to signal
-        signal: pyqtSignal object triggered (emitted) at some point of the thread and thus calling receiver
-
-        Usually signal is the result signal passing the results to receiver.
-        """
-
-        thread, receiver, signal = tuple
-        signal.connect(lambda x: receiver(x)) #signal.connect(receiver) <- why this doesn't work?
-        self.thread_pool.start(thread)
-
     def runInThread(self, f):
         """
-        Straightforward way to start threads in thread_pool.
-        To start threads inside another thread, use startThread instead.
+        Run threads in thread_pool.
         """
 
         thread = Worker(f)
@@ -434,9 +423,6 @@ class PlaybackSignals(QObject):
     PyQt signals used by PlaybackThread
     """
 
-    # Used to pass processes to a ThreadPool containing the current thread.
-    start_thread_signal = pyqtSignal(tuple)
-
     # Signals that playback can be started (cartesian mapping created).
     mapping_done_signal = pyqtSignal()
 
@@ -480,10 +466,11 @@ class PlaybackThread(QRunnable):
         pass
 
     def run(self):
-        map_worker = Worker(self.createMapping)
-        self.signals.start_thread_signal.emit((map_worker, self.mappingDone, map_worker.signals.result))
-        polar_worker = Worker(self.loadPolarFrames)
-        self.signals.start_thread_signal.emit((polar_worker, self.polarsDone, polar_worker.signals.result))
+        pt = self.createMapping()
+        self.mappingDone(pt)
+
+        self.loadPolarFrames()
+        self.polarsDone()
 
 
     def loadPolarFrames(self):
@@ -505,7 +492,7 @@ class PlaybackThread(QRunnable):
                     self.buffer[i] = value
             i += 1
 
-    def polarsDone(self, result):
+    def polarsDone(self):
         if self.alive:
             LogObject().print("Loading: 100 %")
             self.polars_loaded = True
@@ -644,15 +631,6 @@ class TestFigure(QLabel):
             self.reload_file()
         event.accept()
 
-class Event(list):
-    def __call__(self, *args, **kwargs):
-        for f in self:
-            f(*args, **kwargs)
-
-    def __repr__(self):
-        return "Event(%s)" % list.__repr__(self)
-
-
 
 if __name__ == "__main__":
     def playback_test():
@@ -684,5 +662,5 @@ if __name__ == "__main__":
         playback_thread = PlaybackThread(path, sonar, playback_manager.thread_pool)
         playback_thread.loadPolarFrames()
 
-    #playback_test()
-    benchmark_loading()
+    playback_test()
+    #benchmark_loading()

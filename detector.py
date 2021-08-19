@@ -726,7 +726,7 @@ def playbackTest():
 	detector.bg_subtractor.mog_parameters.nof_bg_frames = 100
 	detector.setShowEchogramDetections(True)
 	playback_manager.mapping_done.connect(startDetector)
-	playback_manager.frame_available_early.connect(detector.compute_from_event)
+	playback_manager.frame_available_immediate.append(detector.compute_from_event)
 
 	figure = TestFigure(playback_manager.togglePlay)
 	main_window.setCentralWidget(figure)

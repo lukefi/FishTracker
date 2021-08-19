@@ -264,7 +264,7 @@ def launch_ui():
 
     playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))
 
-    playback_manager.frame_available_early.connect(detector.compute_from_event)
+    playback_manager.frame_available_immediate.append(detector.compute_from_event)
 
     playback_manager.file_opened.connect(detector.clearDetections)
     playback_manager.file_closed.connect(detector.clearDetections)

@@ -42,6 +42,9 @@ class LabeledSlider:
 
         form_layout.addRow(label, self.layout)
 
+    def getValue(self):
+        return self.slider.value()
+
     def setValue(self, value):
         self.slider.blockSignals(True)
 
@@ -62,7 +65,7 @@ class LabeledSlider:
         self.value.setText(self.formatting.format(applied_value))
 
         for f in self.connected_functions:
-                f(applied_value)
+            f(applied_value)
 
 class DetectorParametersView(QWidget):
     def __init__(self, playback_manager, detector, sonar_processor):

@@ -1,6 +1,7 @@
 ﻿import numpy as np
 import cv2
 import seaborn as sns
+from enum import Enum
 from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
 from log_object import LogObject
@@ -11,6 +12,11 @@ PARAMETER_TYPES = {
             "search_radius": int,
             "trim_tails": bool
         }
+
+class TrackingState(Enum):
+    IDLE = 1
+    PRIMARY = 2
+    SECONDARY = 3
 
 class Tracker(QtCore.QObject):
 
@@ -30,7 +36,7 @@ class Tracker(QtCore.QObject):
         self.resetParameters()
 
         self.clear()
-        self.tracking = False
+        self.tracking_state = TrackingState.IDLE
         self.stop_tracking = False
         self._show_tracks = True
         self._show_bounding_box = True
@@ -40,10 +46,14 @@ class Tracker(QtCore.QObject):
     def clear(self):
         self.applied_parameters = None
         self.applied_detector_parameters = None
+        self.applied_secondary_parameters = None
         self.tracks_by_frame = {}
 
     def resetParameters(self):
         self.parameters = TrackerParameters()
+        self.parameters.values_changed_signal.connect(self.state_changed_signal)
+        self.secondary_parameters = TrackerParameters()
+        self.secondary_parameters.values_changed_signal.connect(self.state_changed_signal)
 
 
     def primaryTrack(self):
@@ -52,7 +62,7 @@ class Tracker(QtCore.QObject):
         Signals when the computation has finished.
         """
 
-        self.tracking = True
+        self.tracking_state = TrackingState.PRIMARY
         self.state_changed_signal.emit()
         self.init_signal.emit(True)
 
@@ -70,8 +80,9 @@ class Tracker(QtCore.QObject):
 
         self.applied_parameters = self.parameters.copy()
         self.applied_detector_parameters = self.detector.parameters.copy()
+        self.applied_secondary_parameters = None
 
-        self.tracking = False
+        self.tracking_state = TrackingState.IDLE
         self.state_changed_signal.emit()
         self.all_computed_signal.emit()
 
@@ -85,7 +96,7 @@ class Tracker(QtCore.QObject):
         tracker_parameters: TrackerParameters object containing the parameters for tracking. 
         """
 
-        self.tracking = True
+        self.tracking_state = TrackingState.SECONDARY
         self.state_changed_signal.emit()
         self.init_signal.emit(False)
 
@@ -96,9 +107,6 @@ class Tracker(QtCore.QObject):
                 for det in dets:
                     if det not in used_dets:
                         detections[frame].append(det)
-                    #    print(f"Added {det} at: {frame}")
-                    #else:
-                    #    print(f"Ignored {det} at: {frame}")
             else:
                 detections[frame] = dets
 
@@ -106,7 +114,9 @@ class Tracker(QtCore.QObject):
         print(f"Second: {self.detectionCount(detections)}")
         self.tracks_by_frame = self.trackDetections(detections, tracker_parameters, reset_count=False)
 
-        self.tracking = False
+        self.applied_secondary_parameters = self.secondary_parameters.copy()
+
+        self.tracking_state = TrackingState.IDLE
         self.state_changed_signal.emit()
         self.all_computed_signal.emit()
 
@@ -145,7 +155,7 @@ class Tracker(QtCore.QObject):
             if self.stop_tracking:
                 LogObject().print("Stopped tracking at", i)
                 self.abortComputing(False)
-                return
+                return {}
 
             returned_tracks_by_frame[i] = self.trackBase(mot_tracker, dets, i)
                 
@@ -171,7 +181,7 @@ class Tracker(QtCore.QObject):
         return [(tr, detections[int(tr[7])]) if tr[7] >= 0 else (tr, None) for tr in tracks]
 
     def abortComputing(self, detector_aborted):
-        self.tracking = False
+        self.tracking_state = TrackingState.IDLE
         self.applied_parameters = None
         self.stop_tracking = False
         if detector_aborted:
@@ -179,10 +189,15 @@ class Tracker(QtCore.QObject):
         self.state_changed_signal.emit()
 
     def visualize(self, image, ind):
+        """
+        Visualizes the tracked fish in the frame [ind] of tracks_by_frame.
+        Note: This is not used in the main application anymore and similar methods can
+        be found in the sonar_widget.py file.
+        """
+
         if ind not in self.tracks_by_frame:
             return image
         
-        #colors = sns.color_palette('deep', max([0] + [d.label + 1 for _, d in self.tracks_by_frame[ind]]))
         colors = sns.color_palette('deep', len(self.tracks_by_frame[ind]))
         for tr, det in self.tracks_by_frame[ind]:
 
@@ -195,7 +210,7 @@ class Tracker(QtCore.QObject):
                 det.visualize(image, colors, True, False)
 
             if self._show_bounding_box:
-                corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]]) #, [tr[0], tr[1]]
+                corners = np.array([[tr[0], tr[1]], [tr[2], tr[1]], [tr[2], tr[3]], [tr[0], tr[3]]])
 
                 for i in range(0,3):
                     cv2.line(image, (int(corners[i,1]),int(corners[i,0])), (int(corners[i+1,1]),int(corners[i+1,0])),  (255,255,255), 1)
@@ -207,34 +222,6 @@ class Tracker(QtCore.QObject):
         return self.parameters != self.applied_parameters or self.applied_detector_parameters != self.detector.parameters \
             or self.applied_detector_parameters != self.detector.applied_parameters
 
-    def setMaxAge(self, value):
-        try:
-            self.parameters.max_age = int(value)
-            self.state_changed_signal.emit()
-        except ValueError as e:
-            LogObject().print(e)
-
-    def setMinHits(self, value):
-        try:
-            self.parameters.min_hits = int(value)
-            self.state_changed_signal.emit()
-        except ValueError as e:
-            LogObject().print(e)
-
-    def setSearchRadius(self, value):
-        try:
-            self.parameters.search_radius = int(value)
-            self.state_changed_signal.emit()
-        except ValueError as e:
-            LogObject().print(e)
-
-    def setTrimTails(self, value):
-        try:
-            self.parameters.trim_tails = bool(value)
-            self.state_changed_signal.emit()
-        except ValueError as e:
-            LogObject().print(e)
-
     def getParameterDict(self):
         if self.parameters is not None:
             return self.parameters.getParameterDict()
@@ -242,8 +229,13 @@ class Tracker(QtCore.QObject):
             return None
 
 
-class TrackerParameters:
+class TrackerParameters(QtCore.QObject):
+
+    values_changed_signal = QtCore.pyqtSignal()
+
     def __init__(self, max_age = 10, min_hits = 5, search_radius = 10, trim_tails = True):
+        super().__init__()
+
         self.max_age = max_age
         self.min_hits = min_hits
         self.search_radius = search_radius
@@ -286,6 +278,38 @@ class TrackerParameters:
                 setattr(self, key, PARAMETER_TYPES[key](value))
             except ValueError as e:
                 print("Error: Invalid value in tracker parameters file,", e)
+
+    def setMaxAge(self, value):
+        try:
+            self.max_age = int(value)
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
+
+    def setMinHits(self, value):
+        try:
+            self.min_hits = int(value)
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
+
+    def setSearchRadius(self, value):
+        try:
+            self.search_radius = int(value)
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
+
+    def setTrimTails(self, value):
+        try:
+            self.trim_tails = bool(value)
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
 
 
 if __name__ == "__main__":

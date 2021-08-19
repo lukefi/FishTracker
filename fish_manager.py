@@ -117,6 +117,7 @@ class FishManager(QtCore.QAbstractTableModel):
         Updates shown table (fish_list) from all instances containing dictionary (all_fish).
         fish_list is trimmed based on the minimum duration.
         """
+
         fl = [fish for fish in self.all_fish.values() if fish.checkConditions(self.min_detections, self.mad_limit)]
 
         reverse = self.sort_order != QtCore.Qt.AscendingOrder
@@ -445,10 +446,20 @@ class FishManager(QtCore.QAbstractTableModel):
 
         return detections
 
-    def applyFiltersAndGetUsedDetections(self):
+    def applyFiltersAndGetUsedDetections(self, min_detections=None, mad_limit=None):
         """
         Applies filters and returns the detections associated to the remaining fish.
+        If optional parameters are not given, the current values in FishManager are used.
         """
+        temp_min_detections = self.min_detections
+        temp_mad_limit = self.mad_limit
+
+        if min_detections is not None:
+            self.min_detections = min_detections
+
+        if mad_limit is not None:
+            self.mad_limit = mad_limit
+
         print(f"Fish before applying: {len(self.all_fish)}")
         self.applyFilters()
         print(f"Fish after applying: {len(self.all_fish)}")
@@ -458,6 +469,9 @@ class FishManager(QtCore.QAbstractTableModel):
         for frame, dets in used_dets.items():
             count += len(dets)
         print(f"Total used: {count}")
+
+        self.min_detections = temp_min_detections
+        self.mad_limit = temp_mad_limit
 
         return used_dets
 

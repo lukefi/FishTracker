@@ -65,11 +65,12 @@ class PlaybackManager(QObject):
         fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
         self.loadFile(file_path_tuple[0])
 
-    def selectSaveDirectory(self, open_path=None, selected_filter=""):
+    def selectSaveDirectory(self, open_path=None, selected_filter=QFileDialog.ShowDirsOnly):
         """
         Select save directory using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
+        print(selected_filter)
         path = QFileDialog.getExistingDirectory(self.main_window, "Select directory", open_path, selected_filter)
         fh.setLatestSaveDirectory(path)
         return path

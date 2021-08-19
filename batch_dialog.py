@@ -10,7 +10,7 @@ from log_object import LogObject
 
 class BatchDialog(QtWidgets.QDialog):
     """
-    UI (QDialog window) for configuring and launching BatchTrack processes.
+    UI window/dialog for configuring and launching BatchTrack processes.
     """
     def __init__(self, playback_manager, params_detector=None, params_tracker=None):
         super().__init__()
@@ -78,7 +78,7 @@ class BatchDialog(QtWidgets.QDialog):
         if fh.getTestFilePath() is not None:
             self.test_layout = QtWidgets.QHBoxLayout()
 
-            test_tooltip = "Use test file instead of selected files."
+            test_tooltip = "Use a test file instead of selected files."
             self.label_test = QtWidgets.QLabel("Test file:")
             self.label_test.setToolTip(test_tooltip)
             self.test_layout.addWidget(self.label_test)
@@ -230,7 +230,7 @@ class BatchDialog(QtWidgets.QDialog):
         Called when the system is ready to start a new batch.
         """
 
-        LogObject().print("--- On batch exit ---")
+        LogObject().print("Batch done.")
 
         self.start_btn.setText("Start")
         self.start_btn.setEnabled(True)

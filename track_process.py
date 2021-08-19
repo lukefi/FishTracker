@@ -48,7 +48,7 @@ class TrackProcess(QtCore.QObject):
     TrackProcess launches individual PlaybackManager, Detector and Tracker,
     separate from the ones associated with the UI.
     These are used for the tracking process of the file provided in the track method.
-    Each file are intended to be processed with their own TrackProcess instances.
+    Each file is intended to be processed with its own TrackProcess instance.
     """
 
     exit_signal = QtCore.pyqtSignal()
@@ -116,7 +116,7 @@ class TrackProcess(QtCore.QObject):
         """
         self.detector.initMOG()
         self.detector.computeAll()
-        self.tracker.trackAll(self.detector.detections)
+        self.tracker.primaryTrack()
         if self.display:
             self.playback_manager.play()
 
@@ -138,7 +138,7 @@ class TrackProcess(QtCore.QObject):
         else:
             self.playback_manager.frame_available.connect(self.forwardImage)
 
-        self.detector.mog_parameters.nof_bg_frames = 500
+        self.detector.bg_subtractor.mog_parameters.nof_bg_frames = 500
         self.detector._show_detections = True
         self.playback_manager.mapping_done.connect(self.startTrackingProcess)
         self.tracker.all_computed_signal.connect(self.onAllComputed)
@@ -148,7 +148,7 @@ class TrackProcess(QtCore.QObject):
             self.main_window.setCentralWidget(self.figure)
 
         LogObject().print(self.detector.parameters)
-        LogObject().print(self.detector.parameters.mog_parameters)
+        LogObject().print(self.detector.bg_subtractor.mog_parameters)
         LogObject().print(self.tracker.parameters)
 
         if self.display:

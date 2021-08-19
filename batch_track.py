@@ -202,7 +202,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
 
     parser = tp.getDefaultParser()
-    parser.add_argument('-p', '--parallel', type=int, default=1, help="number of files processed simultaneously in parallel")
+    parser.add_argument('-p', '--parallel', type=int, default=4, help="number of files processed simultaneously in parallel")
     args = parser.parse_args()
     files = tp.getFiles(args)
     save_directory = fh.getLatestSaveDirectory()

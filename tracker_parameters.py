@@ -76,8 +76,8 @@ class TrackerParametersView(QScrollArea):
         if self.tracker.tracking_state == TrackingState.IDLE:
             self.fish_manager.clear_old_data = False
 
-            min_dets = self.min_detections_slider.getValue()
-            mad_limit = self.mad_slider.getValue()
+            min_dets = self.tracker.filter_parameters.min_duration
+            mad_limit = self.tracker.filter_parameters.mad_limit
 
             used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
             self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.parameters))
@@ -148,12 +148,19 @@ class TrackerParametersView(QScrollArea):
         self.form_layout_f = QFormLayout()
         self.collapsible_f = CollapsibleBox("Filtering", self)
 
-        if self.fish_manager is not None:
-            self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [], self.fish_manager.min_detections, 1, 50, self)
-            self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [], self.fish_manager.mad_limit, 0, 50, self)
-        else:
-            self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [], 1, 1, 50, self)
-            self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [], 0, 0, 50, self)
+        self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [self.tracker.filter_parameters.setMinDuration],
+                                                   self.tracker.filter_parameters.min_duration, 1, 50, self)
+        self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [self.tracker.filter_parameters.setMADLimit],
+                                        self.tracker.filter_parameters.mad_limit, 0, 50, self)
+
+        #if self.fish_manager is not None:
+        #    self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [self.tracker.filter_parameters.setMinDuration],
+        #                                               self.tracker.filter_parameters.min_duration, 1, 50, self)
+        #    self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [self.tracker.filter_parameters.setMADLimit],
+        #                                    self.tracker.filter_parameters.mad_limit, 0, 50, self)
+        #else:
+        #    self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [], 1, 1, 50, self)
+        #    self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [], 0, 0, 50, self)
 
         self.collapsible_f.setContentLayout(self.form_layout_f)
         self.vertical_layout.addWidget(self.collapsible_f)
@@ -244,9 +251,15 @@ class TrackerParametersView(QScrollArea):
         self.refreshValues()
 
     def saveJSON(self):
-        dict = self.tracker.getParameterDict()
-        if dict is None:
-            return
+        p_dict = self.tracker.parameters.getParameterDict()
+        f_dict = self.tracker.filter_parameters.getParameterDict()
+        s_dict = self.tracker.secondary_parameters.getParameterDict()
+
+        dict = {
+            "primary_tracking": p_dict,
+            "filtering": f_dict,
+            "secondary_tracking": s_dict
+            }
 
         try:
             with open(PARAMETERS_PATH, "w") as f:
@@ -265,17 +278,27 @@ class TrackerParametersView(QScrollArea):
             print("Error: Invalid tracker parameters file:", e)
             return
 
-        self.tracker.parameters.setParameterDict(dict)
+        if "primary_tracking" in dict:
+            self.tracker.parameters.setParameterDict(dict["primary_tracking"])
+        if "filtering" in dict:
+            self.tracker.filter_parameters.setParameterDict(dict["filtering"])
+        if "secondary_tracking" in dict:
+            self.tracker.secondary_parameters.setParameterDict(dict["secondary_tracking"])
+
         self.refreshValues()
 
     def refreshValues(self):
         params = self.tracker.parameters
+        f_params = self.tracker.filter_parameters
         s_params = self.tracker.secondary_parameters
 
         self.max_age_slider_p.setValue(params.max_age)
         self.min_hits_slider_p.setValue(params.min_hits)
         self.search_radius_slider_p.setValue(params.search_radius)
         self.trim_tails_checkbox_p.setChecked(params.trim_tails)
+
+        self.min_detections_slider.setValue(f_params.min_duration)
+        self.mad_slider.setValue(f_params.mad_limit)
 
         self.max_age_slider_s.setValue(s_params.max_age)
         self.min_hits_slider_s.setValue(s_params.min_hits)
@@ -284,12 +307,16 @@ class TrackerParametersView(QScrollArea):
 
     def printValues(self):
         params = self.tracker.parameters
+        f_params = self.tracker.filter_parameters
         s_params = self.tracker.secondary_parameters
 
         print(f"P Max Age: {params.max_age}")
         print(f"P Min Hits: {params.min_hits}")
         print(f"P Search Radius: {params.search_radius}")
-        print(f"P Trim tails: {params.trim_tails}")
+        print(f"P Trim tails: {params.trim_tails}\n")
+
+        print(f"F Min Duration: {f_params.min_duration}")
+        print(f"F MAD Limit: {f_params.mad_limit}\n")
 
         print(f"S Max Age: {s_params.max_age}")
         print(f"S Min Hits: {s_params.min_hits}")
@@ -308,7 +335,7 @@ if __name__ == "__main__":
     detector = Detector(playback_manager)
 
     tracker = Tracker(detector)
-    tracker_params = TrackerParametersView(playback_manager, tracker, detector, fish_manager=None, debug=False)
+    tracker_params = TrackerParametersView(playback_manager, tracker, detector, fish_manager=None, debug=True)
 
     main_window.setCentralWidget(tracker_params)
     main_window.show()

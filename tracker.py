@@ -6,13 +6,6 @@ from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
 from log_object import LogObject
 
-PARAMETER_TYPES = {
-            "max_age": int,
-	        "min_hits": int,
-            "search_radius": int,
-            "trim_tails": bool
-        }
-
 class TrackingState(Enum):
     IDLE = 1
     PRIMARY = 2
@@ -52,6 +45,10 @@ class Tracker(QtCore.QObject):
     def resetParameters(self):
         self.parameters = TrackerParameters()
         self.parameters.values_changed_signal.connect(self.state_changed_signal)
+
+        self.filter_parameters = FilterParameters()
+        self.filter_parameters.values_changed_signal.connect(self.state_changed_signal)
+
         self.secondary_parameters = TrackerParameters()
         self.secondary_parameters.values_changed_signal.connect(self.state_changed_signal)
 
@@ -229,6 +226,14 @@ class Tracker(QtCore.QObject):
             return None
 
 
+TRACKER_PARAMETER_TYPES = {
+    "max_age": int,
+    "min_hits": int,
+    "search_radius": int,
+    "trim_tails": bool
+    }
+
+
 class TrackerParameters(QtCore.QObject):
 
     values_changed_signal = QtCore.pyqtSignal()
@@ -270,18 +275,19 @@ class TrackerParameters(QtCore.QObject):
                 print("Error: Invalid parameters: {}: {}".format(key, value))
                 continue
 
-            if not key in PARAMETER_TYPES:
-                print("Error: Key [{}] not in PARAMETER_TYPES".format(key, value))
+            if not key in TRACKER_PARAMETER_TYPES:
+                print("Error: Key [{}] not in TRACKER_PARAMETER_TYPES".format(key, value))
                 continue
 
             try:
-                setattr(self, key, PARAMETER_TYPES[key](value))
+                setattr(self, key, TRACKER_PARAMETER_TYPES[key](value))
             except ValueError as e:
                 print("Error: Invalid value in tracker parameters file,", e)
 
     def setMaxAge(self, value):
         try:
             self.max_age = int(value)
+            self.values_changed_signal.emit()
             return True
         except ValueError as e:
             LogObject().print(e)
@@ -290,6 +296,7 @@ class TrackerParameters(QtCore.QObject):
     def setMinHits(self, value):
         try:
             self.min_hits = int(value)
+            self.values_changed_signal.emit()
             return True
         except ValueError as e:
             LogObject().print(e)
@@ -298,6 +305,7 @@ class TrackerParameters(QtCore.QObject):
     def setSearchRadius(self, value):
         try:
             self.search_radius = int(value)
+            self.values_changed_signal.emit()
             return True
         except ValueError as e:
             LogObject().print(e)
@@ -306,6 +314,76 @@ class TrackerParameters(QtCore.QObject):
     def setTrimTails(self, value):
         try:
             self.trim_tails = bool(value)
+            self.values_changed_signal.emit()
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
+
+
+FILTER_PARAMETER_TYPES = {
+    "min_duration": int,
+    "mad_limit": int
+    }
+
+
+class FilterParameters(QtCore.QObject):
+
+    values_changed_signal = QtCore.pyqtSignal()
+
+    def __init__(self, min_duration=2, mad_limit=0):
+        super().__init__()
+
+        self.min_duration = min_duration
+        self.mad_limit = mad_limit
+
+    def __eq__(self, other):
+        if not isinstance(other, FilterParameters):
+            return False
+    
+        return self.min_duration == min_duration \
+            and self.mad_limit == mad_limit
+
+    def __repr__(self):
+        return "Filter Parameters: {} {}".format(self.min_duration, self.mad_limit)
+
+    def copy(self):
+        return FilterParameters(self.min_duration, self.mad_limit)
+
+    def getParameterDict(self):
+        return {
+            "min_duration": self.min_duration,
+            "mad_limit": self.mad_limit
+        }
+
+    def setParameterDict(self, dict):
+        for key, value in dict.items():
+            if not hasattr(self, key):
+                print("Error: Invalid parameters: {}: {}".format(key, value))
+                continue
+
+            if not key in FILTER_PARAMETER_TYPES:
+                print("Error: Key [{}] not in FILTER_PARAMETER_TYPES".format(key, value))
+                continue
+
+            try:
+                setattr(self, key, FILTER_PARAMETER_TYPES[key](value))
+            except ValueError as e:
+                print("Error: Invalid value in filter parameters file,", e)
+
+    def setMinDuration(self, value):
+        try:
+            self.min_duration = int(value)
+            self.values_changed_signal.emit()
+            return True
+        except ValueError as e:
+            LogObject().print(e)
+            return False
+
+    def setMADLimit(self, value):
+        try:
+            self.mad_limit = int(value)
+            self.values_changed_signal.emit()
             return True
         except ValueError as e:
             LogObject().print(e)

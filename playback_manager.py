@@ -25,6 +25,7 @@ class Event(list):
 
 class PlaybackManager(QObject):
 
+    # Signals that polar mapping is done and a PolarTransform object is created
     mapping_done = pyqtSignal()
     # Signals that all polar frames are loaded.
     polars_loaded = pyqtSignal()
@@ -140,7 +141,7 @@ class PlaybackManager(QObject):
     def checkLoadedFile(self, path, secondary_path="", override_open=True):
         """
         Checks if file with matching base name is already open. If not,
-        tries to open file at path, then at secondary_path and if neither exist,
+        tries to open file at path, then at secondary_path and if neither exists,
         opens a file dialog for selecting the correct .aris file.
         """
         if os.path.basename(self.path) == os.path.basename(path):

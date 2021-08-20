@@ -225,6 +225,25 @@ class Tracker(QtCore.QObject):
         else:
             return None
 
+    def getAllParameters(self):
+        return AllTrackerParameters(self.parameters.copy(), self.filter_parameters.copy(), self.secondary_parameters.copy())
+
+
+class AllTrackerParameters(QtCore.QObject):
+    def __init__(self, primary, filter, secondary):
+        self.primary = primary
+        self.filter = filter
+        self.secondary = secondary
+
+    def __eq__(self, other):
+        if not isinstance(other, AllTrackerParameters):
+            return False
+        return self.primary == other.primary \
+            and self.filter == other.filter \
+            and self.secondary == other.secondary
+
+    def copy(self):
+        return AllTrackerParameters(self.primary.copy(), self.filter.copy(), self.secondary.copy())
 
 TRACKER_PARAMETER_TYPES = {
     "max_age": int,
@@ -232,7 +251,6 @@ TRACKER_PARAMETER_TYPES = {
     "search_radius": int,
     "trim_tails": bool
     }
-
 
 class TrackerParameters(QtCore.QObject):
 

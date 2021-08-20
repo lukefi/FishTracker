@@ -53,7 +53,7 @@ class TrackProcess(QtCore.QObject):
 
     exit_signal = QtCore.pyqtSignal()
 
-    def __init__(self, app, display, file, save_directory, connection=None, testFile=False):
+    def __init__(self, app, display, file, save_directory, connection=None, testFile=False, params_detector=None, params_tracker=None):
         super().__init__()
         self.app = app
         self.display = display
@@ -202,9 +202,9 @@ class TrackProcess(QtCore.QObject):
         self.app.quit()
 
 
-def trackProcess(display, file, save_directory, connection=None, testFile=False):
+def trackProcess(display, file, save_directory, connection=None, params_detector=None, params_tracker=None, testFile=False):
     app = QtWidgets.QApplication(sys.argv)
-    process = TrackProcess(app, display, file, save_directory, connection, testFile)
+    process = TrackProcess(app, display, file, save_directory, connection, testFile, params_detector, params_tracker)
     process.track()
     sys.exit(app.exec_())
 

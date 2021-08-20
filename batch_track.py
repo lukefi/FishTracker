@@ -38,11 +38,13 @@ class BatchTrack(QtCore.QObject):
     # Signaled when all processes are finished or terminated.
     exit_signal = QtCore.pyqtSignal(bool)
 
-    def __init__(self, display, files, save_directory, parallel=1, create_directory=True):
+    def __init__(self, display, files, save_directory, parallel=1, create_directory=True, params_detector=None, params_tracker=None):
         super().__init__()
         LogObject().print("Display: ", display)
         self.files = files
         self.display = display
+        self.detector_params = params_detector
+        self.tracker_params = params_tracker
 
         if create_directory:
             date_time_directory = "batch_{}".format(datetime.now().strftime("%Y-%m-%d-%H%M%S"))
@@ -115,7 +117,8 @@ class BatchTrack(QtCore.QObject):
         self.active_processes.append(proc_info.id)
         self.active_processes_changed_signal.emit()
 
-        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory, child_conn, test))
+        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory,child_conn,
+                                                        self.detector_params.copy(), self.tracker_params.copy(), test))
         proc_info.process = proc
         proc.start()
 

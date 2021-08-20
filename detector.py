@@ -406,7 +406,9 @@ class Detector():
 
 
 		except PermissionError as e:
-			LogObject().print("Cannot open file {}. Permission denied.".format(path))
+			LogObject().print(f"Cannot open file {path}. Permission denied.")
+		except ValueError as e:
+			LogObject().print(f"Invalid values encountered in {path}, when trying to import detections. {e}")
 
 	def getSaveDictionary(self):
 		"""
@@ -427,8 +429,7 @@ class Detector():
 		"""
 		Load detections from data provided by SaveManager.
 		"""
-		#self.clearDetections()
-		#TODO: get polar transform
+		self.clearDetections()
 		polar_transform = self.getPolarTransform()
 
 		for str_frame, frame_dets_data in data.items():
@@ -441,7 +442,11 @@ class Detector():
 				det.init_from_data(det_data, self.parameters.detection_size, polar_transform)
 				frame_dets.append(det)
 
-			self.detections[frame] = frame_dets
+			try:
+				self.detections[frame] = frame_dets
+			except IndexError as e:
+				print(frame, len(self.detections))
+				raise e
 
 		self.applied_parameters = self.parameters.copy()
 		self.bg_subtractor.setParameters(self.parameters.mog_parameters)
@@ -536,7 +541,7 @@ class Detection:
 		Initialize detection parameters from the pixel data from the clusterer / detection algorithm. Saved pixel data
 		can also be used to (re)initialize the detection.
 		"""
-		self.data = data
+		self.data = np.asarray(data)
 
 		ca = np.cov(data, y=None, rowvar=0, bias=1)
 		v, vect = np.linalg.eig(ca)
@@ -579,7 +584,7 @@ class Detection:
 		"""
 		self.corners = np.array(corners)
 		self.center = np.average(self.corners, axis=0)
-		LogObject().print(self.center)
+		self.diff = self.center - self.corners[0]
 		self.length = length
 		self.distance = distance
 		self.angle = angle

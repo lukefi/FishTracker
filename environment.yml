@@ -11,3 +11,5 @@ dependencies:
   - seaborn
   - scikit-learn
   - jinja2
+  - numba
+  - msgpack-python

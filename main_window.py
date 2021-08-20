@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets, QtGui
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
+        self.status_length = 100
         super().__init__()
         
     def setupStatusBar(self):
@@ -18,4 +19,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setStatusBar(self.FStatusBar)
 
     def updateStatusLog(self, str):
-        self.FStatusLog.setText(str)
+        if len(str) > self.status_length:
+            self.FStatusLog.setText(str[0:self.status_length - 3] + "...")
+        else:
+            self.FStatusLog.setText(str)

@@ -638,29 +638,34 @@ class FishManager(QtCore.QAbstractTableModel):
         return delim.join(base.format(cx,cy) for cy, cx in corners[0:4])
 
     def loadFromFile(self, path):
-        with open(path, 'r') as file:
-            self.clear()
-            header = file.readline()
+        try:
+            with open(path, 'r') as file:
+                self.clear()
+                header = file.readline()
 
-            for line in file:
-                split_line = line.split(';')
-                id = int(split_line[0])
-                frame = int(split_line[1])
-                length = float(split_line[2])
-                direction = SwimDirection[split_line[5]]
-                track = [float(split_line[7]), float(split_line[6]), float(split_line[11]), float(split_line[10]), id]
+                for line in file:
+                    split_line = line.split(';')
+                    id = int(split_line[0])
+                    frame = int(split_line[1])
+                    length = float(split_line[2])
+                    direction = SwimDirection[split_line[5]]
+                    track = [float(split_line[7]), float(split_line[6]), float(split_line[11]), float(split_line[10]), id]
 
-                if id in self.all_fish:
-                    f = self.all_fish[id]
-                    f.addTrack(track, None, frame)
-                else:
-                    f = FishEntryFromTrack(track, None, frame)
-                    f.length = length
-                    f.direction = direction
-                    self.all_fish[id] = f
+                    if id in self.all_fish:
+                        f = self.all_fish[id]
+                        f.addTrack(track, None, frame)
+                    else:
+                        f = FishEntryFromTrack(track, None, frame)
+                        f.length = length
+                        f.direction = direction
+                        self.all_fish[id] = f
 
-            self.refreshAllFishData()
-            self.trimFishList()
+                self.refreshAllFishData()
+                self.trimFishList(force_color_update=True)
+        except PermissionError as e:
+            LogObject().print(f"Cannot open file {path}. Permission denied.")
+        except ValueError as e:
+            LogObject().print(f"Invalid values encountered in {path}, when trying to import tracks. {e}")
 
     def convertToWritable(self, frame, label, track):
         return [frame, label, list(map(float, track))]
@@ -713,7 +718,7 @@ class FishManager(QtCore.QAbstractTableModel):
             self.all_fish[id] = f
 
         self.refreshAllFishData()
-        self.trimFishList()
+        self.trimFishList(force_color_update=True)
 
 
 
@@ -869,7 +874,9 @@ class FishEntry():
 
             self.mad = abs(valid_dets[-1].angle - valid_dets[0].angle)
             path_length = self.calculatePathLength(valid_dets)
-            self.tortuosity = float(path_length / np.linalg.norm(end_point_distance))
+            norm_dist = np.linalg.norm(end_point_distance)
+            self.tortuosity = float(path_length / norm_dist) if norm_dist > 0 else 1
+
             if frame_time is not None:
                 self.speed = float(path_length * meters_per_pixel / ((self.frame_out - self.frame_in) * frame_time))
             else:

@@ -131,6 +131,8 @@ class Tracker(QtCore.QObject):
         Returns a dictionary containing tracks by frame.
         """
 
+        LogObject().print(tracker_parameters)
+
         self.stop_tracking = False
         count = len(detection_frames)
         returned_tracks_by_frame = {}

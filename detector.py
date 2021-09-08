@@ -164,6 +164,9 @@ class Detector():
 		self.compute_on_event = False
 		self.state_changed_event()
 
+		LogObject().print1(self.parameters.mog_parameters)
+		LogObject().print1(self.parameters)
+
 		if self.bg_subtractor.parametersDirty():
 			self.initMOG()
 			if self.bg_subtractor.parametersDirty():
@@ -213,7 +216,7 @@ class Detector():
 			self.bg_subtractor.abortComputing()
 
 	def clearDetections(self):
-		LogObject().print("Cleared")
+		LogObject().print2("Cleared detections")
 		nof_frames = self.image_provider.getFrameCount()
 		self.detections = [None] * nof_frames
 		self.vertical_detections = []
@@ -485,7 +488,7 @@ class DetectorParameters:
 		return value
 
 	def __repr__(self):
-		return "Parameters: {} {} {} {} {}".format(self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples)
+		return "Detector Parameters: {} {} {} {} {}".format(self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples)
 
 	def copy(self):
 		mog_parameters = self.mog_parameters.copy()

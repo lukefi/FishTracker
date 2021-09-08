@@ -4,6 +4,7 @@
 *.fish
 *.prof
 conf.json
+log.txt
 
 .vs
 .idea

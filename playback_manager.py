@@ -104,6 +104,7 @@ class PlaybackManager(QObject):
 
     def loadFile(self, path, overrideLength=-1):
         self.path = path
+        LogObject().print(f"Opened file {path}")
         sonar = fh.FOpenSonarFile(path)
         if overrideLength > 0:
             sonar.frameCount = min(overrideLength, sonar.frameCount)
@@ -209,10 +210,6 @@ class PlaybackManager(QObject):
         thread = Worker(f)
         self.thread_pool.start(thread)
 
-    def testSignal(self):
-        LogObject().print("TestSignal")
-        self.playback_thread.testF()
-
     def play(self):
         """
         Enables frame playback.
@@ -304,7 +301,7 @@ class PlaybackManager(QObject):
             return None
 
     def stop(self):
-        LogObject().print("Stop")
+        LogObject().print2("Stop")
         if self.playback_thread:
             self.playback_thread.is_playing = False
             self.playback_thread.display_ind = self.playback_thread.last_displayed_ind
@@ -355,7 +352,7 @@ class PlaybackManager(QObject):
             self.setFrameInd(int(value * self.sonar.frameCount))
 
     def applicationClosing(self):
-        LogObject().print("Closing PlaybackManager . . .")
+        LogObject().print2("Closing PlaybackManager . . .")
         self.stopAll()
         time.sleep(1)
 
@@ -410,9 +407,9 @@ class PlaybackManager(QObject):
 
             if not self.isPolarsDone():
                 if value:
-                    LogObject().print("Polar loading paused.")
+                    LogObject().print2("Polar loading paused.")
                 else:
-                    LogObject().print("Polar loading continued.")
+                    LogObject().print2("Polar loading continued.")
 
     def isMappingDone(self):
         return self.playback_thread is not None and self.playback_thread.polar_transform is not None
@@ -512,9 +509,6 @@ class PlaybackThread(QRunnable):
             self.polar_transform = result
             self.signals.mapping_done_signal.emit()
             self.displayFrame()
-
-    def testF(self):
-        LogObject().print("Test")
 
     def displayFrame(self):
         if self.last_displayed_ind != self.display_ind:

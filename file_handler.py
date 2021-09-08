@@ -13,9 +13,10 @@ References:
 import sys
 import os
 import json
-
-
 import struct
+
+from enum import Enum, auto
+
 from file_handlers.utils import *
 
 from file_handlers.v3.v3_file_info import *
@@ -23,6 +24,7 @@ from file_handlers.v4.v4_file_info import *
 from file_handlers.v5.v5_file_info import *
 
 from image_manipulation import ImageManipulation
+from log_object import LogObject
 
 CONF_PATH = "conf.json"
 
@@ -119,7 +121,7 @@ class FSONAR_File():
             outp = np.array((a,d)).T
             return outp
 
-        #print(d0, dm, am, xm, K)
+        #LogObject().print2(d0, dm, am, xm, K)
 
         out = warp(frames, invmap, output_shape=(K, L))
         out = (out/np.amax(out)*255).astype(np.uint8)
@@ -216,7 +218,7 @@ def DIDSON_v3(fhand, version, cls):
     """
     This function will handle version 3 DIDSON Files
     """
-    print("inside DIDSON v3")
+    LogObject().print2("inside DIDSON v3")
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v3_getAllFramesData(fhand, version, cls)
@@ -231,7 +233,7 @@ def DIDSON_v4(fhand, version, cls):
     """
     This function will handle version 4 DIDSON Files
     """
-    print("inside DIDSON v4")
+    LogObject().print2("inside DIDSON v4")
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v4_getAllFramesData(fhand, version, cls)
@@ -259,7 +261,7 @@ def DIDSON_v5(fhand, version, cls):
             }
         }
     """
-    print("inside DIDSON v5")
+    LogObject().print2("inside DIDSON v5")
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v5_getAllFramesData(fhand, version, cls)
@@ -297,16 +299,70 @@ def writeConf(conf):
     with open(CONF_PATH, 'w') as f:
         json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
 
+class ConfKeys(Enum):
+    latest_directory = auto()
+    latest_save_directory = auto()
+    log_timestamp = auto()
+    log_verbosity = auto()
+    parallel_processes = auto()
+    sonar_height = auto()
+    test_file_path = auto()
+
+conf_default_values = {
+    ConfKeys.latest_directory: str(os.path.expanduser("~")),
+    ConfKeys.latest_save_directory: str(os.path.expanduser("~")),
+    ConfKeys.log_timestamp: False,
+    ConfKeys.log_verbosity: 0,
+    ConfKeys.parallel_processes: 1,
+    ConfKeys.sonar_height: 1000,
+    ConfKeys.test_file_path: ""
+    }
+
+conf_types = {
+    ConfKeys.latest_directory: str,
+    ConfKeys.latest_save_directory: str,
+    ConfKeys.log_timestamp: bool,
+    ConfKeys.log_verbosity: int,
+    ConfKeys.parallel_processes: int,
+    ConfKeys.sonar_height: int,
+    ConfKeys.test_file_path: str
+    }
+
 def createDefaultConfFile():
-    conf = {
-        "latest_directory": str(os.path.expanduser("~")),
-        "latest_save_directory": str(os.path.expanduser("~")),
-        "parallel_processes": 1,
-        "sonar_height": 1000,
-        "test_file_path": ""
-        }
+    conf = dict()
+    for key in ConfKeys:
+        conf[key.name] = conf_default_values[key]
+
     writeConf(conf)
     return conf
+
+def getConfValue(key: ConfKeys):
+    """
+    Unified solution for getting any of the conf file entries.
+    """
+    try:
+        conf = loadConf()
+        if os.path.exists(conf[key.name]):
+            return conf[key.name]
+        else:
+            return conf_default_values[key]
+    except:
+        LogObject().print2(f"Reading failed for parameter: {key}, {sys.exc_info()[1]}")
+        if key in conf_default_values:
+            return conf_default_values[key]
+        else:
+           return None
+
+def setConfValue(key: ConfKeys, value):
+    """
+    Unified solution for setting any of the conf file entries.
+    """
+    try:
+        conf = loadConf()
+        conf[key.name] = conf_types[key](value)
+        writeConf(conf)
+    except:
+        LogObject().print2(f"Writing conf file failed for key: {key}, sys.exc_info()[1]")
 
 def getTestFilePath():
     try:
@@ -316,7 +372,7 @@ def getTestFilePath():
         else:
             return None
     except:
-        print("Reading test file path failed", sys.exc_info()[1])
+        LogObject().print2("Reading test file path failed", sys.exc_info()[1])
         return None
 
 def getLatestDirectory():
@@ -327,7 +383,7 @@ def getLatestDirectory():
         else:
             return str(os.path.expanduser("~"))
     except:
-        print("Reading directory path failed:", sys.exc_info()[1])
+        LogObject().print2("Reading directory path failed:", sys.exc_info()[1])
         return str(os.path.expanduser("~"))
 
 def setLatestDirectory(path):
@@ -338,7 +394,7 @@ def setLatestDirectory(path):
         conf["latest_directory"] = path
         writeConf(conf)
     except:
-        print("Writing conf file failed:", sys.exc_info()[1])
+        LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
 
 def getLatestSaveDirectory():
     try:
@@ -348,7 +404,7 @@ def getLatestSaveDirectory():
         else:
             return str(os.path.expanduser("~"))
     except:
-        print("Reading save directory path failed:", sys.exc_info()[1])
+        LogObject().print2("Reading save directory path failed:", sys.exc_info()[1])
         return str(os.path.expanduser("~"))
 
 def setLatestSaveDirectory(path):
@@ -359,14 +415,14 @@ def setLatestSaveDirectory(path):
         conf["latest_save_directory"] = path
         writeConf(conf)
     except:
-        print("Writing conf file failed:", sys.exc_info()[1])
+        LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
 
 def getSonarHeight():
     try:
         conf = loadConf()
         return int(conf["sonar_height"])
     except:
-        print("Reading sonar height failed", sys.exc_info()[1])
+        LogObject().print2("Reading sonar height failed", sys.exc_info()[1])
         return 1000
 
 def setSonarHeight(value):
@@ -375,14 +431,14 @@ def setSonarHeight(value):
         conf["sonar_height"] = int(value)
         writeConf(conf)
     except:
-        print("Writing conf file failed:", sys.exc_info()[1])
+        LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
 
 def getParallelProcesses():
     try:
         conf = loadConf()
         return int(conf["parallel_processes"])
     except:
-        print("Reading parallel process count failed", sys.exc_info()[1])
+        LogObject().print2("Reading parallel process count failed", sys.exc_info()[1])
         return 1
 
 def setParallelProcesses(value):
@@ -391,8 +447,7 @@ def setParallelProcesses(value):
         conf["parallel_processes"] = int(value)
         writeConf(conf)
     except:
-        print("Writing conf file failed:", sys.exc_info()[1])
-
+        LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
             
 
 def pathFromList(listOfDirectories):

@@ -17,7 +17,7 @@ from detection_list import DetectionList, DetectionDataModel
 from tracker_parameters import TrackerParametersView
 from playback_manager import PlaybackManager
 from sonar_view3 import Ui_MainWindow
-from output_widget import OutputViewer
+from output_widget import OutputViewer, LogToFile
 from log_object import LogObject
 from batch_dialog import BatchDialog
 from save_manager import SaveManager
@@ -75,10 +75,12 @@ class UIManager():
         self.save_manager.file_loaded_event.connect(self.tracker_parameters.refreshValues)
 
         self.output = OutputViewer()
-        #self.output.redirectStdOut()
-        #self.output.connectToLogObject()
-        self.output.connectToLogObject(self.addTimeStamp)
+        self.output.connectToLogObject()
         self.output.updateLogSignal.connect(self.main_window.updateStatusLog)
+
+        self.logToFile = LogToFile()
+        LogObject().connect(self.logToFile.writeLine)
+
 
         # Tabs for the side panel.
         self.ui.info_widget.removeTab(0)
@@ -92,12 +94,6 @@ class UIManager():
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.fish_list), _translate("MainWindow", "Tracks"))
         self.ui.info_widget.addTab(self.output, "")
         self.ui.info_widget.setTabText(self.ui.info_widget.indexOf(self.output), _translate("MainWindow", "Log"))
-
-    def addTimeStamp(self, str):
-        """
-        Adds a time stamp to the provided string.
-        """
-        return "{} [{}]\n".format(str, datetime.now().time())
 
     def setUpFunctions(self):
         self.ui.menu_File.aboutToShow.connect(self.menuFileAboutToShow)

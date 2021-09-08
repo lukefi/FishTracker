@@ -460,15 +460,15 @@ class FishManager(QtCore.QAbstractTableModel):
         if mad_limit is not None:
             self.mad_limit = mad_limit
 
-        print(f"Fish before applying: {len(self.all_fish)}")
+        LogObject().print1(f"Fish before applying filters: {len(self.all_fish)}")
         self.applyFilters()
-        print(f"Fish after applying: {len(self.all_fish)}")
+        LogObject().print1(f"Fish after applying filters: {len(self.all_fish)}")
 
         used_dets = self.getDetectionsInFish()
         count = 0
         for frame, dets in used_dets.items():
             count += len(dets)
-        print(f"Total used: {count}")
+        LogObject().print1(f"Total detections used in filtered results: {count}")
 
         self.min_detections = temp_min_detections
         self.mad_limit = temp_mad_limit

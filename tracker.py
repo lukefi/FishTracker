@@ -72,7 +72,7 @@ class Tracker(QtCore.QObject):
                 self.abortComputing(True)
                 return
 
-        print(f"First:  {self.detectionCount(self.detector.detections)}")
+        LogObject().print1(f"Primary tracking. Available detections: {self.detectionCount(self.detector.detections)}")
         self.tracks_by_frame = self.trackDetections(self.detector.detections, self.parameters, reset_count=True)
 
         self.applied_parameters = self.parameters.copy()
@@ -108,7 +108,7 @@ class Tracker(QtCore.QObject):
                 detections[frame] = dets
 
 
-        print(f"Second: {self.detectionCount(detections)}")
+        LogObject().print1(f"Secondary tracking. Available detections: {self.detectionCount(detections)}")
         self.tracks_by_frame = self.trackDetections(detections, tracker_parameters, reset_count=False)
 
         self.applied_secondary_parameters = self.secondary_parameters.copy()
@@ -131,7 +131,7 @@ class Tracker(QtCore.QObject):
         Returns a dictionary containing tracks by frame.
         """
 
-        LogObject().print(tracker_parameters)
+        LogObject().print1(tracker_parameters)
 
         self.stop_tracking = False
         count = len(detection_frames)

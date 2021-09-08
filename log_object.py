@@ -1,4 +1,5 @@
 ﻿import sys, io
+from datetime import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Singleton(type):
@@ -13,7 +14,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 class LogSignal(QtCore.QObject):
-    signal = QtCore.pyqtSignal(str)
+    signal = QtCore.pyqtSignal(str, int, str)
 
         
 class LogObject(metaclass=Singleton):
@@ -33,16 +34,44 @@ class LogObject(metaclass=Singleton):
     def disconnect(self, receiver):
         self.log_signal.signal.disconnect(receiver)
 
-    def print(self, *args,**kwargs):
+    def print_help(self, *args, **kwargs):
         try:
             with io.StringIO() as output:
                 kwargs['end'] = ""
                 kwargs['file'] = output
                 print(*args, **kwargs)
-                self.log_signal.signal.emit(output.getvalue())
+                return output.getvalue(), True, str(datetime.now().time())
+
         except AttributeError as e:
             print("Potential misuse of LogObject. When calling print, remember to use LogObject() with parenthesis.", e)
+            return "", False, ""
 
+    def print(self, *args, **kwargs):
+        """
+        Default print (verbosity=0) that is always printed.
+        """
+        output, success, time_stamp = self.print_help(*args, **kwargs)
+        if success:
+            self.log_signal.signal.emit(output, 0, time_stamp)
+
+    def print1(self, *args, **kwargs):
+        """
+        Print with verbosity=1. Printed only if verbosity is set to 1 or higher.
+        Should include additional information for the user.
+        """
+        output, success, time_stamp = self.print_help(*args, **kwargs)
+        if success:
+            self.log_signal.signal.emit(output, 1, time_stamp)
+
+    def print2(self, *args, **kwargs):
+        """
+        Print with verbosity=2. Printed only if verbosity is set to 2 or higher.
+        Should include additional information for the developer.
+        """
+        output, success, time_stamp = self.print_help(*args, **kwargs)
+        if success:
+            self.log_signal.signal.emit(output, 2, time_stamp)
+            
     def disconnectDefault(self):
         self.disconnect(print)
 

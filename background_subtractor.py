@@ -87,7 +87,7 @@ class BackgroundSubtractor(QtCore.QObject):
         self.applied_mog_parameters = self.mog_parameters.copy()
 
         self.state_changed_signal.emit()
-        LogObject().print("BG Subtractor Initialized")
+        LogObject().print2("BG Subtractor Initialized")
 
         if hasattr(self.image_provider, "pausePolarLoading"):
             self.image_provider.pausePolarLoading(False)

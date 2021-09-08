@@ -195,7 +195,7 @@ class SonarViewer(QtWidgets.QDialog):
             sfig.setUpdatesEnabled(True)
 
             if self.show_first_frame:
-                LogObject().print("First frame shown")
+                LogObject().print2("First frame shown")
                 self.sonar_figure.resetView()
                 self.show_first_frame = False
 

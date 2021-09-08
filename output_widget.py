@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import * 
 from log_object import LogObject
+import file_handler as fh
 
 class WriteStream(object):
     """
@@ -54,19 +55,29 @@ class OutputViewer(QWidget):
         self.layout.addWidget(self.clear_button)
         self.queue = None
 
+        self.verbosity = fh.getConfValue(fh.ConfKeys.log_verbosity)
+        self.time_stamp = fh.getConfValue(fh.ConfKeys.log_timestamp)
         self.latestLine = ""
 
     def connectToLogObject(self, format=None):
         """
         Connect text_edit field to LogObject signal. A formatting function, which takes a string as input
-        and returns the modified string, can be provided for custom formatting, e.g. for adding a time stamp.
+        and returns the modified string, can be provided for custom formatting.
+        
+        Note: The conf file has an option to include time stamp to the displayed log.
         """
         log = LogObject()
         if format:
-            log.connect(lambda s: self.appendText(format(s)))
+            log.connect(lambda s, v, ts: self.appendText(format(s), v, ts))
         else:
-            log.connect(lambda s: self.appendText(s + "\n"))
+            log.connect(self.appendText)
         log.disconnectDefault()
+
+    def addTimeStamp(self, str, time_stamp):
+        """
+        Adds a time stamp to the provided string.
+        """
+        return "{} [{}]".format(str, time_stamp)
 
     def redirectStdOut(self):
         """
@@ -85,17 +96,37 @@ class OutputViewer(QWidget):
         self.thread.started.connect(self.receiver.run)
         self.thread.start()
 
-    @pyqtSlot(str)
-    def appendText(self,text):
-        self.text_edit.moveCursor(QTextCursor.End)
-        self.text_edit.insertPlainText( text )
+    @pyqtSlot(str, int, str)
+    def appendText(self, text, verbosity, time_stamp):
+        if self.verbosity >= verbosity:
+            self.text_edit.moveCursor(QTextCursor.End)
+            if(self.time_stamp):
+                self.text_edit.insertPlainText( f"{text} [{time_stamp}]\n" )
+            else:
+                self.text_edit.insertPlainText( f"{text}\n" )
 
-        lines = self.text_edit.toPlainText().splitlines(False)
-        if len(lines) > 0:
-            self.updateLogSignal.emit(lines[-1])
+            lines = self.text_edit.toPlainText().splitlines(False)
+            if len(lines) > 0:
+                self.updateLogSignal.emit(lines[-1])
 
     def clear(self):
         self.text_edit.clear()
+
+class LogToFile:
+    def __init__(self, verbosity=2, clear=True):
+        self.verbosity = verbosity
+        if clear:
+            self.write("", 2, mode='w')
+
+    def write(self, string, verbosity, mode='a'):
+        if self.verbosity >= verbosity:
+            with open("log.txt", mode) as file:
+                file.write(f"{string}")
+
+    def writeLine(self, line, verbosity, time_stamp, mode='a'):
+        if self.verbosity >= verbosity:
+            with open("log.txt", mode) as file:
+                file.write(f"{line} [{time_stamp}]\n")
 
 if __name__ == "__main__":
     # An example QObject (to be run in a QThread) which outputs information with print

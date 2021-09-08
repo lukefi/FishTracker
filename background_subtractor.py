@@ -65,7 +65,7 @@ class BackgroundSubtractor(QtCore.QObject):
             ind = floor(i * step)
             
             if self.stop_initializing:
-                LogObject().print("Stopped initializing (BG subtraction) at", ind)
+                LogObject().print2("Stopped initializing (BG subtraction) at", ind)
                 self.stop_initializing = False
                 self.mog_ready = False
                 self.initializing = False
@@ -87,7 +87,7 @@ class BackgroundSubtractor(QtCore.QObject):
         self.applied_mog_parameters = self.mog_parameters.copy()
 
         self.state_changed_signal.emit()
-        LogObject().print("BG Subtractor Initialized")
+        LogObject().print2("BG Subtractor Initialized")
 
         if hasattr(self.image_provider, "pausePolarLoading"):
             self.image_provider.pausePolarLoading(False)
@@ -102,7 +102,7 @@ class BackgroundSubtractor(QtCore.QObject):
             return fg_mask_mog
 
         except AttributeError as e:
-            LogObject().print(e, "\nDebug  (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
+            LogObject().print2(e, "\nDebug  (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
             print(e, "\nDebug (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
             return None
 

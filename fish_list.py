@@ -2,6 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
 from detector_parameters import LabeledSlider
 from collapsible_box import CollapsibleBox
+from log_object import LogObject
 
 # UI element for viewing and editing the tracked fish.
 # Tracked fish are stored and managed by fish_manager.py.
@@ -249,6 +250,7 @@ class FishList(QtWidgets.QWidget):
     def updateCountLabels(self):
         tc, uc, dc, nc = self.fish_manager.directionCounts()
 
+        LogObject().print1("Counts:", tc, uc, dc, nc)
         self.total_fish_label.setText("Total: {}".format(tc))
         self.up_fish_label.setText("Up: {}".format(uc))
         self.down_fish_label.setText("Down: {}".format(dc))

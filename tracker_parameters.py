@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import *
 from tracker import Tracker, TrackingState
 from detector_parameters import LabeledSlider
 from collapsible_box import CollapsibleBox
+from log_object import LogObject
 
 import json
 import os.path
@@ -79,8 +80,9 @@ class TrackerParametersView(QScrollArea):
             min_dets = self.tracker.filter_parameters.min_duration
             mad_limit = self.tracker.filter_parameters.mad_limit
 
+            LogObject().print1(f"Filter Parameters: {min_dets} {mad_limit}")
             used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
-            self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.parameters))
+            self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters))
 
         else:
             if self.detector.bg_subtractor.initializing:

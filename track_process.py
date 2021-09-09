@@ -5,8 +5,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from pathlib import Path
 
 from playback_manager import PlaybackManager, TestFigure
-from detector import Detector
-from tracker import Tracker
+from detector import Detector, DetectorParameters
+from tracker import Tracker, AllTrackerParameters
 from fish_manager import FishManager
 from output_widget import WriteStream, StreamReceiver
 import file_handler as fh
@@ -202,8 +202,15 @@ class TrackProcess(QtCore.QObject):
         self.app.quit()
 
 
-def trackProcess(display, file, save_directory, connection=None, params_detector=None, params_tracker=None, testFile=False):
+def trackProcess(display, file, save_directory, connection=None, params_detector_dict=None, params_tracker_dict=None, testFile=False):
     app = QtWidgets.QApplication(sys.argv)
+
+    params_detector = DetectorParameters()
+    params_detector.setParameterDict(params_detector_dict)
+
+    params_tracker = AllTrackerParameters()
+    params_tracker.setParameterDict(params_tracker_dict)
+
     process = TrackProcess(app, display, file, save_directory, connection, testFile, params_detector, params_tracker)
     process.track()
     sys.exit(app.exec_())

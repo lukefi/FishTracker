@@ -131,7 +131,7 @@ class BatchTrack(QtCore.QObject):
         self.active_processes_changed_signal.emit()
 
         proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory,child_conn,
-                                                        self.detector_params.copy(), self.tracker_params.copy(), test))
+                                                        self.detector_params.getParameterDict(), self.tracker_params.getParameterDict(), test))
         proc_info.process = proc
         proc.start()
 

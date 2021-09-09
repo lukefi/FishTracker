@@ -14,23 +14,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager, Event, TestFigure
 from log_object import LogObject
 from background_subtractor import BackgroundSubtractor, MOGParameters
+from serializable_parameters import SerializableParameters
 
 def nothing(x):
     pass
 
 def round_up_to_odd(f):
     return np.ceil(f) // 2 * 2 + 1
-
-PARAMETER_TYPES = {
-            "detection_size": int,
-	        "mog_var_thresh": int,
-	        "min_fg_pixels": int,
-	        "median_size": int,
-	        "nof_bg_frames": int,
-	        "learning_rate": float,
-	        "dbscan_eps": int,
-	        "dbscan_min_samples": int
-        }
 
 class Detector():
 
@@ -460,8 +450,21 @@ class Detector():
 		self.all_computed_event()
 
 
-class DetectorParameters:
+class DetectorParameters(SerializableParameters):
+
+	PARAMETER_TYPES = {
+		"detection_size": int,
+		"mog_var_thresh": int,
+	    "min_fg_pixels": int,
+        "median_size": int,
+        "nof_bg_frames": int,
+        "learning_rate": float,
+        "dbscan_eps": int,
+        "dbscan_min_samples": int
+		}
+
 	def __init__(self, mog_parameters=None, detection_size=10, min_fg_pixels=25, median_size=3, dbscan_eps=10, dbscan_min_samples=10):
+		super().__init__()
 
 		if mog_parameters is None:
 			self.mog_parameters = MOGParameters()
@@ -505,23 +508,6 @@ class DetectorParameters:
 	        "dbscan_eps": self.dbscan_eps,
 	        "dbscan_min_samples": self.dbscan_min_samples
         }
-
-	def setParameterDict(self, dict):
-		for key, value in dict.items():
-			if hasattr(self, key) and key in PARAMETER_TYPES:
-				try:
-					setattr(self, key, PARAMETER_TYPES[key](value))
-				except ValueError as e:
-					LogObject().print("Error: Invalid value in detector parameters file,", e)
-			elif hasattr(self.mog_parameters, key) and key in PARAMETER_TYPES:
-				try:
-					setattr(self.mog_parameters, key, PARAMETER_TYPES[key](value))
-				except ValueError as e:
-					LogObject().print("Error: Invalid value in detector parameters file,", e)
-			else:
-				LogObject().print("Error: Invalid parameters: {}: {}".format(key, value))
-
-
 
 
 class Detection:

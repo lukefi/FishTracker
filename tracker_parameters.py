@@ -109,18 +109,18 @@ class TrackerParametersView(QScrollArea):
 
         # Parameters for primary tracking
         self.form_layout_p = QFormLayout()
-        self.max_age_slider_p = LabeledSlider("Max age", self.form_layout_p, [self.tracker.parameters.setMaxAge],
+        self.max_age_slider_p = LabeledSlider("Max age", self.form_layout_p, [lambda x: self.tracker.parameters.setMaxAge(x)],
                                               self.tracker.parameters.max_age, 1, 100, self)
-        self.min_hits_slider_p = LabeledSlider("Min hits", self.form_layout_p, [self.tracker.parameters.setMinHits],
+        self.min_hits_slider_p = LabeledSlider("Min hits", self.form_layout_p, [lambda x: self.tracker.parameters.setMinHits(x)],
                                                self.tracker.parameters.min_hits, 1, 10, self)
-        self.search_radius_slider_p = LabeledSlider("Search radius", self.form_layout_p, [self.tracker.parameters.setSearchRadius],
+        self.search_radius_slider_p = LabeledSlider("Search radius", self.form_layout_p, [lambda x: self.tracker.parameters.setSearchRadius(x)],
                                                     self.tracker.parameters.search_radius, 1, 100, self)
 
         self.vertical_spacer1 = QSpacerItem(0, 5, QSizePolicy.Minimum, QSizePolicy.Maximum)
         self.form_layout_p.addItem(self.vertical_spacer1)
 
         self.trim_tails_checkbox_p = QCheckBox("", self)
-        self.trim_tails_checkbox_p.stateChanged.connect(self.tracker.parameters.setTrimTails)
+        self.trim_tails_checkbox_p.stateChanged.connect(lambda x: self.tracker.parameters.setTrimTails(x))
         self.form_layout_p.addRow("Trim tails", self.trim_tails_checkbox_p)
 
         self.collapsible_p = CollapsibleBox("Primary tracking", self)
@@ -150,37 +150,28 @@ class TrackerParametersView(QScrollArea):
         self.form_layout_f = QFormLayout()
         self.collapsible_f = CollapsibleBox("Filtering", self)
 
-        self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [self.tracker.filter_parameters.setMinDuration],
+        self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [lambda x: self.tracker.filter_parameters.setMinDuration(x)],
                                                    self.tracker.filter_parameters.min_duration, 1, 50, self)
-        self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [self.tracker.filter_parameters.setMADLimit],
+        self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [lambda x: self.tracker.filter_parameters.setMADLimit(x)],
                                         self.tracker.filter_parameters.mad_limit, 0, 50, self)
-
-        #if self.fish_manager is not None:
-        #    self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [self.tracker.filter_parameters.setMinDuration],
-        #                                               self.tracker.filter_parameters.min_duration, 1, 50, self)
-        #    self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [self.tracker.filter_parameters.setMADLimit],
-        #                                    self.tracker.filter_parameters.mad_limit, 0, 50, self)
-        #else:
-        #    self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [], 1, 1, 50, self)
-        #    self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [], 0, 0, 50, self)
 
         self.collapsible_f.setContentLayout(self.form_layout_f)
         self.vertical_layout.addWidget(self.collapsible_f)
 
         # Parameters for secondary tracking
         self.form_layout_s = QFormLayout()
-        self.max_age_slider_s = LabeledSlider("Max age", self.form_layout_s, [self.tracker.secondary_parameters.setMaxAge],
+        self.max_age_slider_s = LabeledSlider("Max age", self.form_layout_s, [lambda x: self.tracker.secondary_parameters.setMaxAge(x)],
                                               self.tracker.secondary_parameters.max_age, 1, 100, self)
-        self.min_hits_slider_s = LabeledSlider("Min hits", self.form_layout_s, [self.tracker.secondary_parameters.setMinHits],
+        self.min_hits_slider_s = LabeledSlider("Min hits", self.form_layout_s, [lambda x: self.tracker.secondary_parameters.setMinHits(x)],
                                                self.tracker.secondary_parameters.min_hits, 1, 10, self)
-        self.search_radius_slider_s = LabeledSlider("Search radius", self.form_layout_s, [self.tracker.secondary_parameters.setSearchRadius],
+        self.search_radius_slider_s = LabeledSlider("Search radius", self.form_layout_s, [lambda x: self.tracker.secondary_parameters.setSearchRadius(x)],
                                                     self.tracker.secondary_parameters.search_radius, 1, 100, self)
 
         self.vertical_spacer3 = QSpacerItem(0, 5, QSizePolicy.Minimum, QSizePolicy.Maximum)
         self.form_layout_s.addItem(self.vertical_spacer3)
 
         self.trim_tails_checkbox_s = QCheckBox("", self)
-        self.trim_tails_checkbox_s.stateChanged.connect(self.tracker.secondary_parameters.setTrimTails)
+        self.trim_tails_checkbox_s.stateChanged.connect(lambda x: self.tracker.secondary_parameters.setTrimTails(x))
         self.form_layout_s.addRow("Trim tails", self.trim_tails_checkbox_s)
 
         self.collapsible_s = CollapsibleBox("Secondary tracking", self)
@@ -253,15 +244,7 @@ class TrackerParametersView(QScrollArea):
         self.refreshValues()
 
     def saveJSON(self):
-        p_dict = self.tracker.parameters.getParameterDict()
-        f_dict = self.tracker.filter_parameters.getParameterDict()
-        s_dict = self.tracker.secondary_parameters.getParameterDict()
-
-        dict = {
-            "primary_tracking": p_dict,
-            "filtering": f_dict,
-            "secondary_tracking": s_dict
-            }
+        dict = self.tracker.getAllParameters().getParameterDict()
 
         try:
             with open(PARAMETERS_PATH, "w") as f:
@@ -280,14 +263,13 @@ class TrackerParametersView(QScrollArea):
             print("Error: Invalid tracker parameters file:", e)
             return
 
-        if "primary_tracking" in dict:
-            self.tracker.parameters.setParameterDict(dict["primary_tracking"])
-        if "filtering" in dict:
-            self.tracker.filter_parameters.setParameterDict(dict["filtering"])
-        if "secondary_tracking" in dict:
-            self.tracker.secondary_parameters.setParameterDict(dict["secondary_tracking"])
-
-        self.refreshValues()
+        all_params = self.tracker.getAllParameters()
+        try:
+            all_params.setParameterDict(dict)
+            self.tracker.setAllParameters(all_params)
+            self.refreshValues()
+        except TypeError as e:
+            LogObject().print2(e)
 
     def refreshValues(self):
         params = self.tracker.parameters

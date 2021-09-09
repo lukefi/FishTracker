@@ -4,12 +4,16 @@ import seaborn as sns
 from enum import Enum
 from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
+from serializable_parameters import SerializableParameters
 from log_object import LogObject
 
 class TrackingState(Enum):
     IDLE = 1
     PRIMARY = 2
     SECONDARY = 3
+
+class AllTrackerParameters:
+    pass
 
 class Tracker(QtCore.QObject):
 
@@ -42,6 +46,7 @@ class Tracker(QtCore.QObject):
         self.applied_secondary_parameters = None
         self.tracks_by_frame = {}
 
+    # TODO: Use AllTrackerParameters instead of separate objects.
     def resetParameters(self):
         self.parameters = TrackerParameters()
         self.parameters.values_changed_signal.connect(self.state_changed_signal)
@@ -227,8 +232,13 @@ class Tracker(QtCore.QObject):
         else:
             return None
 
-    def getAllParameters(self):
+    def getAllParameters(self) -> AllTrackerParameters:
         return AllTrackerParameters(self.parameters.copy(), self.filter_parameters.copy(), self.secondary_parameters.copy())
+
+    def setAllParameters(self, all_params: AllTrackerParameters):
+        self.parameters = all_params.primary.copy()
+        self.filter_parameters = all_params.filter.copy()
+        self.secondary_parameters = all_params.secondary.copy()
 
 
 class AllTrackerParameters(QtCore.QObject):
@@ -249,16 +259,33 @@ class AllTrackerParameters(QtCore.QObject):
     def copy(self):
         return AllTrackerParameters(self.primary.copy(), self.filter.copy(), self.secondary.copy())
 
-TRACKER_PARAMETER_TYPES = {
-    "max_age": int,
-    "min_hits": int,
-    "search_radius": int,
-    "trim_tails": bool
-    }
+    def getParameterDict(self):
+        return {
+            "primary_tracking": self.primary.getParameterDict(),
+            "filtering": self.filter.getParameterDict(),
+            "secondary_tracking": self.secondary.getParameterDict()
+            }
 
-class TrackerParameters(QtCore.QObject):
+    def setParameterDict(self, dictionary):
+        if type(dictionary) != dict:
+            raise TypeError(f"Cannot set values of '{type(self).__name__}' from a '{type(dictionary).__name__}' object.")
 
-    values_changed_signal = QtCore.pyqtSignal()
+        if "primary_tracking" in dictionary:
+            self.primary.setParameterDict(dictionary["primary_tracking"])
+        if "filtering" in dictionary:
+            self.filter.setParameterDict(dictionary["filtering"])
+        if "secondary_tracking" in dictionary:
+            self.secondary.setParameterDict(dictionary["secondary_tracking"])
+
+class TrackerParameters(SerializableParameters):
+
+    PARAMETER_TYPES = {
+        "max_age": int,
+        "min_hits": int,
+        "search_radius": int,
+        "trim_tails": bool
+        }
+    FILE_NAME = "tracker parameters"
 
     def __init__(self, max_age = 10, min_hits = 5, search_radius = 10, trim_tails = True):
         super().__init__()
@@ -291,28 +318,13 @@ class TrackerParameters(QtCore.QObject):
             "trim_tails": self.trim_tails
         }
 
-    def setParameterDict(self, dict):
-        for key, value in dict.items():
-            if not hasattr(self, key):
-                print("Error: Invalid parameters: {}: {}".format(key, value))
-                continue
-
-            if not key in TRACKER_PARAMETER_TYPES:
-                print("Error: Key [{}] not in TRACKER_PARAMETER_TYPES".format(key, value))
-                continue
-
-            try:
-                setattr(self, key, TRACKER_PARAMETER_TYPES[key](value))
-            except ValueError as e:
-                print("Error: Invalid value in tracker parameters file,", e)
-
     def setMaxAge(self, value):
         try:
             self.max_age = int(value)
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
     def setMinHits(self, value):
@@ -321,7 +333,7 @@ class TrackerParameters(QtCore.QObject):
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
     def setSearchRadius(self, value):
@@ -330,7 +342,7 @@ class TrackerParameters(QtCore.QObject):
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
     def setTrimTails(self, value):
@@ -339,19 +351,16 @@ class TrackerParameters(QtCore.QObject):
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
 
-FILTER_PARAMETER_TYPES = {
-    "min_duration": int,
-    "mad_limit": int
-    }
+class FilterParameters(SerializableParameters):
 
-
-class FilterParameters(QtCore.QObject):
-
-    values_changed_signal = QtCore.pyqtSignal()
+    PARAMETER_TYPES = {
+        "min_duration": int,
+        "mad_limit": int
+        }
 
     def __init__(self, min_duration=2, mad_limit=0):
         super().__init__()
@@ -378,28 +387,13 @@ class FilterParameters(QtCore.QObject):
             "mad_limit": self.mad_limit
         }
 
-    def setParameterDict(self, dict):
-        for key, value in dict.items():
-            if not hasattr(self, key):
-                print("Error: Invalid parameters: {}: {}".format(key, value))
-                continue
-
-            if not key in FILTER_PARAMETER_TYPES:
-                print("Error: Key [{}] not in FILTER_PARAMETER_TYPES".format(key, value))
-                continue
-
-            try:
-                setattr(self, key, FILTER_PARAMETER_TYPES[key](value))
-            except ValueError as e:
-                print("Error: Invalid value in filter parameters file,", e)
-
     def setMinDuration(self, value):
         try:
             self.min_duration = int(value)
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
     def setMADLimit(self, value):
@@ -408,7 +402,7 @@ class FilterParameters(QtCore.QObject):
             self.values_changed_signal.emit()
             return True
         except ValueError as e:
-            LogObject().print(e)
+            LogObject().print2(e)
             return False
 
 

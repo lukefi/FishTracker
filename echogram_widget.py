@@ -91,10 +91,10 @@ class EchoFigure(ZoomableQLabel):
         This enables reusing a previous image until the image has been refreshed.
         """
 
-        if pixmap is not None:
-            current_frames = self.x_max_limit - self.x_min_limit
-            shown_frames = self.shown_x_max_limit - self.shown_x_min_limit
+        current_frames = self.x_max_limit - self.x_min_limit
+        shown_frames = self.shown_x_max_limit - self.shown_x_min_limit
 
+        if pixmap is not None and shown_frames > 0 and current_frames > 0:
             source_L = max(0, self.x_min_limit - self.shown_x_min_limit)
             source_L = int(source_L / shown_frames * self.shown_width)
 

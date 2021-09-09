@@ -7,8 +7,8 @@ from enum import Enum
 from datetime import datetime
 
 from playback_manager import PlaybackManager, TestFigure, Worker
-from detector import Detector
-from tracker import Tracker
+from detector import Detector, DetectorParameters
+from tracker import Tracker, AllTrackerParameters, TrackerParameters, FilterParameters
 import file_handler as fh
 import track_process as tp
 from output_widget import WriteStream
@@ -43,8 +43,21 @@ class BatchTrack(QtCore.QObject):
         LogObject().print("Display: ", display)
         self.files = files
         self.display = display
-        self.detector_params = params_detector
-        self.tracker_params = params_tracker
+
+        if params_detector is None:
+            LogObject().print2("BatchTrack: Using default parameters for Detector.")
+            self.detector_params = DetectorParameters()
+        else:
+            self.detector_params = params_detector
+
+        if params_tracker is None:
+            LogObject().print2("BatchTrack: Using default parameters for Tracker.")
+            primary = TrackerParameters()
+            filter = FilterParameters()
+            secondary = TrackerParameters()
+            self.tracker_params = AllTrackerParameters(primary, filter, secondary)
+        else:
+            self.tracker_params = params_tracker
 
         if create_directory:
             date_time_directory = "batch_{}".format(datetime.now().strftime("%Y-%m-%d-%H%M%S"))
@@ -200,7 +213,6 @@ class BatchTrack(QtCore.QObject):
 
 if __name__ == "__main__":
     import argparse
-    import file_handler as fh
 
     app = QtWidgets.QApplication(sys.argv)
 

@@ -233,6 +233,8 @@ class Tracker(QtCore.QObject):
 
 class AllTrackerParameters(QtCore.QObject):
     def __init__(self, primary, filter, secondary):
+        super().__init__()
+
         self.primary = primary
         self.filter = filter
         self.secondary = secondary

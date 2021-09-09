@@ -509,6 +509,13 @@ class DetectorParameters(SerializableParameters):
 	        "dbscan_min_samples": self.dbscan_min_samples
         }
 
+	def setParameterDict(self, dict):
+		for key, value in dict.items():
+			if hasattr(self.mog_parameters, key) and key in MOGParameters.PARAMETER_TYPES:
+				self.mog_parameters.setKeyValuePair(key, value)
+			else:
+				self.setKeyValuePair(key, value)
+
 
 class Detection:
 	def __init__(self, label):

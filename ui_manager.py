@@ -256,7 +256,7 @@ def launch_ui():
     save_manager = SaveManager(playback_manager, detector, tracker, fish_manager)
 
     detector.all_computed_event.append(playback_manager.refreshFrame)
-    tracker.all_computed_signal.connect(playback_manager.refreshFrame)
+    tracker.all_computed_signal.connect(lambda x: playback_manager.refreshFrame)
 
     playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))
 

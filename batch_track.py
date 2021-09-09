@@ -38,11 +38,12 @@ class BatchTrack(QtCore.QObject):
     # Signaled when all processes are finished or terminated.
     exit_signal = QtCore.pyqtSignal(bool)
 
-    def __init__(self, display, files, save_directory, parallel=1, create_directory=True, params_detector=None, params_tracker=None):
+    def __init__(self, display, files, save_directory, parallel=1, create_directory=True, params_detector=None, params_tracker=None, secondary_track=False):
         super().__init__()
         LogObject().print("Display: ", display)
         self.files = files
         self.display = display
+        self.secondary_track = secondary_track
 
         if params_detector is None:
             LogObject().print2("BatchTrack: Using default parameters for Detector.")
@@ -131,7 +132,8 @@ class BatchTrack(QtCore.QObject):
         self.active_processes_changed_signal.emit()
 
         proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory,child_conn,
-                                                        self.detector_params.getParameterDict(), self.tracker_params.getParameterDict(), test))
+                                                        self.detector_params.getParameterDict(), self.tracker_params.getParameterDict(),
+                                                        self.secondary_track, test))
         proc_info.process = proc
         proc.start()
 
@@ -218,13 +220,14 @@ if __name__ == "__main__":
 
     parser = tp.getDefaultParser()
     parser.add_argument('-p', '--parallel', type=int, default=4, help="number of files processed simultaneously in parallel")
+
     args = parser.parse_args()
     files = tp.getFiles(args)
     save_directory = fh.getLatestSaveDirectory()
 
     LogObject().print(files)
 
-    batch_track = BatchTrack(args.display, files, save_directory, args.parallel)
+    batch_track = BatchTrack(args.display, files, save_directory, args.parallel,params_detector=DetectorParameters(None, 15, 15, 9, 15, 15), secondary_track=True)
     batch_track.exit_signal.connect(lambda b: app.exit())
 
     # Delay beginTrack

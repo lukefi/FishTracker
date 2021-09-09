@@ -50,9 +50,9 @@ class LabeledSlider:
 
         self.value.setText(self.formatting.format(value))
         if self.reverse_mapping:
-            self.slider.setValue(self.reverse_mapping(value))
+            self.slider.setValue(int(self.reverse_mapping(value)))
         else:
-            self.slider.setValue(value)
+            self.slider.setValue(int(value))
 
         self.slider.blockSignals(False)
 

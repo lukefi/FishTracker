@@ -24,7 +24,7 @@ class Tracker(QtCore.QObject):
     state_changed_signal = QtCore.pyqtSignal()
 
     # When tracker has computed all available frames.
-    all_computed_signal = QtCore.pyqtSignal()
+    all_computed_signal = QtCore.pyqtSignal(TrackingState)
 
     def __init__(self, detector):
         super().__init__()
@@ -86,7 +86,7 @@ class Tracker(QtCore.QObject):
 
         self.tracking_state = TrackingState.IDLE
         self.state_changed_signal.emit()
-        self.all_computed_signal.emit()
+        self.all_computed_signal.emit(TrackingState.PRIMARY)
 
     def secondaryTrack(self, used_detections, tracker_parameters):
         """
@@ -120,7 +120,7 @@ class Tracker(QtCore.QObject):
 
         self.tracking_state = TrackingState.IDLE
         self.state_changed_signal.emit()
-        self.all_computed_signal.emit()
+        self.all_computed_signal.emit(TrackingState.SECONDARY)
 
     def detectionCount(self, detections):
         count = 0

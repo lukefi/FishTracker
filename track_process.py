@@ -6,7 +6,7 @@ from pathlib import Path
 
 from playback_manager import PlaybackManager, TestFigure
 from detector import Detector, DetectorParameters
-from tracker import Tracker, AllTrackerParameters
+from tracker import Tracker, AllTrackerParameters, TrackerParameters, FilterParameters, TrackingState
 from fish_manager import FishManager
 from output_widget import WriteStream, StreamReceiver
 import file_handler as fh
@@ -53,7 +53,7 @@ class TrackProcess(QtCore.QObject):
 
     exit_signal = QtCore.pyqtSignal()
 
-    def __init__(self, app, display, file, save_directory, connection=None, testFile=False, params_detector=None, params_tracker=None):
+    def __init__(self, app, display, file, save_directory, connection=None, testFile=False, params_detector=None, params_tracker=None, secondary_tracking=False):
         super().__init__()
         self.app = app
         self.display = display
@@ -62,6 +62,8 @@ class TrackProcess(QtCore.QObject):
         self.save_directory = os.path.abspath(save_directory)
         self.connection = connection
         self.testFile = testFile
+        self.secondary_tracking = secondary_tracking
+        self.secondary_tracking_started = False
         self.alive = True
 
         self.save_detections = True
@@ -75,7 +77,13 @@ class TrackProcess(QtCore.QObject):
         self.playback_manager = PlaybackManager(self.app, self.main_window)
 
         self.detector = Detector(self.playback_manager)
+        if params_detector is not None:
+            self.detector.parameters = params_detector
+
         self.tracker = Tracker(self.detector)
+        if params_tracker is not None:
+            self.tracker.setAllParameters(params_tracker)
+
         self.fish_manager = FishManager(self.playback_manager, self.tracker)
         self.playback_manager.fps = 100
 
@@ -117,6 +125,14 @@ class TrackProcess(QtCore.QObject):
         self.detector.initMOG()
         self.detector.computeAll()
         self.tracker.primaryTrack()
+
+        if self.secondary_tracking:
+            min_dets = self.tracker.filter_parameters.min_duration
+            mad_limit = self.tracker.filter_parameters.mad_limit
+            used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
+            self.secondary_tracking_started = True
+            self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters)
+
         if self.display:
             self.playback_manager.play()
 
@@ -146,10 +162,6 @@ class TrackProcess(QtCore.QObject):
         if self.display:
             self.figure = TestFigure(self.playback_manager.togglePlay)
             self.main_window.setCentralWidget(self.figure)
-
-        LogObject().print(self.detector.parameters)
-        LogObject().print(self.detector.bg_subtractor.mog_parameters)
-        LogObject().print(self.tracker.parameters)
 
         if self.display:
             self.main_window.show()
@@ -190,28 +202,29 @@ class TrackProcess(QtCore.QObject):
             track_path = self.getSaveFilePath("tracks.txt")
             self.fish_manager.saveToFile(track_path)
 
-    def onAllComputed(self):
+    def onAllComputed(self, tracking_state):
         """
         Saves and quits the process.
         """
-        self.saveResults()
-        self.quit()
+        if not self.secondary_tracking or tracking_state == TrackingState.SECONDARY:
+            self.saveResults()
+            self.quit()
 
     def quit(self):
         self.alive = False
         self.app.quit()
 
 
-def trackProcess(display, file, save_directory, connection=None, params_detector_dict=None, params_tracker_dict=None, testFile=False):
+def trackProcess(display, file, save_directory, connection=None, params_detector_dict=None, params_tracker_dict=None, secondary_tracking=False, testFile=False):
     app = QtWidgets.QApplication(sys.argv)
 
     params_detector = DetectorParameters()
     params_detector.setParameterDict(params_detector_dict)
 
-    params_tracker = AllTrackerParameters()
+    params_tracker = AllTrackerParameters(TrackerParameters(), FilterParameters(), TrackerParameters())
     params_tracker.setParameterDict(params_tracker_dict)
 
-    process = TrackProcess(app, display, file, save_directory, connection, testFile, params_detector, params_tracker)
+    process = TrackProcess(app, display, file, save_directory, connection, testFile, params_detector, params_tracker, secondary_tracking)
     process.track()
     sys.exit(app.exec_())
 

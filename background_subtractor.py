@@ -1,8 +1,10 @@
 ﻿import numpy as np
 import cv2
 from math import floor
-from log_object import LogObject
 from PyQt5 import QtCore
+
+from log_object import LogObject
+from serializable_parameters import SerializableParameters
 
 class BackgroundSubtractor(QtCore.QObject):
     """
@@ -121,23 +123,39 @@ class BackgroundSubtractor(QtCore.QObject):
     def abortComputing(self):
         self.applied_mog_parameters = None
 
-class MOGParameters:
-	def __init__(self, mog_var_thresh=11, nof_bg_frames=100, learning_rate=0.01):
-		self.mog_var_thresh = mog_var_thresh
-		self.nof_bg_frames = nof_bg_frames
-		self.learning_rate = learning_rate
-		self.mixture_count = 5
+class MOGParameters(SerializableParameters):
 
-	def __eq__(self, other):
-		if not isinstance(other, MOGParameters):
-			return False
+    PARAMETER_TYPES = {
+        "mog_var_thresh": int,
+        "nof_bg_frames": int,
+        "learning_rate": float
+        }
 
-		return self.mog_var_thresh == other.mog_var_thresh \
+    def __init__(self, mog_var_thresh=11, nof_bg_frames=100, learning_rate=0.01):
+        super().__init__()
+
+        self.mog_var_thresh = mog_var_thresh
+        self.nof_bg_frames = nof_bg_frames
+        self.learning_rate = learning_rate
+        self.mixture_count = 5
+
+    def __eq__(self, other):
+        if not isinstance(other, MOGParameters):
+            return False
+
+        return self.mog_var_thresh == other.mog_var_thresh \
 			and self.nof_bg_frames == other.nof_bg_frames \
 			and self.learning_rate == other.learning_rate
 
-	def __repr__(self):
-		return "MOG Parameters: {} {} {}".format(self.mog_var_thresh, self.nof_bg_frames, self.learning_rate)
+    def __repr__(self):
+        return "MOG Parameters: {} {} {}".format(self.mog_var_thresh, self.nof_bg_frames, self.learning_rate)
 
-	def copy(self):
-		return MOGParameters( self.mog_var_thresh, self.nof_bg_frames, self.learning_rate )
+    def copy(self):
+        return MOGParameters( self.mog_var_thresh, self.nof_bg_frames, self.learning_rate )
+
+    def getParameterDict(self):
+        return {
+	        "mog_var_thresh": self.mog_var_thresh,
+	        "nof_bg_frames": self.nof_bg_frames,
+	        "learning_rate": self.learning_rate
+        }

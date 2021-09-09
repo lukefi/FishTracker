@@ -14,18 +14,25 @@ class SerializableParameters(QtCore.QObject):
             raise TypeError(f"Cannot set values of '{type(self).__name__}' from a '{type(dictionary).__name__}' object.")
 
         for key, value in dictionary.items():
-            if not hasattr(self, key):
-                LogObject().print2(f"Error: Invalid parameters: {key}: {value}")
-                continue
+            self.setKeyValuePair(key, value)
 
-            if not key in self.PARAMETER_TYPES:
-                LogObject().print2(f"Error: Key [{key}] not in PARAMETER_TYPES of '{type(self).__name__}'")
-                continue
 
-            try:
-                setattr(self, key, self.PARAMETER_TYPES[key](value))
-            except (ValueError, TypeError) as e:
-                LogObject().print2(f"Error: Invalid value in '{type(self).__name__}' file,", e)
+    def setKeyValuePair(self, key, value):
+        if not hasattr(self, key):
+            LogObject().print2(f"Error: Invalid parameters: {key}: {value}")
+            return False
+
+        if not key in self.PARAMETER_TYPES:
+            LogObject().print2(f"Error: Key [{key}] not in PARAMETER_TYPES of '{type(self).__name__}'")
+            return False
+
+        try:
+            setattr(self, key, self.PARAMETER_TYPES[key](value))
+            return True
+        except (ValueError, TypeError) as e:
+            LogObject().print2(f"Error: Invalid value in '{type(self).__name__}' file,", e)
+            return False
+
 
 
 if __name__ == "__main__":

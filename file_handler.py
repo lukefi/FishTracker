@@ -300,30 +300,44 @@ def writeConf(conf):
         json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
 
 class ConfKeys(Enum):
+    batch_save_detections = auto()
+    batch_save_tracks = auto()
+    batch_save_complete = auto()
     latest_directory = auto()
     latest_save_directory = auto()
     log_timestamp = auto()
     log_verbosity = auto()
     parallel_processes = auto()
+    save_as_binary = auto()
     sonar_height = auto()
     test_file_path = auto()
 
 conf_default_values = {
+    ConfKeys.batch_save_detections: False,
+    ConfKeys.batch_save_tracks: False,
+    ConfKeys.batch_save_complete: True,
+
     ConfKeys.latest_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_save_directory: str(os.path.expanduser("~")),
     ConfKeys.log_timestamp: False,
     ConfKeys.log_verbosity: 0,
     ConfKeys.parallel_processes: 1,
+    ConfKeys.save_as_binary: False,
     ConfKeys.sonar_height: 1000,
     ConfKeys.test_file_path: ""
     }
 
 conf_types = {
+    ConfKeys.batch_save_detections: bool,
+    ConfKeys.batch_save_tracks: bool,
+    ConfKeys.batch_save_complete: bool,
+
     ConfKeys.latest_directory: str,
     ConfKeys.latest_save_directory: str,
     ConfKeys.log_timestamp: bool,
     ConfKeys.log_verbosity: int,
     ConfKeys.parallel_processes: int,
+    ConfKeys.save_as_binary: bool,
     ConfKeys.sonar_height: int,
     ConfKeys.test_file_path: str
     }

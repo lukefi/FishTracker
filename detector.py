@@ -34,8 +34,6 @@ class Detector():
 		self.current_ind = 0
 		self.current_len = 0
 
-		self.ts = 0
-
 		#TODO: Change Events to pyqtSignals.
 
 		# When detector parameters change.
@@ -100,9 +98,6 @@ class Detector():
 			return None
 
 	def computeBase(self, ind, image, get_images=False, show_size=True):
-		# Update timestamp, TODO read from data
-		self.ts += 0.1
-
 		image_o = image_o_gray = image
 		fg_mask_mog = self.bg_subtractor.subtractBG(image_o)
 		if fg_mask_mog is None:
@@ -191,7 +186,6 @@ class Detector():
 		self.all_computed_event()
 
 	def updateVerticalDetections(self):
-		LogObject().print("Updated")
 		self.vertical_detections = [[d.distance for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
 
 	def abortComputing(self, mog_aborted):
@@ -515,6 +509,8 @@ class DetectorParameters(SerializableParameters):
 				self.mog_parameters.setKeyValuePair(key, value)
 			else:
 				self.setKeyValuePair(key, value)
+
+		self.values_changed_signal.emit()
 
 
 class Detection:

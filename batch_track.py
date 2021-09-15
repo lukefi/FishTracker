@@ -14,7 +14,7 @@ import track_process as tp
 from output_widget import WriteStream
 from log_object import LogObject
 
-class ProcessInfo(object):
+class BatchTrackInfo(object):
     def __init__(self, id, file, connection):
         self.id = id
         self.file = file
@@ -44,6 +44,11 @@ class BatchTrack(QtCore.QObject):
         self.files = files
         self.display = display
         self.secondary_track = secondary_track
+
+        self.save_detections = fh.getConfValue(fh.ConfKeys.batch_save_detections)
+        self.save_tracks = fh.getConfValue(fh.ConfKeys.batch_save_tracks)
+        self.save_complete = fh.getConfValue(fh.ConfKeys.batch_save_complete)
+        self.as_binary = fh.getConfValue(fh.ConfKeys.save_as_binary)
 
         if params_detector is None:
             LogObject().print2("BatchTrack: Using default parameters for Detector.")
@@ -90,66 +95,73 @@ class BatchTrack(QtCore.QObject):
         worker = Worker(self.communicate)
         self.thread_pool.start(worker)
 
+        # If using test file (defined in conf.json)
         if test:
-            # If using test file (defined in conf.json)
-
-            parent_conn, child_conn = mp.Pipe()
             file = fh.getTestFilePath()
-            proc_info = ProcessInfo(id, file, parent_conn)
-            self.processes.append(proc_info)
-
-            worker = Worker(self.track, proc_info, child_conn, True)
-            self.thread_pool.start(worker)
-            LogObject().print("Created Worker for file " + file)
+            self.startProcess(file, id, True)
             self.n_processes = 1
             self.total_processes = 1
 
+        # Normal use
         else:
-            # Normal use
-
             for file in self.files:
-                parent_conn, child_conn = mp.Pipe()
-                proc_info = ProcessInfo(id, file, parent_conn)
-                self.processes.append(proc_info)
-
-                worker = Worker(self.track, proc_info, child_conn, False)
-                self.thread_pool.start(worker)
-                LogObject().print("Created Worker for file " + file)
+                self.startProcess(file, id, False)
                 id += 1
                 self.n_processes += 1
 
         LogObject().print("Total processes:", self.n_processes)
-        #self.communicate()
 
-    def track(self, proc_info, child_conn, test):
+    def startProcess(self, file, id, test):
+        parent_conn, child_conn = mp.Pipe()
+        bt_info = BatchTrackInfo(id, file, parent_conn)
+        self.processes.append(bt_info)
+
+        worker = Worker(self.track, bt_info, child_conn, test)
+        self.thread_pool.start(worker)
+        LogObject().print("Created Worker for file " + file)
+
+    def track(self, bt_info, child_conn, test):
         """
         Starts a process that runs tp.trackProcess with file as a parameter.
         Waits for the process to finish before exiting. This way thread_pool will
         not start more processes in parallel than is defined.
         """
 
-        self.active_processes.append(proc_info.id)
+        self.active_processes.append(bt_info.id)
         self.active_processes_changed_signal.emit()
 
-        proc = mp.Process(target=tp.trackProcess, args=(self.display, proc_info.file, self.save_directory,child_conn,
-                                                        self.detector_params.getParameterDict(), self.tracker_params.getParameterDict(),
-                                                        self.secondary_track, test))
-        proc_info.process = proc
+        process_info = tp.TrackProcessInfo(
+            display = self.display,
+            file = bt_info.file,
+            save_directory = self.save_directory,
+            connection = child_conn,
+            params_detector_dict = self.detector_params.getParameterDict(),
+            params_tracker_dict = self.tracker_params.getParameterDict(),
+            secondary_tracking = self.secondary_track,
+            test_file = test,
+            save_detections = self.save_detections,
+            save_tracks = self.save_tracks,
+            save_complete = self.save_complete,
+            as_binary = self.as_binary
+            )
+
+        proc = mp.Process(target=tp.trackProcess, args=(process_info,))
+        bt_info.process = proc
         proc.start()
 
         proc.join()
 
-        self.active_processes.remove(proc_info.id)
+        self.active_processes.remove(bt_info.id)
         self.active_processes_changed_signal.emit()
 
-        self.processFinished(proc_info)
+        self.processFinished(bt_info)
 
-    def processFinished(self, proc_info):
+    def processFinished(self, bt_info):
         """
         Reduces n_processes by one and if none are remaining, emits the exit_signal
         """
 
-        LogObject().print("File {} finished.".format(proc_info.file))
+        LogObject().print("File {} finished.".format(bt_info.file))
         self.n_processes -= 1
         if self.n_processes <= 0:
             # Let main thread (running communicate) know the process is about to quit
@@ -175,9 +187,9 @@ class BatchTrack(QtCore.QObject):
         """
         
         while self.state is ProcessState.RUNNING or self.state is ProcessState.INITIALIZING or time.time() < self.exit_time + 1:
-            for proc_info in self.processes:
-                if(proc_info.process and proc_info.process.is_alive() and proc_info.connection.poll()):
-                    LogObject().print(proc_info.id, proc_info.connection.recv(), end="")
+            for bt_info in self.processes:
+                if(bt_info.process and bt_info.process.is_alive() and bt_info.connection.poll()):
+                    LogObject().print(bt_info.id, bt_info.connection.recv(), end="")
             time.sleep(0.01)
 
         if self.state is ProcessState.TERMINATING:
@@ -187,16 +199,16 @@ class BatchTrack(QtCore.QObject):
         """
         Handles the shutdown process initiated by method terminate.
         """
-        for proc_info in self.processes:
+        for bt_info in self.processes:
             try:
-                proc_info.connection.send((-1, "Terminate"))
+                bt_info.connection.send((-1, "Terminate"))
             except BrokenPipeError as e:
                 # Process not yet active
                 pass
 
             while True:
                 try:
-                    id, msg = proc_info.connection.recv()
+                    id, msg = bt_info.connection.recv()
                     if id == -1:
                         break
                 except EOFError:
@@ -204,11 +216,11 @@ class BatchTrack(QtCore.QObject):
                 except ValueError:
                     # Received message with no id
                     continue
-            LogObject().print("File [{}] terminated.".format(proc_info.id))
+            LogObject().print("File [{}] terminated.".format(bt_info.id))
 
-        for proc_info in self.processes:
-            if proc_info.process is not None:
-                proc_info.process.terminate()
+        for bt_info in self.processes:
+            if bt_info.process is not None:
+                bt_info.process.terminate()
 
         self.exit_signal.emit(False)
 

@@ -26,6 +26,7 @@ class TrackerParametersView(QScrollArea):
         self.detector.state_changed_event.append(self.setButtonsEnabled)
         self.tracker.state_changed_signal.connect(self.setButtonsEnabled)
         self.tracker.state_changed_signal.connect(self.setButtonTexts)
+        self.tracker.parameters_changed_signal.connect(self.refreshValues)
         self.setButtonsEnabled()
 
     def setButtonsEnabled(self):

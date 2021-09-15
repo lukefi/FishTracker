@@ -7,6 +7,7 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from playback_manager import PlaybackManager
 from batch_track import BatchTrack
 from log_object import LogObject
+from collapsible_box import CollapsibleBox
 
 class BatchDialog(QtWidgets.QDialog):
     """
@@ -91,6 +92,39 @@ class BatchDialog(QtWidgets.QDialog):
         else:
             self.check_test = None
 
+        # Save options
+        self.form_layout_save = QtWidgets.QFormLayout()
+
+        def setupCheckbox(label, tooltip, layout, key):
+            qlabel = QtWidgets.QLabel(label)
+            qlabel.setToolTip(tooltip)
+            checkbox = QtWidgets.QCheckBox("")
+            checkbox.setToolTip(tooltip)
+            self.form_layout_save
+            layout.addRow(qlabel, checkbox)
+            checkbox.setChecked(fh.getConfValue(key))
+            checkbox.stateChanged.connect(lambda x: fh.setConfValue(key, x))
+            return checkbox
+
+        self.check_save_dets = setupCheckbox("Export detections\t\t", "Export detections to a text file.",
+                                             self.form_layout_save, fh.ConfKeys.batch_save_detections)
+        self.check_save_tracks = setupCheckbox("Export tracks", "Export tracks to a text file.",
+                                               self.form_layout_save, fh.ConfKeys.batch_save_tracks)
+        self.check_save_complete = setupCheckbox("Save results", "Save results to a .fish file.",
+                                                 self.form_layout_save, fh.ConfKeys.batch_save_complete)
+        self.check_binary = setupCheckbox("Binary format", "Save results to a binary format. JSON format is used otherwise.",
+                                          self.form_layout_save, fh.ConfKeys.save_as_binary)
+
+        #self.check_save_dets = LabeledCheckbox("Export detections", "Export detections to a text file.", self.form_layout_save)
+        #self.check_save_dets.checkbox.stateChanged.connect(self.setListDependentButtons)
+        #self.check_save_tracks = LabeledCheckbox("Export tracks", "Export tracks to a text file.", self.form_layout_save)
+        #self.check_save_complete = LabeledCheckbox("Save results", "Save results to a .fish file.", self.form_layout_save)
+        #self.check_binary = LabeledCheckbox("Binary format", "Save results to a binary format. JSON format is used otherwise.", self.form_layout_save)
+
+        self.collapsible_save = CollapsibleBox("Save options", self)
+        self.collapsible_save.setContentLayout(self.form_layout_save)
+        self.main_layout.addWidget(self.collapsible_save)
+
         # Modify files buttons
         self.list_btn_layout = QtWidgets.QHBoxLayout()
 
@@ -129,7 +163,6 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.setLayout(self.main_layout)
         self.setWindowTitle("Run batch")
-
 
     def parallelEditFinished(self):
         try:

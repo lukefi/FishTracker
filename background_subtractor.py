@@ -11,7 +11,10 @@ class BackgroundSubtractor(QtCore.QObject):
     Implements background subtraction for Detector / SonarView and Echogram.
     """
 
-    # When mog parameters change.
+    # When background subtractor parameters changes.
+    parameters_changed_signal = QtCore.pyqtSignal()
+
+    # When background subtractor state changes.
     state_changed_signal = QtCore.pyqtSignal()
 
     def __init__(self, image_provider):
@@ -38,6 +41,8 @@ class BackgroundSubtractor(QtCore.QObject):
 
     def resetParameters(self):
         self.mog_parameters = MOGParameters()
+        self.mog_parameters.values_changed_signal.connect(self.parameters_changed_signal)
+        self.parameters_changed_signal.emit()
 
     def initMOG(self):
         if hasattr(self.image_provider, "pausePolarLoading"):

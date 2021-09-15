@@ -20,7 +20,10 @@ class Tracker(QtCore.QObject):
     # When new computation is started. Parameter: clear previous results.
     init_signal = QtCore.pyqtSignal(bool)
 
-    # When tracker parameters change.
+    # When parameters are changed
+    parameters_changed_signal = QtCore.pyqtSignal()
+
+    # When tracker state changes.
     state_changed_signal = QtCore.pyqtSignal()
 
     # When tracker has computed all available frames.
@@ -48,14 +51,19 @@ class Tracker(QtCore.QObject):
 
     # TODO: Use AllTrackerParameters instead of separate objects.
     def resetParameters(self):
-        self.parameters = TrackerParameters()
-        self.parameters.values_changed_signal.connect(self.state_changed_signal)
+        self.setParameters(TrackerParameters(), FilterParameters(), TrackerParameters())
 
-        self.filter_parameters = FilterParameters()
-        self.filter_parameters.values_changed_signal.connect(self.state_changed_signal)
+    def setParameters(self, primary_parameters, filter_parameters, secondary_parameters):
+        self.parameters = primary_parameters
+        self.parameters.values_changed_signal.connect(self.parameters_changed_signal)
 
-        self.secondary_parameters = TrackerParameters()
-        self.secondary_parameters.values_changed_signal.connect(self.state_changed_signal)
+        self.filter_parameters = filter_parameters
+        self.filter_parameters.values_changed_signal.connect(self.parameters_changed_signal)
+
+        self.secondary_parameters = secondary_parameters
+        self.secondary_parameters.values_changed_signal.connect(self.parameters_changed_signal)
+
+        self.parameters_changed_signal.emit()
 
 
     def primaryTrack(self):
@@ -236,9 +244,19 @@ class Tracker(QtCore.QObject):
         return AllTrackerParameters(self.parameters.copy(), self.filter_parameters.copy(), self.secondary_parameters.copy())
 
     def setAllParameters(self, all_params: AllTrackerParameters):
-        self.parameters = all_params.primary.copy()
-        self.filter_parameters = all_params.filter.copy()
-        self.secondary_parameters = all_params.secondary.copy()
+        self.setParameters(
+            all_params.primary.copy(),
+            all_params.filter.copy(),
+            all_params.secondary.copy()
+            )
+
+    def setAllParametersFromDict(self, all_params_dict: dict):
+        all_params = self.getAllParameters()
+        try:
+            all_params.setParameterDict(all_params_dict)
+            self.setAllParameters(all_params)
+        except TypeError as e:
+            LogObject().print2(e)
 
 
 class AllTrackerParameters(QtCore.QObject):

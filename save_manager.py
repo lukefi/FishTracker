@@ -52,7 +52,7 @@ class SaveManager(QtCore.QObject):
 
 	file_loaded_event = QtCore.pyqtSignal()
 
-	def __init__(self, playback_manager, detector, tracker, fish_manager):
+	def __init__(self, playback_manager: PlaybackManager, detector: Detector, tracker: Tracker, fish_manager: FishManager):
 		super().__init__()
 
 		self.playback_manager = playback_manager
@@ -67,14 +67,18 @@ class SaveManager(QtCore.QObject):
 
 		self.playback_manager.file_closed.connect(self.onFileClosed)
 
-	def saveFile(self, path, binary):
+	def saveFile(self, path: str, binary: bool):
+		"""
+		Saves the contents of detector and tracker and the corresponding parameters to file.
+		"""
+
 		self.previous_path = path
 		self.fast_save_enabled = True
 
 		dp = self.detector.parameters
 		dp_dict = None if dp is None else dp.getParameterDict()
 
-		tp = self.tracker.parameters
+		tp = self.tracker.getAllParameters()
 		tp_dict = None if tp is None else tp.getParameterDict()
 
 		detections = self.detector.getSaveDictionary()
@@ -89,7 +93,10 @@ class SaveManager(QtCore.QObject):
 		data["fish"] = fish
 		self.saveData(path, data, binary)
 
-	def saveData(self, path, data, binary):
+	def saveData(self, path: str, data: dict, binary: bool):
+		"""
+		Helper method for writing the data to a file.
+		"""
 		if binary:
 			packed = msgpack.packb(data)
 			with open(path, "wb") as data_file:
@@ -98,7 +105,7 @@ class SaveManager(QtCore.QObject):
 			with open(path, "w") as data_file:
 				json.dump(data, data_file, indent=2, separators=(',', ': '))
 
-	def loadFile(self, path):
+	def loadFile(self, path: str):
 		try:
 			try:
 				with open(path, "r") as data_file:
@@ -128,7 +135,7 @@ class SaveManager(QtCore.QObject):
 		self.file_loaded_event.emit()
 		return True
 
-	def loadData(self, data, path):
+	def loadData(self, data: dict, path: str):
 		try:
 			file_path = os.path.abspath(data["path"])
 			secondary_path = os.path.abspath(os.path.join(os.path.dirname(path), os.path.basename(file_path)))
@@ -148,7 +155,7 @@ class SaveManager(QtCore.QObject):
 		try:
 			self.fish_manager.setUpDownInversion(self.temp_data["inverted upstream"])
 			self.detector.parameters.setParameterDict(self.temp_data["detector"])
-			self.tracker.parameters.setParameterDict(self.temp_data["tracker"])
+			self.tracker.setAllParametersFromDict(self.temp_data["tracker"])
 			self.detector.applySaveDictionary(self.temp_data["detections"])
 			dets = self.detector.detections
 			self.fish_manager.applySaveDictionary(self.temp_data["fish"], dets)

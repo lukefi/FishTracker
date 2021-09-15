@@ -16,6 +16,8 @@ class SerializableParameters(QtCore.QObject):
         for key, value in dictionary.items():
             self.setKeyValuePair(key, value)
 
+        self.values_changed_signal.emit()
+
 
     def setKeyValuePair(self, key, value):
         if not hasattr(self, key):

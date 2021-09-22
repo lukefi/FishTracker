@@ -124,14 +124,15 @@ class TrackProcess(QtCore.QObject):
 
     def setParametersFromDict(self, params_detector_dict: dict, params_tracker_dict: dict):
         if params_detector_dict is not None:
-            params_detector = DetectorParameters()
+            params_detector = DetectorParameters(self.detector.bg_subtractor.mog_parameters)
             params_detector.setParameterDict(params_detector_dict)
             self.detector.parameters = params_detector
 
         if params_tracker_dict is not None:
-            params_tracker = AllTrackerParameters(TrackerParameters(), FilterParameters(), TrackerParameters())
-            params_tracker.setParameterDict(params_tracker_dict)
-            self.tracker.setAllParameters(params_tracker)
+            #params_tracker = AllTrackerParameters(TrackerParameters(), FilterParameters(), TrackerParameters())
+            #params_tracker.setParameterDict(params_tracker_dict)
+            #self.tracker.setAllParameters(params_tracker)
+            self.tracker.setAllParametersFromDict(params_tracker_dict)
 
     def writeToConnection(self, value):
         if self.connection:
@@ -165,8 +166,8 @@ class TrackProcess(QtCore.QObject):
         self.tracker.primaryTrack()
 
         if self.secondary_tracking:
-            min_dets = self.tracker.filter_parameters.min_duration
-            mad_limit = self.tracker.filter_parameters.mad_limit
+            min_dets = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.min_duration)
+            mad_limit = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.mad_limit)
             used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
             self.secondary_tracking_started = True
             self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters)

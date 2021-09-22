@@ -7,7 +7,8 @@ from enum import Enum
 from datetime import datetime
 
 from playback_manager import PlaybackManager, TestFigure, Worker
-from detector import Detector, DetectorParameters
+from detector_parameters import DetectorParameters
+from detector import Detector
 from tracker import Tracker, AllTrackerParameters, TrackerParameters, FilterParameters
 import file_handler as fh
 import track_process as tp

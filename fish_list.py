@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from dropdown_delegate import DropdownDelegate
-from detector_parameters import LabeledSlider
+from detector_parameters_view import LabeledSlider
 from collapsible_box import CollapsibleBox
 from log_object import LogObject
 

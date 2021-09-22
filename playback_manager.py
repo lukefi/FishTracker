@@ -523,7 +523,7 @@ class PlaybackThread(QRunnable):
                         self.display_ind += 1
 
             except IndexError as e:
-                LogObject().print(e, self.display_ind, "/", len(self.buffer)-1)
+                LogObject().print2(e, self.display_ind, "/", len(self.buffer)-1)
                 self.signals.playback_ended_signal.emit()
 
     def clear(self):

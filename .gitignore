@@ -7,6 +7,7 @@ conf.json
 log.txt
 
 .vs
+.vscode
 .idea
 LocalTests/
 out/

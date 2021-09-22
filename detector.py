@@ -9,12 +9,14 @@ import random as rng
 import collections
 import os
 import sys
+import traceback
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from playback_manager import PlaybackManager, Event, TestFigure
 from log_object import LogObject
-from background_subtractor import BackgroundSubtractor, MOGParameters
-from serializable_parameters import SerializableParameters
+from mog_parameters import MOGParameters
+from detector_parameters import DetectorParameters
+from background_subtractor import BackgroundSubtractor
 
 def nothing(x):
     pass
@@ -22,11 +24,27 @@ def nothing(x):
 def round_up_to_odd(f):
     return np.ceil(f) // 2 * 2 + 1
 
-class Detector():
+class Detector(QtCore.QObject):
+
+	# When detector parameters change.
+	parameters_changed_signal = QtCore.pyqtSignal()
+
+	# When detector state changes.
+	state_changed_signal = QtCore.pyqtSignal()
+
+	# When displayed results change (e.g. when a new frame is displayed). Parameter: number of detections displayed.
+	data_changed_signal = QtCore.pyqtSignal(int)
+
+	# When detector has computed all available frames.
+	all_computed_signal = QtCore.pyqtSignal()
 
 	def __init__(self, image_provider):
+		super().__init__()
 		self.image_provider = image_provider
 		self.bg_subtractor = BackgroundSubtractor(image_provider)
+		self.parameters = None
+		self.applied_parameters = None
+
 		self.resetParameters()
 		self.detections = [None]
 		self.vertical_detections = []
@@ -34,22 +52,10 @@ class Detector():
 		self.current_ind = 0
 		self.current_len = 0
 
-		#TODO: Change Events to pyqtSignals.
-
-		# When detector parameters change.
-		self.state_changed_event = Event()
-		self.bg_subtractor.state_changed_signal.connect(self.state_changed_event)
-
-		# When results change (e.g. when a new frame is displayed).
-		self.data_changed_event = Event()
-
-		# When detector has computed all available frames.
-		self.all_computed_event = Event()
+		self.bg_subtractor.state_changed_signal.connect(self.state_changed_signal)
 
 		self._show_echogram_detections = False
 		self.show_bgsub = False
-
-		self.applied_parameters = None
 
 		# [flag] Whether detector is computing all the frames.
 		self.computing = False
@@ -61,8 +67,20 @@ class Detector():
 		self.compute_on_event = False
 
 	def resetParameters(self):
-		self.bg_subtractor.resetParameters()
-		self.parameters = DetectorParameters(mog_parameters=self.bg_subtractor.mog_parameters)
+		self.setMOGParameters(MOGParameters())
+		self.setDetectorParameters(DetectorParameters())
+
+	def setDetectorParameters(self, parameters: DetectorParameters):
+		if self.parameters is not None:
+			self.parameters.values_changed_signal.disconnect(self.parameters_changed_signal)
+
+		#self.bg_subtractor.setParameters(parameters.mog_parameters)
+		self.parameters = parameters # DetectorParameters(mog_parameters=self.bg_subtractor.mog_parameters)
+		self.parameters.values_changed_signal.connect(self.parameters_changed_signal)
+		self.parameters_changed_signal.emit()
+
+	def setMOGParameters(self, parameters: MOGParameters):
+		self.bg_subtractor.setParameters(parameters)
 
 	def initMOG(self, clear_detections=True):
 		if clear_detections:
@@ -89,7 +107,7 @@ class Detector():
 		dets = self.detections[ind]
 		self.current_ind = ind
 		self.current_len = 0 if dets is None else len(self.detections[ind])
-		self.data_changed_event(self.current_len)
+		self.data_changed_signal.emit(self.current_len)
 
 	def getPolarTransform(self):
 		if hasattr(self.image_provider, "playback_thread"):
@@ -98,22 +116,28 @@ class Detector():
 			return None
 
 	def computeBase(self, ind, image, get_images=False, show_size=True):
+		params = self.parameters
+
 		image_o = image_o_gray = image
 		fg_mask_mog = self.bg_subtractor.subtractBG(image_o)
 		if fg_mask_mog is None:
 			return
 
 		fg_mask_cpy = fg_mask_mog
-		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, self.parameters.median_size)
+		fg_mask_filt = cv2.medianBlur(fg_mask_cpy, params.getParameter(DetectorParameters.ParametersEnum.median_size))
 
 		data_tr = np.nonzero(np.asarray(fg_mask_filt))
 		data = np.asarray(data_tr).T
 		detections = []
 
-		if data.shape[0] >= self.parameters.min_fg_pixels:
+		if get_images:
+			image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
+
+		if data.shape[0] >=params.getParameter(DetectorParameters.ParametersEnum.min_fg_pixels):
 
 			# DBSCAN clusterer, NOTE: parameters should be in UI / read from file
-			clusterer = cluster.DBSCAN(eps=self.parameters.dbscan_eps, min_samples=self.parameters.dbscan_min_samples)		
+			clusterer = cluster.DBSCAN(eps=params.getParameter(DetectorParameters.ParametersEnum.dbscan_eps),
+							  min_samples=params.getParameter(DetectorParameters.ParametersEnum.dbscan_min_samples))
 			labels = clusterer.fit_predict(data)
 		
 			data = data[labels != -1]
@@ -129,11 +153,10 @@ class Detector():
 						continue
 			
 					d = Detection(label)
-					d.init_from_data(foo, self.parameters.detection_size, polar_transform)
+					d.init_from_data(foo, params.getParameter(DetectorParameters.ParametersEnum.detection_size), polar_transform)
 					detections.append(d)
 
 				if get_images:
-					image_o_rgb = cv2.applyColorMap(image_o, cv2.COLORMAP_OCEAN)
 					colors = sns.color_palette('deep', np.unique(labels).max() + 1)
 					for d in detections:
 						image_o_rgb = d.visualize(image_o_rgb, colors[d.label], show_size)
@@ -147,9 +170,9 @@ class Detector():
 		self.computing = True
 		self.stop_computing = False
 		self.compute_on_event = False
-		self.state_changed_event()
+		self.state_changed_signal.emit()
 
-		LogObject().print1(self.parameters.mog_parameters)
+		LogObject().print1(self.bg_subtractor.mog_parameters)
 		LogObject().print1(self.parameters)
 
 		if self.bg_subtractor.parametersDirty():
@@ -182,8 +205,8 @@ class Detector():
 
 		self.updateVerticalDetections()
 
-		self.state_changed_event()
-		self.all_computed_event()
+		self.state_changed_signal.emit()
+		self.all_computed_signal.emit()
 
 	def updateVerticalDetections(self):
 		self.vertical_detections = [[d.distance for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
@@ -193,7 +216,7 @@ class Detector():
 		self.computing = False
 		self.compute_on_event = True
 
-		self.state_changed_event()
+		self.state_changed_signal.emit()
 		self.applied_parameters = None
 
 		if mog_aborted:
@@ -207,7 +230,8 @@ class Detector():
 		#self.detections_clearable = False
 		self.applied_parameters = None
 		self.compute_on_event = True
-		self.state_changed_event()
+		self.state_changed_signal.emit()
+		self.data_changed_signal.emit(0)
 		
 	def overlayDetections(self, image, detections=None, show_size=True):
 		if detections is None:
@@ -229,66 +253,13 @@ class Detector():
 
 		return image
 
-	def setDetectionSize(self, value):
-		try:
-			self.parameters.detection_size = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setMOGVarThresh(self, value):
-		try:
-			self.bg_subtractor.mog_parameters.mog_var_thresh = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setMinFGPixels(self, value):
-		try:
-			self.parameters.min_fg_pixels = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setMedianSize(self, value):
-		try:
-			self.parameters.median_size = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setNofBGFrames(self, value):
-		try:
-			self.bg_subtractor.mog_parameters.nof_bg_frames = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setLearningRate(self, value):
-		try:
-			self.bg_subtractor.mog_parameters.learning_rate = float(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setDBScanEps(self, value):
-		try:
-			self.parameters.dbscan_eps = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
-
-	def setDBScanMinSamples(self, value):
-		try:
-			self.parameters.dbscan_min_samples = int(value)
-			self.state_changed_event()
-		except ValueError as e:
-			LogObject().print(e)
+	def setParameter(self, key, value):
+		self.parameters.setKeyValuePair(key, value)
 
 	def setShowEchogramDetections(self, value):
 		self._show_echogram_detections = value
 		if not self._show_echogram_detections:
-			self.data_changed_event(0)
+			self.data_changed_signal.emit(0)
 
 	def toggleShowBGSubtraction(self):
 		self.show_bgsub = not self.show_bgsub
@@ -297,11 +268,14 @@ class Detector():
 		self.show_bgsub = value
 
 	def getDetection(self, ind):
-		dets = self.detections[ind]
-		if dets is None:
-			return []
+		try:
+			dets = self.detections[ind]
+			if dets is None:
+				return []
 
-		return [d for d in dets if d.center is not None]
+			return [d for d in dets if d.center is not None]
+		except IndexError:
+			LogObject().print2(traceback.format_exc())
 
 	def getDetections(self):
 		return [[d for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
@@ -311,12 +285,31 @@ class Detector():
 
 	def getParameterDict(self):
 		if self.parameters is not None:
-			return self.parameters.getParameterDict()
+			detector_params = self.parameters.getParameterDict()
+			bg_sub_params = self.bg_subtractor.mog_parameters.getParameterDict()
+
+			return { "bg_subtractor": bg_sub_params, "detector": detector_params }
 		else:
 			return None
 
+	def setParameterDict(self, param_dict, set_as_applied=False):
+		if "detector" in param_dict.keys():
+			self.parameters.setParameterDict(param_dict["detector"])
+			if set_as_applied:
+				self.applied_parameters = self.parameters.copy()
+		else:
+			LogObject().print2("Detector parameters not found.")
+
+		if "bg_subtractor" in param_dict.keys():
+			self.bg_subtractor.mog_parameters.setParameterDict(param_dict["bg_subtractor"])
+			if set_as_applied:
+				self.bg_subtractor.applyParameters()
+		else:
+			LogObject().print2("Background subtractor parameters not found.")
+
 	def bgSubtraction(self, image):
-		return self.bg_subtractor.subtractBGFiltered(image, self.parameters.median_size)
+		median_size = self.parameters.getParameter(DetectorParameters.ParametersEnum.median_size)
+		return self.bg_subtractor.subtractBGFiltered(image, median_size)
 
 	def parametersDirty(self):
 		return self.parameters != self.applied_parameters or self.bg_subtractor.parametersDirty()
@@ -412,11 +405,14 @@ class Detector():
 
 		return detections
 
-	def applySaveDictionary(self, data):
+	def applySaveDictionary(self, parameters, data):
 		"""
 		Load detections from data provided by SaveManager.
 		"""
 		self.clearDetections()
+
+		self.setParameterDict(parameters, True)
+
 		polar_transform = self.getPolarTransform()
 
 		for str_frame, frame_dets_data in data.items():
@@ -426,7 +422,8 @@ class Detector():
 				label = det_data[0]
 				det_data = det_data[1]
 				det = Detection(int(label))
-				det.init_from_data(det_data, self.parameters.detection_size, polar_transform)
+				detection_size = self.parameters.getParameter(DetectorParameters.ParametersEnum.detection_size)
+				det.init_from_data(det_data, detection_size, polar_transform)
 				frame_dets.append(det)
 
 			try:
@@ -435,82 +432,10 @@ class Detector():
 				print(frame, len(self.detections))
 				raise e
 
-		self.applied_parameters = self.parameters.copy()
-		self.bg_subtractor.setParameters(self.parameters.mog_parameters)
-
 		self.updateVerticalDetections()
 		self.compute_on_event = False
-		self.state_changed_event()
-		self.all_computed_event()
-
-
-class DetectorParameters(SerializableParameters):
-
-	PARAMETER_TYPES = {
-		"detection_size": int,
-		"mog_var_thresh": int,
-	    "min_fg_pixels": int,
-        "median_size": int,
-        "nof_bg_frames": int,
-        "learning_rate": float,
-        "dbscan_eps": int,
-        "dbscan_min_samples": int
-		}
-
-	def __init__(self, mog_parameters=None, detection_size=10, min_fg_pixels=25, median_size=3, dbscan_eps=10, dbscan_min_samples=10):
-		super().__init__()
-
-		if mog_parameters is None:
-			self.mog_parameters = MOGParameters()
-		else:
-			self.mog_parameters = mog_parameters
-
-		self.detection_size = detection_size
-		self.min_fg_pixels = min_fg_pixels
-		self.median_size = median_size
-		self.dbscan_eps = dbscan_eps
-		self.dbscan_min_samples = dbscan_min_samples
-
-	def __eq__(self, other):
-		if not isinstance(other, DetectorParameters):
-			return False
-
-		value = self.mog_parameters == other.mog_parameters \
-			and self.detection_size == other.detection_size \
-			and self.min_fg_pixels == other.min_fg_pixels \
-			and self.median_size == other.median_size \
-			and self.dbscan_eps == other.dbscan_eps \
-			and self.dbscan_min_samples == other.dbscan_min_samples
-
-		return value
-
-	def __repr__(self):
-		return "Detector Parameters: {} {} {} {} {}".format(self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples)
-
-	def copy(self):
-		mog_parameters = self.mog_parameters.copy()
-		return DetectorParameters( mog_parameters, self.detection_size, self.min_fg_pixels, self.median_size, self.dbscan_eps, self.dbscan_min_samples )
-
-	def getParameterDict(self):
-		return {
-            "detection_size": self.detection_size,
-	        "mog_var_thresh": self.mog_parameters.mog_var_thresh,
-	        "min_fg_pixels": self.min_fg_pixels,
-	        "median_size": self.median_size,
-	        "nof_bg_frames": self.mog_parameters.nof_bg_frames,
-	        "learning_rate": self.mog_parameters.learning_rate,
-	        "dbscan_eps": self.dbscan_eps,
-	        "dbscan_min_samples": self.dbscan_min_samples
-        }
-
-	def setParameterDict(self, dict):
-		for key, value in dict.items():
-			if hasattr(self.mog_parameters, key) and key in MOGParameters.PARAMETER_TYPES:
-				self.mog_parameters.setKeyValuePair(key, value)
-			else:
-				self.setKeyValuePair(key, value)
-
-		self.values_changed_signal.emit()
+		self.state_changed_signal.emit()
+		self.all_computed_signal.emit()
 
 
 class Detection:
@@ -651,18 +576,22 @@ class DetectorDisplay:
 			self.updateWindows(*images)
 
 	def showWindow(self):
-		cv2.namedWindow('fg_mask_mog', 1)
-		cv2.namedWindow('image_o_rgb', 1)
-		cv2.namedWindow('image_o_gray', 1)
-		cv2.namedWindow('fg_mask_filt', 1)
+		cv2.namedWindow('fg_mask_mog', cv2.WINDOW_NORMAL)
+		cv2.namedWindow('image_o_rgb', cv2.WINDOW_NORMAL)
+		cv2.namedWindow('image_o_gray', cv2.WINDOW_NORMAL)
+		cv2.namedWindow('fg_mask_filt', cv2.WINDOW_NORMAL)
 
 		cv2.createTrackbar('mog_var_thresh', 'image_o_rgb', 5, 30, nothing)
 		cv2.createTrackbar('median_size', 'image_o_rgb', 1, 21, nothing)
 		cv2.createTrackbar('min_fg_pixels', 'image_o_rgb', 10, 100, nothing)
 
-		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', self.detector.bg_subtractor.mog_parameters.mog_var_thresh)
-		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', self.detector.parameters.min_fg_pixels)
-		cv2.setTrackbarPos('median_size','image_o_rgb', self.detector.parameters.median_size)
+		mog_var_thresh = self.detector.bg_subtractor.mog_parameters.getParameter(MOGParameters.ParametersEnum.mog_var_thresh)
+		min_fg_pixels = self.detector.parameters.getParameter(DetectorParameters.ParametersEnum.min_fg_pixels)
+		median_size = self.detector.parameters.getParameter(DetectorParameters.ParametersEnum.median_size)
+
+		cv2.setTrackbarPos('mog_var_thresh','image_o_rgb', mog_var_thresh)
+		cv2.setTrackbarPos('min_fg_pixels','image_o_rgb', min_fg_pixels)
+		cv2.setTrackbarPos('median_size','image_o_rgb', median_size)
 
 	def updateWindows(self, fg_mask_mog, image_o_gray, image_o_rgb, fg_mask_filt):
 		pos_step = 600
@@ -685,8 +614,10 @@ class DetectorDisplay:
 	def readParameters(self):
 		# Read parameter values from trackbars
 		self.detector.bg_subtractor.mog_parameters.mog_var_thresh = cv2.getTrackbarPos('mog_var_thresh','image_o_rgb')
-		self.detector.parameters.min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
-		self.detector.parameters.median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
+		min_fg_pixels = cv2.getTrackbarPos('min_fg_pixels','image_o_rgb')
+		self.detector.parameters.setParameter(DetectorParameters.ParametersEnum.min_fg_pixels, min_fg_pixels)
+		median_size = int(round_up_to_odd(cv2.getTrackbarPos('median_size','image_o_rgb')))
+		self.detector.parameters.setParameter(DetectorParameters.ParametersEnum.median_size, median_size)
 
 	def getFrameCount(self):
 		return len(self.array)
@@ -750,5 +681,5 @@ def benchmark():
 
 if __name__ == "__main__":
 	#simpleTest()
-	#playbackTest()
-	benchmark()
+	playbackTest()
+	#benchmark()

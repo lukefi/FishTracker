@@ -4,7 +4,7 @@ from math import floor
 from PyQt5 import QtCore
 
 from log_object import LogObject
-from serializable_parameters import SerializableParameters
+from mog_parameters import MOGParameters
 
 class BackgroundSubtractor(QtCore.QObject):
     """
@@ -36,13 +36,26 @@ class BackgroundSubtractor(QtCore.QObject):
         # [flag] Whether MOG has been initialized
         self.mog_ready = False
 
+        self.mog_parameters = None
         self.applied_mog_parameters = None
         self.resetParameters()
+    
+    def setParameter(self, key, value):
+        if self.mog_parameters is not None:
+            self.mog_parameters.setKeyValuePair(key, value)
+        else:
+            LogObject().print2(f"MOG Parameters not found. Cannot set key '{key}' to value '{value}'.")
 
-    def resetParameters(self):
-        self.mog_parameters = MOGParameters()
+    def setParameters(self, parameters: MOGParameters):
+        if self.mog_parameters is not None:
+            self.mog_parameters.values_changed_signal.disconnect(self.parameters_changed_signal)
+
+        self.mog_parameters = parameters
         self.mog_parameters.values_changed_signal.connect(self.parameters_changed_signal)
         self.parameters_changed_signal.emit()
+
+    def resetParameters(self):
+        self.setParameters(MOGParameters())
 
     def initMOG(self):
         if hasattr(self.image_provider, "pausePolarLoading"):
@@ -55,14 +68,14 @@ class BackgroundSubtractor(QtCore.QObject):
         self.state_changed_signal.emit()
 
         self.fgbg_mog = cv2.createBackgroundSubtractorMOG2()
-        self.fgbg_mog.setNMixtures(self.mog_parameters.mixture_count)
-        self.fgbg_mog.setVarThreshold(self.mog_parameters.mog_var_thresh)
+        self.fgbg_mog.setNMixtures(self.mog_parameters.data.mixture_count)
+        self.fgbg_mog.setVarThreshold(self.mog_parameters.data.mog_var_thresh)
         self.fgbg_mog.setShadowValue(0)
 
         self.fgbg_mog_debug_initialized_once = True
 
         nof_frames = self.image_provider.getFrameCount()
-        nof_bg_frames = min(nof_frames, self.mog_parameters.nof_bg_frames)
+        nof_bg_frames = min(nof_frames, self.mog_parameters.data.nof_bg_frames)
 
         # Create background model from fixed number of frames.
         # Count step based on number of frames
@@ -81,7 +94,7 @@ class BackgroundSubtractor(QtCore.QObject):
                 return
 
             image_o = self.image_provider.getFrame(ind)
-            self.fgbg_mog.apply(image_o, learningRate=self.mog_parameters.learning_rate)
+            self.fgbg_mog.apply(image_o, learningRate=self.mog_parameters.data.learning_rate)
 
         self.image_height = image_o.shape[0]
         try:
@@ -118,8 +131,7 @@ class BackgroundSubtractor(QtCore.QObject):
         fg_mask_filt = cv2.medianBlur(fg_mask_mog, median_size)
         return fg_mask_filt
 
-    def setParameters(self, parameters):
-        self.mog_parameters = parameters
+    def applyParameters(self):
         self.applied_mog_parameters = self.mog_parameters.copy()
 
     def parametersDirty(self):
@@ -127,40 +139,3 @@ class BackgroundSubtractor(QtCore.QObject):
 
     def abortComputing(self):
         self.applied_mog_parameters = None
-
-class MOGParameters(SerializableParameters):
-
-    PARAMETER_TYPES = {
-        "mog_var_thresh": int,
-        "nof_bg_frames": int,
-        "learning_rate": float
-        }
-
-    def __init__(self, mog_var_thresh=11, nof_bg_frames=100, learning_rate=0.01):
-        super().__init__()
-
-        self.mog_var_thresh = mog_var_thresh
-        self.nof_bg_frames = nof_bg_frames
-        self.learning_rate = learning_rate
-        self.mixture_count = 5
-
-    def __eq__(self, other):
-        if not isinstance(other, MOGParameters):
-            return False
-
-        return self.mog_var_thresh == other.mog_var_thresh \
-			and self.nof_bg_frames == other.nof_bg_frames \
-			and self.learning_rate == other.learning_rate
-
-    def __repr__(self):
-        return "MOG Parameters: {} {} {}".format(self.mog_var_thresh, self.nof_bg_frames, self.learning_rate)
-
-    def copy(self):
-        return MOGParameters( self.mog_var_thresh, self.nof_bg_frames, self.learning_rate )
-
-    def getParameterDict(self):
-        return {
-	        "mog_var_thresh": self.mog_var_thresh,
-	        "nof_bg_frames": self.nof_bg_frames,
-	        "learning_rate": self.learning_rate
-        }

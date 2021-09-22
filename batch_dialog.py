@@ -20,7 +20,7 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.files = set()
         self.n_parallel = fh.getParallelProcesses()
-        self.save_path = fh.getLatestSaveDirectory()
+        self.save_path = fh.getConfValue(fh.ConfKeys.latest_batch_directory)
         self.batch_track = None
 
         self.detector_params = params_detector
@@ -75,6 +75,18 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.main_layout.addLayout(self.path_layout)
 
+        self.double_layout = QtWidgets.QHBoxLayout()
+        double_tooltip = "Perform double tracking."
+        self.label_double = QtWidgets.QLabel("Double tracking:")
+        self.label_double.setToolTip(double_tooltip)
+        self.double_layout.addWidget(self.label_double)
+
+        self.check_double = QtWidgets.QCheckBox("")
+        self.check_double.setChecked(fh.getConfValue(fh.ConfKeys.batch_double_track))
+        self.double_layout.addWidget(self.check_double)
+
+        self.main_layout.addLayout(self.double_layout)
+
         # Test file
         if fh.getTestFilePath() is not None:
             self.test_layout = QtWidgets.QHBoxLayout()
@@ -114,12 +126,6 @@ class BatchDialog(QtWidgets.QDialog):
                                                  self.form_layout_save, fh.ConfKeys.batch_save_complete)
         self.check_binary = setupCheckbox("Binary format", "Save results to a binary format. JSON format is used otherwise.",
                                           self.form_layout_save, fh.ConfKeys.save_as_binary)
-
-        #self.check_save_dets = LabeledCheckbox("Export detections", "Export detections to a text file.", self.form_layout_save)
-        #self.check_save_dets.checkbox.stateChanged.connect(self.setListDependentButtons)
-        #self.check_save_tracks = LabeledCheckbox("Export tracks", "Export tracks to a text file.", self.form_layout_save)
-        #self.check_save_complete = LabeledCheckbox("Save results", "Save results to a .fish file.", self.form_layout_save)
-        #self.check_binary = LabeledCheckbox("Binary format", "Save results to a binary format. JSON format is used otherwise.", self.form_layout_save)
 
         self.collapsible_save = CollapsibleBox("Save options", self)
         self.collapsible_save.setContentLayout(self.form_layout_save)
@@ -205,6 +211,9 @@ class BatchDialog(QtWidgets.QDialog):
         self.remove_file_btn.setEnabled(is_selected)
 
     def setListDependentButtons(self):
+        """
+        Updates the state of buttons that require at least one file to be selected.
+        """
         list_not_empty = len(self.files) > 0
         test_btn = False if self.check_test is None else self.check_test.isChecked()
 
@@ -235,8 +244,12 @@ class BatchDialog(QtWidgets.QDialog):
         Starts a new batch process.
         """
         fh.setParallelProcesses(self.n_parallel)
+        fh.setConfValue(fh.ConfKeys.batch_double_track, self.check_double.isChecked())
+        fh.setConfValue(fh.ConfKeys.latest_batch_directory, self.save_path)
+
         self.batch_track = BatchTrack(False, self.files, self.save_path, self.n_parallel,
-                                      True, self.detector_params, self.tracker_params)
+                                      True, self.detector_params, self.tracker_params,
+                                      self.check_double.isChecked())
         self.batch_track.active_processes_changed_signal.connect(self.setStatusLabel)
         self.batch_track.exit_signal.connect(self.onBatchExit)
 

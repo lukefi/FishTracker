@@ -300,9 +300,12 @@ def writeConf(conf):
         json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
 
 class ConfKeys(Enum):
+    batch_double_track = auto()
     batch_save_detections = auto()
     batch_save_tracks = auto()
     batch_save_complete = auto()
+
+    latest_batch_directory = auto()
     latest_directory = auto()
     latest_save_directory = auto()
     log_timestamp = auto()
@@ -313,10 +316,12 @@ class ConfKeys(Enum):
     test_file_path = auto()
 
 conf_default_values = {
+    ConfKeys.batch_double_track: False,
     ConfKeys.batch_save_detections: False,
     ConfKeys.batch_save_tracks: False,
     ConfKeys.batch_save_complete: True,
 
+    ConfKeys.latest_batch_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_save_directory: str(os.path.expanduser("~")),
     ConfKeys.log_timestamp: False,
@@ -328,10 +333,12 @@ conf_default_values = {
     }
 
 conf_types = {
+    ConfKeys.batch_double_track: bool,
     ConfKeys.batch_save_detections: bool,
     ConfKeys.batch_save_tracks: bool,
     ConfKeys.batch_save_complete: bool,
 
+    ConfKeys.latest_batch_directory: str,
     ConfKeys.latest_directory: str,
     ConfKeys.latest_save_directory: str,
     ConfKeys.log_timestamp: bool,

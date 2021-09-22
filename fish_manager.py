@@ -7,6 +7,7 @@ import seaborn as sns
 from bisect import insort
 from enum import IntEnum
 from tracker import Tracker
+from tracker_parameters import TrackerParameters
 from log_object import LogObject
 
 fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections", "MAD",
@@ -406,7 +407,7 @@ class FishManager(QtCore.QAbstractTableModel):
                     self.all_fish[id] = f
 
         # Trim tails, i.e. remove last tracks with no corresponding detection.
-        if self.tracker.parameters.trim_tails:
+        if self.tracker.parameters.getParameter(TrackerParameters.ParametersEnum.trim_tails):
             for id, fish in self.all_fish.items():
                 fish.trimTail()
 

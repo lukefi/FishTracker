@@ -224,7 +224,7 @@ class EchogramViewer(QtWidgets.QWidget):
 
         self.playback_manager = playback_manager
         self.detector = detector
-        self.detector.all_computed_event.append(self.updateOverlayedImage)
+        self.detector.all_computed_signal.connect(self.updateOverlayedImage)
         self.fish_manager = fish_manager
         self.echogram = None
         self.show_bg_subtracted = False
@@ -467,8 +467,12 @@ if __name__ == "__main__":
         def __init__(self, x, y):
             self.center = (y, x)
 
-    class TestDetector():
+    class TestDetector(QtCore.QObject):
+        all_computed_signal = QtCore.pyqtSignal()
+
         def __init__(self, playback_manager):
+            super().__init__()
+
             self.playback_manager = playback_manager
             self.frameCount = 0
             self.image_height = 0
@@ -476,7 +480,6 @@ if __name__ == "__main__":
             self._show_echogram_detections = True
             self.detections = []
             self.vertical_detections = []
-            self.all_computed_event = Event()
 
             self.playback_manager.file_opened.connect(self.onFileOpen)
             self.playback_manager.polars_loaded.connect(self.onPolarsLoaded)
@@ -501,7 +504,7 @@ if __name__ == "__main__":
                     self.detections.append([TestDetection(0, min_r), TestDetection(0, max_r)])
 
             self.vertical_detections = [[d.center[0] for d in dets if d.center is not None] if dets is not None else [] for dets in self.detections]
-            self.all_computed_event()
+            self.all_computed_signal.emit()
 
     class TestFishManager(QtCore.QAbstractTableModel):
 

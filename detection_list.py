@@ -7,7 +7,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
     def __init__(self, detector):
         super().__init__()
         self.detector = detector
-        self.detector.data_changed_event.append(self.checkLayout)
+        self.detector.data_changed_signal.connect(self.checkLayout)
         self.row_count = 0
 
     def rowCount(self, index=None):

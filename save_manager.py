@@ -75,8 +75,7 @@ class SaveManager(QtCore.QObject):
 		self.previous_path = path
 		self.fast_save_enabled = True
 
-		dp = self.detector.parameters
-		dp_dict = None if dp is None else dp.getParameterDict()
+		dp_dict = self.detector.getParameterDict()
 
 		tp = self.tracker.getAllParameters()
 		tp_dict = None if tp is None else tp.getParameterDict()
@@ -154,9 +153,10 @@ class SaveManager(QtCore.QObject):
 	def setLoadedData(self):
 		try:
 			self.fish_manager.setUpDownInversion(self.temp_data["inverted upstream"])
-			self.detector.parameters.setParameterDict(self.temp_data["detector"])
+
 			self.tracker.setAllParametersFromDict(self.temp_data["tracker"])
-			self.detector.applySaveDictionary(self.temp_data["detections"])
+
+			self.detector.applySaveDictionary(self.temp_data["detector"], self.temp_data["detections"])
 			dets = self.detector.detections
 			self.fish_manager.applySaveDictionary(self.temp_data["fish"], dets)
 

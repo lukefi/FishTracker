@@ -12,9 +12,9 @@ from fish_list import FishList
 from parameter_list import ParameterList
 from detector import Detector
 from tracker import Tracker
-from detector_parameters import DetectorParametersView
+from detector_parameters_view import DetectorParametersView
 from detection_list import DetectionList, DetectionDataModel
-from tracker_parameters import TrackerParametersView
+from tracker_parameters_view import TrackerParametersView
 from playback_manager import PlaybackManager
 from sonar_view3 import Ui_MainWindow
 from output_widget import OutputViewer, LogToFile
@@ -66,7 +66,6 @@ class UIManager():
         self.sonar_viewer.measure_event.append(self.fish_list.setMeasurementResult)
 
         self.detector_parameters = DetectorParametersView(self.playback, self.detector, self.sonar_viewer.image_processor)
-        self.save_manager.file_loaded_event.connect(self.detector_parameters.refreshValues)
 
         detection_model = DetectionDataModel(self.detector)
         self.detection_list = DetectionList(detection_model)
@@ -255,7 +254,7 @@ def launch_ui():
     fish_manager = FishManager(playback_manager, tracker)
     save_manager = SaveManager(playback_manager, detector, tracker, fish_manager)
 
-    detector.all_computed_event.append(playback_manager.refreshFrame)
+    detector.all_computed_signal.connect(playback_manager.refreshFrame)
     tracker.all_computed_signal.connect(lambda x: playback_manager.refreshFrame)
 
     playback_manager.mapping_done.connect(lambda: playback_manager.runInThread(lambda: detector.initMOG(False)))

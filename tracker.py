@@ -4,7 +4,8 @@ import seaborn as sns
 from enum import Enum
 from sort import Sort, KalmanBoxTracker
 from PyQt5 import QtCore
-from serializable_parameters import SerializableParameters
+from tracker_parameters import TrackerParameters
+from filter_parameters import FilterParameters
 from log_object import LogObject
 
 class TrackingState(Enum):
@@ -33,7 +34,6 @@ class Tracker(QtCore.QObject):
         super().__init__()
 
         self.detector = detector
-        self.resetParameters()
 
         self.clear()
         self.tracking_state = TrackingState.IDLE
@@ -42,6 +42,11 @@ class Tracker(QtCore.QObject):
         self._show_bounding_box = True
         self._show_id = True
         self._show_detection_size = True
+
+        self.paramters = None
+        self.filter_parameters = None
+        self.secondary_parameters = None
+        self.resetParameters()
 
     def clear(self):
         self.applied_parameters = None
@@ -54,12 +59,18 @@ class Tracker(QtCore.QObject):
         self.setParameters(TrackerParameters(), FilterParameters(), TrackerParameters())
 
     def setParameters(self, primary_parameters, filter_parameters, secondary_parameters):
+        if self.paramters is not None:
+            self.parameters.values_changed_signal.disconnect(self.parameters_changed_signal)
         self.parameters = primary_parameters
         self.parameters.values_changed_signal.connect(self.parameters_changed_signal)
 
+        if self.filter_parameters is not None:
+            self.filter_parameters.values_changed_signal.disconnect(self.parameters_changed_signal)
         self.filter_parameters = filter_parameters
         self.filter_parameters.values_changed_signal.connect(self.parameters_changed_signal)
 
+        if self.secondary_parameters is not None:
+            self.secondary_parameters.values_changed_signal.disconnect(self.parameters_changed_signal)
         self.secondary_parameters = secondary_parameters
         self.secondary_parameters.values_changed_signal.connect(self.parameters_changed_signal)
 
@@ -138,7 +149,7 @@ class Tracker(QtCore.QObject):
         return count
         
 
-    def trackDetections(self, detection_frames, tracker_parameters, reset_count=False):
+    def trackDetections(self, detection_frames, tracker_parameters: TrackerParameters, reset_count=False):
         """
         Tracks all detections in the given frames.
         Returns a dictionary containing tracks by frame.
@@ -149,9 +160,9 @@ class Tracker(QtCore.QObject):
         self.stop_tracking = False
         count = len(detection_frames)
         returned_tracks_by_frame = {}
-        mot_tracker = Sort(max_age = tracker_parameters.max_age,
-                           min_hits = tracker_parameters.min_hits,
-                           search_radius = tracker_parameters.search_radius)
+        mot_tracker = Sort(max_age = tracker_parameters.getParameter(TrackerParameters.ParametersEnum.max_age),
+                           min_hits = tracker_parameters.getParameter(TrackerParameters.ParametersEnum.min_hits),
+                           search_radius = tracker_parameters.getParameter(TrackerParameters.ParametersEnum.search_radius))
 
         if reset_count:
             KalmanBoxTracker.count = 0
@@ -243,6 +254,15 @@ class Tracker(QtCore.QObject):
     def getAllParameters(self) -> AllTrackerParameters:
         return AllTrackerParameters(self.parameters.copy(), self.filter_parameters.copy(), self.secondary_parameters.copy())
 
+    def setPrimaryParameter(self, key, value):
+        self.parameters.setKeyValuePair(key, value)
+
+    def setFilterParameter(self, key, value):
+        self.filter_parameters.setKeyValuePair(key, value)
+
+    def setSecondaryParameter(self, key, value):
+        self.secondary_parameters.setKeyValuePair(key, value)
+
     def setAllParameters(self, all_params: AllTrackerParameters):
         self.setParameters(
             all_params.primary.copy(),
@@ -294,134 +314,6 @@ class AllTrackerParameters(QtCore.QObject):
             self.filter.setParameterDict(dictionary["filtering"])
         if "secondary_tracking" in dictionary:
             self.secondary.setParameterDict(dictionary["secondary_tracking"])
-
-class TrackerParameters(SerializableParameters):
-
-    PARAMETER_TYPES = {
-        "max_age": int,
-        "min_hits": int,
-        "search_radius": int,
-        "trim_tails": bool
-        }
-    FILE_NAME = "tracker parameters"
-
-    def __init__(self, max_age = 10, min_hits = 5, search_radius = 10, trim_tails = True):
-        super().__init__()
-
-        self.max_age = max_age
-        self.min_hits = min_hits
-        self.search_radius = search_radius
-        self.trim_tails = trim_tails
-
-    def __eq__(self, other):
-        if not isinstance(other, TrackerParameters):
-            return False
-    
-        return self.max_age == other.max_age \
-            and self.min_hits == other.min_hits \
-            and self.search_radius == other.search_radius \
-            and self.trim_tails == other.trim_tails
-
-    def __repr__(self):
-        return "Tracker Parameters: {} {} {}".format(self.max_age, self.min_hits, self.search_radius, self.trim_tails)
-
-    def copy(self):
-        return TrackerParameters(self.max_age, self.min_hits, self.search_radius, self.trim_tails)
-
-    def getParameterDict(self):
-        return {
-            "max_age": self.max_age,
-	        "min_hits": self.min_hits,
-            "search_radius": self.search_radius,
-            "trim_tails": self.trim_tails
-        }
-
-    def setMaxAge(self, value):
-        try:
-            self.max_age = int(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
-
-    def setMinHits(self, value):
-        try:
-            self.min_hits = int(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
-
-    def setSearchRadius(self, value):
-        try:
-            self.search_radius = int(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
-
-    def setTrimTails(self, value):
-        try:
-            self.trim_tails = bool(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
-
-
-class FilterParameters(SerializableParameters):
-
-    PARAMETER_TYPES = {
-        "min_duration": int,
-        "mad_limit": int
-        }
-
-    def __init__(self, min_duration=2, mad_limit=0):
-        super().__init__()
-
-        self.min_duration = min_duration
-        self.mad_limit = mad_limit
-
-    def __eq__(self, other):
-        if not isinstance(other, FilterParameters):
-            return False
-    
-        return self.min_duration == min_duration \
-            and self.mad_limit == mad_limit
-
-    def __repr__(self):
-        return "Filter Parameters: {} {}".format(self.min_duration, self.mad_limit)
-
-    def copy(self):
-        return FilterParameters(self.min_duration, self.mad_limit)
-
-    def getParameterDict(self):
-        return {
-            "min_duration": self.min_duration,
-            "mad_limit": self.mad_limit
-        }
-
-    def setMinDuration(self, value):
-        try:
-            self.min_duration = int(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
-
-    def setMADLimit(self, value):
-        try:
-            self.mad_limit = int(value)
-            self.values_changed_signal.emit()
-            return True
-        except ValueError as e:
-            LogObject().print2(e)
-            return False
 
 
 if __name__ == "__main__":
@@ -502,7 +394,7 @@ if __name__ == "__main__":
         main_window.setCentralWidget(figure)
 
         LogObject().print(detector.parameters)
-        LogObject().print(detector.parameters.mog_parameters)
+        LogObject().print(detector.bg_subtractor.mog_parameters)
         LogObject().print(tracker.parameters)
 
         main_window.show()

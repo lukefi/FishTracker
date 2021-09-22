@@ -35,42 +35,45 @@ class LogObject(metaclass=Singleton):
         self.log_signal.signal.disconnect(receiver)
 
     def print_help(self, *args, **kwargs):
-        try:
-            with io.StringIO() as output:
-                kwargs['end'] = ""
-                kwargs['file'] = output
-                print(*args, **kwargs)
-                return output.getvalue(), True, str(datetime.now().time())
+        with io.StringIO() as output:
+            kwargs['end'] = ""
+            kwargs['file'] = output
+            print(*args, **kwargs)
+            return output.getvalue(), str(datetime.now().time())
 
-        except AttributeError as e:
-            print("Potential misuse of LogObject. When calling print, remember to use LogObject() with parenthesis.", e)
-            return "", False, ""
+    def exception_handler(func):
+        def inner_function(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except AttributeError as e:
+                print("Potential misuse of LogObject. When calling print, remember to use LogObject() with parenthesis.", e)
+        return inner_function
 
+    @exception_handler
     def print(self, *args, **kwargs):
         """
         Default print (verbosity=0) that is always printed.
         """
-        output, success, time_stamp = self.print_help(*args, **kwargs)
-        if success:
-            self.log_signal.signal.emit(output, 0, time_stamp)
+        output, time_stamp = self.print_help(*args, **kwargs)
+        self.log_signal.signal.emit(output, 0, time_stamp)            
 
+    @exception_handler
     def print1(self, *args, **kwargs):
         """
         Print with verbosity=1. Printed only if verbosity is set to 1 or higher.
         Should include additional information for the user.
         """
-        output, success, time_stamp = self.print_help(*args, **kwargs)
-        if success:
-            self.log_signal.signal.emit(output, 1, time_stamp)
+        output, time_stamp = self.print_help(*args, **kwargs)
+        self.log_signal.signal.emit(output, 1, time_stamp)
 
+    @exception_handler
     def print2(self, *args, **kwargs):
         """
         Print with verbosity=2. Printed only if verbosity is set to 2 or higher.
         Should include additional information for the developer.
         """
-        output, success, time_stamp = self.print_help(*args, **kwargs)
-        if success:
-            self.log_signal.signal.emit(output, 2, time_stamp)
+        output, time_stamp = self.print_help(*args, **kwargs)
+        self.log_signal.signal.emit(output, 2, time_stamp)
             
     def disconnectDefault(self):
         self.disconnect(print)
@@ -94,5 +97,8 @@ if __name__ == "__main__":
     log = LogObject()
     log.disconnectDefault()
     log.print("Third print")
+
+    print("")
+    LogObject.print("Invalid print")
 
     sys.exit(app.exec_())

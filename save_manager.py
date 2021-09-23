@@ -139,8 +139,11 @@ class SaveManager(QtCore.QObject):
 			file_path = os.path.abspath(data["path"])
 			secondary_path = os.path.abspath(os.path.join(os.path.dirname(path), os.path.basename(file_path)))
 			self.playback_manager.polars_loaded.connect(self.setLoadedData)
-			self.playback_manager.checkLoadedFile(file_path, secondary_path, True)
 			self.temp_data = data
+
+			if self.playback_manager.checkLoadedFile(file_path, secondary_path, True):
+				# If file already open
+				self.setLoadedData()
 
 		except ValueError as e:
 			LogObject().print("Error: Invalid value(s) in save file,", e)
@@ -157,18 +160,22 @@ class SaveManager(QtCore.QObject):
 			self.tracker.setAllParametersFromDict(self.temp_data["tracker"])
 
 			self.detector.applySaveDictionary(self.temp_data["detector"], self.temp_data["detections"])
+
 			dets = self.detector.detections
 			self.fish_manager.applySaveDictionary(self.temp_data["fish"], dets)
 
 		except ValueError as e:
+			self.playback_manager.closeFile()
 			LogObject().print("Error: Invalid value(s) in save file,", e)
-			self.playback_manager.closeFile()
 		except KeyError as e:
-			LogObject().print("Error: Invalid key(s) in save file,", e)
 			self.playback_manager.closeFile()
+			LogObject().print("Error: Key not found in save file,", e)
 		finally:
-			self.playback_manager.polars_loaded.disconnect(self.setLoadedData)
 			self.temp_data = None
+			try:
+				self.playback_manager.polars_loaded.disconnect(self.setLoadedData)
+			except TypeError:
+				pass
 
 	def onFileClosed(self):
 		self.previous_path = None

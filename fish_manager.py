@@ -716,7 +716,8 @@ class FishManager(QtCore.QAbstractTableModel):
                 else:
                     f.addTrack(track, None, frame)
 
-            self.all_fish[id] = f
+            if f is not None:
+                self.all_fish[id] = f
 
         self.refreshAllFishData()
         self.trimFishList(force_color_update=True)

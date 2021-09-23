@@ -186,7 +186,7 @@ class BatchDialog(QtWidgets.QDialog):
     def selectSavePath(self):
         open_path = self.line_edit_path.text()
         open_path = open_path if os.path.exists(open_path) else None
-        path = self.playback_manager.selectSaveDirectory(open_path)
+        path = self.playback_manager.selectSaveDirectory(open_path, update_conf=False)
         if path != "" :
             self.save_path = path
             self.line_edit_path.setText(path)

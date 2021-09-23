@@ -57,41 +57,45 @@ class PlaybackManager(QObject):
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf)"):
+    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf)", update_conf=True):
         """
         Select .aris file using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestDirectory()
         file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path, selected_filter)
-        fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
+        if update_conf:
+            fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
         self.loadFile(file_path_tuple[0])
 
-    def selectSaveDirectory(self, open_path=None, selected_filter=QFileDialog.ShowDirsOnly):
+    def selectSaveDirectory(self, open_path=None, selected_filter=QFileDialog.ShowDirsOnly, update_conf=True):
         """
         Select save directory using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
         print(selected_filter)
         path = QFileDialog.getExistingDirectory(self.main_window, "Select directory", open_path, selected_filter)
-        fh.setLatestSaveDirectory(path)
+        if update_conf:
+            fh.setLatestSaveDirectory(path)
         return path
 
-    def selectSaveFile(self, open_path=None, selected_filter=""):
+    def selectSaveFile(self, open_path=None, selected_filter="", update_conf=True):
         """
         Select a file for saving detections or tracking results using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
         file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Save file", open_path, selected_filter)
-        fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
+        if update_conf:
+            fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
 
-    def selectLoadFile(self, open_path=None, selected_filter=""):
+    def selectLoadFile(self, open_path=None, selected_filter="", update_conf=True):
         """
         Select a detection or tracking result file to be loaded using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
         file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Load File", open_path, selected_filter)
-        fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
+        if update_conf:
+            fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
 
     def openTestFile(self):

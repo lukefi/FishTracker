@@ -92,9 +92,9 @@ class SaveManager(QtCore.QObject):
 		data["fish"] = fish
 		self.saveData(path, data, binary)
 
-	def saveData(self, path: str, data: dict, binary: bool):
+	def saveData(self, path: str, data: dict, binary: bool, update_dict: bool = True):
 		"""
-		Helper method for writing the data to a file.
+		Write the data (dictionary) to a file.
 		"""
 		if binary:
 			packed = msgpack.packb(data)
@@ -103,6 +103,8 @@ class SaveManager(QtCore.QObject):
 		else:
 			with open(path, "w") as data_file:
 				json.dump(data, data_file, indent=2, separators=(',', ': '))
+
+		fh.setLatestSaveDirectory(os.path.dirname(path))
 
 	def loadFile(self, path: str):
 		try:

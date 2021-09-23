@@ -53,6 +53,7 @@ class Detector(QtCore.QObject):
 		self.current_len = 0
 
 		self.bg_subtractor.state_changed_signal.connect(self.state_changed_signal)
+		self.bg_subtractor.parameters_changed_signal.connect(self.parameters_changed_signal)
 
 		self._show_echogram_detections = False
 		self.show_bgsub = False

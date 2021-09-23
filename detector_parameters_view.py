@@ -231,6 +231,7 @@ class DetectorParametersView(QWidget):
 
         self.playback_manager.polars_loaded.connect(self.setButtonsEnabled)
         self.detector.state_changed_signal.connect(self.setButtonsEnabled)
+        self.detector.parameters_changed_signal.connect(self.setButtonsEnabled)
         self.detector.state_changed_signal.connect(self.setButtonTexts)
         self.setButtonsEnabled()
 
@@ -297,11 +298,10 @@ class DetectorParametersView(QWidget):
             self.recalculate_mog_btn.setText("Apply Values")
 
     def setButtonsEnabled(self):
-        #LogObject().print("MOG Btn:",self.playback_manager.isMappingDone(), self.detector.initializing)
-        mog_value = self.playback_manager.isMappingDone() and self.bg_subtractor.parametersDirty() #mog_dirty
+        mog_value = self.playback_manager.isMappingDone() and self.bg_subtractor.parametersDirty()
         self.recalculate_mog_btn.setEnabled(mog_value)
 
-        all_value = self.playback_manager.isPolarsDone() and self.detector.allCalculationAvailable() #(self.detector.detections_dirty or self.detector.mog_dirty)
+        all_value = self.playback_manager.isPolarsDone() and self.detector.allCalculationAvailable()
         self.calculate_all_btn.setEnabled(all_value)
 
 if __name__ == "__main__":

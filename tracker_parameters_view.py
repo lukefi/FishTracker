@@ -269,17 +269,17 @@ class TrackerParametersView(QScrollArea):
             with open(PARAMETERS_PATH, "w") as f:
                 json.dump(dict, f, indent=3)
         except FileNotFoundError as e:
-            print(e)
+            LogObject().print(e)
 
     def loadJSON(self):
         try:
             with open(PARAMETERS_PATH, "r") as f:
                 dict = json.load(f)
         except FileNotFoundError as e:
-            print("Error: Tracker parameters file not found:", e)
+            LogObject().print("Error: Tracker parameters file not found:", e)
             return
         except json.JSONDecodeError as e:
-            print("Error: Invalid tracker parameters file:", e)
+            LogObject().print("Error: Invalid tracker parameters file:", e)
             return
 
         all_params = self.tracker.getAllParameters()

@@ -46,8 +46,6 @@ class FishList(QtWidgets.QWidget):
         self.fish_manager.updateSelectionSignal.connect(lambda x, y: self.table.setFocus())
         self.table.selectionModel().selectionChanged.connect(self.onSelectionChanged)
 
-        #self.fish_manager.updateSelectionSignal.connect(lambda x, y: print(x, y))
-
         ### Enables easier interaction with dropdown fields.
         ### Can be disabled if turns out to break things.
 
@@ -125,12 +123,12 @@ class FishList(QtWidgets.QWidget):
 
         self.btn_spacer = QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
 
-        self.add_btn = QtWidgets.QPushButton()
-        self.add_btn.setObjectName("addButton")
-        self.add_btn.setText("Add")
-        self.add_btn.clicked.connect(self.addFishItem)
-        self.add_btn.setToolTip("Add a new fish to the list. (Not supported yet)")
-        self.add_btn.setEnabled(False)
+        #self.add_btn = QtWidgets.QPushButton()
+        #self.add_btn.setObjectName("addButton")
+        #self.add_btn.setText("Add")
+        #self.add_btn.clicked.connect(self.addFishItem)
+        #self.add_btn.setToolTip("Add a new fish to the list. (Not supported yet)")
+        #self.add_btn.setEnabled(False)
 
         self.remove_btn = QtWidgets.QPushButton()
         self.remove_btn.setObjectName("removeButton")
@@ -150,29 +148,14 @@ class FishList(QtWidgets.QWidget):
         self.split_btn.clicked.connect(self.splitFishItem)
         self.split_btn.setToolTip("Split all selected fish in two at the current frame.")
 
-        #self.invert_direction_btn = QtWidgets.QPushButton()
-        #self.invert_direction_btn.setObjectName("invertDirectionButton")
-        #self.invert_direction_btn.setText("Invert Up/Down")
-        #self.invert_direction_btn.clicked.connect(self.fish_manager.toggleUpDownInversion)
-        #self.invert_direction_btn.clicked.connect(self.playback_manager.refreshFrame)
-        #self.invert_direction_btn.setToolTip("Inverts upstream/downstream directions and recalculates the value for all fish.")
-
-        #self.test_save_btn = QtWidgets.QPushButton()
-        #self.test_save_btn.setObjectName("testSaveButton")
-        #self.test_save_btn.setText("Save")
-        #self.test_save_btn.clicked.connect(lambda: self.fish_manager.saveToFile("C:/Users/Mixhu/Desktop/test.csv"))
-
         self.button_layout.addWidget(self.display_btn, 0, 0)
         self.button_layout.addWidget(self.measure_btn, 0, 1)
         self.button_layout.addWidget(self.clear_measure_btn, 1, 1)
         self.button_layout.addItem(self.btn_spacer, 0, 2, 1, 2)
-        self.button_layout.addWidget(self.add_btn, 0, 3)
-        self.button_layout.addWidget(self.remove_btn, 1, 3)
-        self.button_layout.addWidget(self.merge_btn, 0, 4)
-        self.button_layout.addWidget(self.split_btn, 1, 4)
-        #self.button_layout.addWidget(self.invert_direction_btn, 0, 5)
-        #self.button_layout.addWidget(self.test_save_btn, 1, 5)
-        #self.button_layout.addStretch()
+        self.button_layout.addWidget(self.merge_btn, 0, 3)
+        self.button_layout.addWidget(self.split_btn, 1, 3)
+        self.button_layout.addWidget(self.remove_btn, 0, 4)
+
 
         self.vertical_layout.addLayout(self.button_layout)
 
@@ -282,11 +265,6 @@ if __name__ == "__main__":
 
         main_window.setCentralWidget(fish_list)
         main_window.show()
-
-        #ind_1 = fish_manager.index(0, 0)
-        #ind_2 = fish_manager.index(2, fish_manager.columnCount() - 1)
-        #selection = QtCore.QItemSelection(ind_1, ind_2)
-        #fish_list.table.selectionModel().select(selection, QtCore.QItemSelectionModel.ClearAndSelect)
 
         sys.exit(app.exec_())
 

@@ -80,8 +80,8 @@ class TrackerParametersView(QScrollArea):
         if self.tracker.tracking_state == TrackingState.IDLE:
             self.fish_manager.clear_old_data = False
 
-            min_dets = self.tracker.filter_parameters.min_duration
-            mad_limit = self.tracker.filter_parameters.mad_limit
+            min_dets = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.min_duration)
+            mad_limit = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.mad_limit)
 
             LogObject().print1(f"Filter Parameters: {min_dets} {mad_limit}")
             used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
@@ -111,22 +111,23 @@ class TrackerParametersView(QScrollArea):
         self.vertical_layout.addWidget(self.main_label)
 
         # Parameters for primary tracking
-        track_param_data = self.tracker.parameters.data
         self.form_layout_p = QFormLayout()
 
-        lambda_max_age = lambda x: self.tracker.setPrimaryParameter(TrackerParameters.ParametersEnum.max_age, x)
-        self.max_age_slider_p = LabeledSlider("Max age", self.form_layout_p, [lambda_max_age], track_param_data.max_age, 1, 100, self)
+        def setParameterSliderP(label, min_value, max_value, parameter_enum):
+            value = self.tracker.parameters.getParameter(parameter_enum)
+            lambda_param = lambda x: self.tracker.setPrimaryParameter(parameter_enum, x)
+            return LabeledSlider(label, self.form_layout_p, [lambda_param], value, min_value, max_value, self)
 
-        lambda_min_hits = lambda x: self.tracker.setPrimaryParameter(TrackerParameters.ParametersEnum.min_hits, x)
-        self.min_hits_slider_p = LabeledSlider("Min hits", self.form_layout_p, [lambda_min_hits], track_param_data.min_hits, 1, 10, self)
-
-        lambda_search_radius = lambda x: self.tracker.setPrimaryParameter(TrackerParameters.ParametersEnum.search_radius, x)
-        self.search_radius_slider_p = LabeledSlider("Search radius", self.form_layout_p, [lambda_search_radius], track_param_data.search_radius, 1, 100, self)
+        self.max_age_slider_p = setParameterSliderP("Max age", 1, 100, TrackerParameters.ParametersEnum.max_age)
+        self.min_hits_slider_p = setParameterSliderP("Min hits", 1, 10, TrackerParameters.ParametersEnum.min_hits)
+        self.search_radius_slider_p = setParameterSliderP("Search radius", 1, 100, TrackerParameters.ParametersEnum.search_radius)
 
         self.vertical_spacer1 = QSpacerItem(0, 5, QSizePolicy.Minimum, QSizePolicy.Maximum)
         self.form_layout_p.addItem(self.vertical_spacer1)
 
+        trim_tails_value_p = self.tracker.parameters.getParameter(TrackerParameters.ParametersEnum.trim_tails)
         self.trim_tails_checkbox_p = QCheckBox("", self)
+        self.trim_tails_checkbox_p.setChecked(trim_tails_value_p)
         lambda_trim_tails_p = lambda x: self.tracker.setPrimaryParameter(TrackerParameters.ParametersEnum.trim_tails, x)
         self.trim_tails_checkbox_p.stateChanged.connect(lambda_trim_tails_p)
         self.form_layout_p.addRow("Trim tails", self.trim_tails_checkbox_p)
@@ -159,32 +160,35 @@ class TrackerParametersView(QScrollArea):
         self.collapsible_f = CollapsibleBox("Filtering", self)
         filter_data = self.tracker.filter_parameters.data
 
-        lambda_min_duration = lambda x: self.tracker.setFilterParameter(FilterParameters.ParametersEnum.min_duration, x)
-        self.min_detections_slider = LabeledSlider("Min duration", self.form_layout_f, [lambda_min_duration], filter_data.min_duration, 1, 50, self)
+        def setParameterSliderF(label, min_value, max_value, parameter_enum):
+            value = self.tracker.filter_parameters.getParameter(parameter_enum)
+            lambda_param = lambda x: self.tracker.setFilterParameter(parameter_enum, x)
+            return LabeledSlider(label, self.form_layout_f, [lambda_param], value, min_value, max_value, self)
 
-        lambda_mad_limit = lambda x: self.tracker.setFilterParameter(FilterParameters.ParametersEnum.mad_limit, x)
-        self.mad_slider = LabeledSlider("MAD", self.form_layout_f, [lambda_mad_limit], filter_data.mad_limit, 0, 50, self)
+        self.min_detections_slider = setParameterSliderF("Min duration", 1, 50, FilterParameters.ParametersEnum.min_duration)
+        self.mad_slider = setParameterSliderF("MAD", 0, 50, FilterParameters.ParametersEnum.mad_limit)
 
         self.collapsible_f.setContentLayout(self.form_layout_f)
         self.vertical_layout.addWidget(self.collapsible_f)
 
         # Parameters for secondary tracking
-        track_sec_data = self.tracker.secondary_parameters.data
         self.form_layout_s = QFormLayout()
 
-        lambda_max_age_s = lambda x: self.tracker.setSecondaryParameter(TrackerParameters.ParametersEnum.max_age, x)
-        self.max_age_slider_s = LabeledSlider("Max age", self.form_layout_s, [lambda_max_age_s], track_sec_data.max_age, 1, 100, self)
+        def setParameterSliderS(label, min_value, max_value, parameter_enum):
+            value = self.tracker.secondary_parameters.getParameter(parameter_enum)
+            lambda_param = lambda x: self.tracker.setSecondaryParameter(parameter_enum, x)
+            return LabeledSlider(label, self.form_layout_s, [lambda_param], value, min_value, max_value, self)
 
-        lambda_min_hits_s = lambda x: self.tracker.setSecondaryParameter(TrackerParameters.ParametersEnum.min_hits, x)
-        self.min_hits_slider_s = LabeledSlider("Min hits", self.form_layout_s, [lambda_min_hits_s], track_sec_data.min_hits, 1, 10, self)
-
-        lambda_search_radius_s = lambda x: self.tracker.setSecondaryParameter(TrackerParameters.ParametersEnum.search_radius, x)
-        self.search_radius_slider_s = LabeledSlider("Search radius", self.form_layout_s, [lambda_search_radius_s], track_sec_data.search_radius, 1, 100, self)
+        self.max_age_slider_s = setParameterSliderS("Max age", 1, 100, TrackerParameters.ParametersEnum.max_age)
+        self.min_hits_slider_s = setParameterSliderS("Min hits", 1, 10, TrackerParameters.ParametersEnum.min_hits)
+        self.search_radius_slider_s = setParameterSliderS("Search radius", 1, 100, TrackerParameters.ParametersEnum.search_radius)
 
         self.vertical_spacer3 = QSpacerItem(0, 5, QSizePolicy.Minimum, QSizePolicy.Maximum)
         self.form_layout_s.addItem(self.vertical_spacer3)
 
+        trim_tails_value_s = self.tracker.secondary_parameters.getParameter(TrackerParameters.ParametersEnum.trim_tails)
         self.trim_tails_checkbox_s = QCheckBox("", self)
+        self.trim_tails_checkbox_s.setChecked(trim_tails_value_s)
         lambda_trim_tails_s = lambda x: self.tracker.setSecondaryParameter(TrackerParameters.ParametersEnum.trim_tails, x)
         self.trim_tails_checkbox_s.stateChanged.connect(lambda_trim_tails_s)
         self.form_layout_s.addRow("Trim tails", self.trim_tails_checkbox_s)

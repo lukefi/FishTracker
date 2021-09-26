@@ -1,6 +1,7 @@
 {
    "bg_subtractor": {
       "learning_rate": 0.01,
+      "mixture_count": 5,
       "mog_var_thresh": 11,
       "nof_bg_frames": 100
    },

@@ -72,6 +72,8 @@ class SaveManager(QtCore.QObject):
 		Saves the contents of detector and tracker and the corresponding parameters to file.
 		"""
 
+		LogObject().print1(f"Saving data to '{path}'")
+
 		self.previous_path = path
 		self.fast_save_enabled = True
 

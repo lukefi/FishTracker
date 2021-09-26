@@ -9,6 +9,7 @@ from enum import IntEnum
 from tracker import Tracker
 from tracker_parameters import TrackerParameters
 from log_object import LogObject
+from filter_parameters import FilterParameters
 
 fish_headers = ["", "ID", "Length", "Direction", "Frame in", "Frame out", "Duration", "Detections", "MAD",
                 "Tortuosity", "Speed"]
@@ -190,12 +191,24 @@ class FishManager(QtCore.QAbstractTableModel):
     def columnCount(self, index=None):
         return COLUMN_COUNT;
 
+    def allDirectionCounts(self):
+        """
+        Returns direction counts (Total, Up, Down, None) of all fish.
+        """
+        return self.directionCountsHelp(self.all_fish.values())
+
     def directionCounts(self):
+        """
+        Returns direction counts (Total, Up, Down, None) of currently displayed fish.
+        """
+        return self.directionCountsHelp(self.fish_list)
+
+    def directionCountsHelp(self, f_list):
         total_count = 0
         up_count = 0
         down_count = 0
         none_count = 0
-        for f in self.fish_list:
+        for f in f_list:
             total_count += 1
             if f.direction == SwimDirection.UP:
                 up_count += 1
@@ -385,6 +398,20 @@ class FishManager(QtCore.QAbstractTableModel):
 
         return False
 
+    def secondaryTrack(self, filter_parameters):
+        """
+        Applies filters to fish data and starts tracker's secondaryTrack process with used detections.
+        Used detections are excluded from tracking.
+        """
+        self.clear_old_data = False
+
+        min_dets = filter_parameters.getParameter(FilterParameters.ParametersEnum.min_duration)
+        mad_limit = filter_parameters.getParameter(FilterParameters.ParametersEnum.mad_limit)
+        LogObject().print1(f"Filter Parameters: {min_dets} {mad_limit}")
+
+        used_dets = self.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
+        self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters))
+
     def updateDataFromTracker(self):
         """
         Iterates through the results of the tracker and updates the data in FishManager.
@@ -394,17 +421,23 @@ class FishManager(QtCore.QAbstractTableModel):
         if self.clear_old_data:
             self.clear()
 
+        self.clear_old_data = True
+
         # Iterate through all frames.
         for frame, tracks in self.tracker.tracks_by_frame.items():
-            # Iterate through all tracks in a frame.
-            for tr, det in tracks:
-                id = tr[4]
-                if id in self.all_fish:
-                    f = self.all_fish[id]
-                    f.addTrack(tr, det, frame)
-                else:
-                    f = FishEntryFromTrack(tr, det, frame)
-                    self.all_fish[id] = f
+            try:
+                # Iterate through all tracks in a frame.
+                for tr, det in tracks:
+                    id = tr[4]
+                    if id in self.all_fish:
+                        f = self.all_fish[id]
+                        f.addTrack(tr, det, frame)
+                    else:
+                        f = FishEntryFromTrack(tr, det, frame)
+                        self.all_fish[id] = f
+            except ValueError as e:
+                print(tracks)
+                raise e
 
         # Trim tails, i.e. remove last tracks with no corresponding detection.
         if self.tracker.parameters.getParameter(TrackerParameters.ParametersEnum.trim_tails):
@@ -416,6 +449,7 @@ class FishManager(QtCore.QAbstractTableModel):
             self.refreshData(fish)
             fish.setLengthByPercentile(self.length_percentile)
 
+        self.printDirectionCounts()
         self.trimFishList(force_color_update=True)
 
     def applyFilters(self):
@@ -681,7 +715,7 @@ class FishManager(QtCore.QAbstractTableModel):
             fish_tracks = [self.convertToWritable(frame, int(det.label), track[0:4]) if det is not None else
                            self.convertToWritable(frame, None, track[0:4])
                            for frame, (track, det) in f.tracks.items()]
-            test = fish_tracks[0]
+
             fish[str(f.id)] = fish_tracks
 
         return fish
@@ -720,7 +754,12 @@ class FishManager(QtCore.QAbstractTableModel):
                 self.all_fish[id] = f
 
         self.refreshAllFishData()
+        self.printDirectionCounts()
         self.trimFishList(force_color_update=True)
+
+    def printDirectionCounts(self):
+        tc, uc, dc, nc = self.allDirectionCounts()
+        LogObject().print1(f"Direction counts: Total {tc}, Up {uc}, Down {dc}, None {nc}")
 
 
 

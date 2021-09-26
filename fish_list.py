@@ -233,7 +233,6 @@ class FishList(QtWidgets.QWidget):
     def updateCountLabels(self):
         tc, uc, dc, nc = self.fish_manager.directionCounts()
 
-        LogObject().print1("Counts:", tc, uc, dc, nc)
         self.total_fish_label.setText("Total: {}".format(tc))
         self.up_fish_label.setText("Up: {}".format(uc))
         self.down_fish_label.setText("Down: {}".format(dc))

@@ -57,16 +57,9 @@ class TrackerParametersView(QScrollArea):
         """
 
         if self.tracker.tracking_state == TrackingState.IDLE:
-            if self.fish_manager:
-                self.fish_manager.clear_old_data = True
             self.playback_manager.runInThread(self.tracker.primaryTrack)
         else:
-            if self.detector.bg_subtractor.initializing:
-                self.detector.bg_subtractor.stop_initializing = True
-            elif self.detector.computing:
-                self.detector.stop_computing = True
-            else:
-                self.tracker.stop_tracking = True
+            self.cancelTrack()
 
     def secondaryTrack(self):
         """
@@ -78,22 +71,18 @@ class TrackerParametersView(QScrollArea):
             return
 
         if self.tracker.tracking_state == TrackingState.IDLE:
-            self.fish_manager.clear_old_data = False
-
-            min_dets = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.min_duration)
-            mad_limit = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.mad_limit)
-
-            LogObject().print1(f"Filter Parameters: {min_dets} {mad_limit}")
-            used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
-            self.playback_manager.runInThread(lambda: self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters))
+            self.fish_manager.secondaryTrack(self.tracker.filter_parameters)
 
         else:
-            if self.detector.bg_subtractor.initializing:
-                self.detector.bg_subtractor.stop_initializing = True
-            elif self.detector.computing:
-                self.detector.stop_computing = True
-            else:
-                self.tracker.stop_tracking = True
+            self.cancelTrack()
+
+    def cancelTrack():
+        if self.detector.bg_subtractor.initializing:
+            self.detector.bg_subtractor.stop_initializing = True
+        elif self.detector.computing:
+            self.detector.stop_computing = True
+        else:
+            self.tracker.stop_tracking = True
 
     def initUI(self, debug_btn):
         content = QWidget()

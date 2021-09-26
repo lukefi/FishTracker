@@ -416,16 +416,17 @@ class Detector(QtCore.QObject):
 
 		polar_transform = self.getPolarTransform()
 
-		for str_frame, frame_dets_data in data.items():
-			frame = int(str_frame)
+		for frame in range(len(self.detections)):
 			frame_dets = []
-			for det_data in frame_dets_data:
-				label = det_data[0]
-				det_data = det_data[1]
-				det = Detection(int(label))
-				detection_size = self.parameters.getParameter(DetectorParameters.ParametersEnum.detection_size)
-				det.init_from_data(det_data, detection_size, polar_transform)
-				frame_dets.append(det)
+			str_frame = str(frame)
+			if str_frame in data.keys():
+				for det_data in data[str_frame]:
+					label = det_data[0]
+					det_data = det_data[1]
+					det = Detection(int(label))
+					detection_size = self.parameters.getParameter(DetectorParameters.ParametersEnum.detection_size)
+					det.init_from_data(det_data, detection_size, polar_transform)
+					frame_dets.append(det)
 
 			try:
 				self.detections[frame] = frame_dets

@@ -166,11 +166,8 @@ class TrackProcess(QtCore.QObject):
         self.tracker.primaryTrack()
 
         if self.secondary_tracking:
-            min_dets = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.min_duration)
-            mad_limit = self.tracker.filter_parameters.getParameter(FilterParameters.ParametersEnum.mad_limit)
-            used_dets = self.fish_manager.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
             self.secondary_tracking_started = True
-            self.tracker.secondaryTrack(used_dets, self.tracker.secondary_parameters)
+            self.fish_manager.secondaryTrack(self.tracker.filter_parameters)
 
         if self.display:
             self.playback_manager.play()

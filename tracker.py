@@ -142,11 +142,8 @@ class Tracker(QtCore.QObject):
         self.all_computed_signal.emit(TrackingState.SECONDARY)
 
     def detectionCount(self, detections):
-        count = 0
-        for dets in detections:
-            for det in dets:
-                count += 1
-        return count
+        return 0 if detections is None \
+            else np.sum([len(dets) for dets in detections if dets is not None])
         
 
     def trackDetections(self, detection_frames, tracker_parameters: TrackerParameters, reset_count=False):

@@ -725,7 +725,8 @@ class FishManager(QtCore.QAbstractTableModel):
 		Load fish entries from data provided by SaveManager.
 		"""
         self.clear()
-        for id, f_data in data.items():
+        for _id, f_data in data.items():
+            id = int(_id)
             f = None
             for frame, det_label, track in f_data:
                 if f is None:

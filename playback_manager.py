@@ -107,8 +107,6 @@ class PlaybackManager(QObject):
             self.openFile()
 
     def loadFile(self, path, overrideLength=-1):
-        self.path = path
-        LogObject().print(f"Opened file '{path}'")
         sonar = fh.FOpenSonarFile(path)
         if overrideLength > 0:
             sonar.frameCount = min(overrideLength, sonar.frameCount)
@@ -121,7 +119,9 @@ class PlaybackManager(QObject):
         else:
             self.setLoadedFile(sonar)
 
+        self.path = path
         self.setTitle(path)
+        LogObject().print(f"Opened file '{path}'")
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar
@@ -150,6 +150,7 @@ class PlaybackManager(QObject):
         opens a file dialog for selecting the correct .aris file.
         Returns True, if file is already open, otherwise False.
         """
+        LogObject().print2(os.path.basename(self.path), "-", os.path.basename(path))
         if os.path.basename(self.path) == os.path.basename(path):
             return True
         
@@ -183,10 +184,10 @@ class PlaybackManager(QObject):
             self.playback_thread = None
 
         self.sonar = None
-        self.file_closed.emit()
         LogObject().print(f"Closed file '{self.path}'")
         self.path = ""
         self.setTitle()
+        self.file_closed.emit()
 
         #self.polar_transform = None
 

@@ -304,6 +304,7 @@ class EchogramViewer(QtWidgets.QWidget):
         self.echogram.processBuffer(self.playback_manager.getPolarBuffer())
         self.showBGSubtraction(self.show_bg_subtracted)
         self.figure.resetView()
+        self.playback_manager.refreshFrame()
 
     def showBGSubtraction(self, value):
         self.show_bg_subtracted = value

@@ -142,12 +142,13 @@ class SaveManager(QtCore.QObject):
 		try:
 			file_path = os.path.abspath(data["path"])
 			secondary_path = os.path.abspath(os.path.join(os.path.dirname(path), os.path.basename(file_path)))
-			self.playback_manager.polars_loaded.connect(self.setLoadedData)
 			self.temp_data = data
 
 			if self.playback_manager.checkLoadedFile(file_path, secondary_path, True):
 				# If file already open
 				self.setLoadedData()
+			else:
+				self.playback_manager.polars_loaded.connect(self.setLoadedData)
 
 		except ValueError as e:
 			LogObject().print("Error: Invalid value(s) in save file,", e)

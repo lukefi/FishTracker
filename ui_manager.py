@@ -80,7 +80,6 @@ class UIManager():
         self.logToFile = LogToFile()
         LogObject().connect(self.logToFile.writeLine)
 
-
         # Tabs for the side panel.
         self.ui.info_widget.removeTab(0)
         self.ui.info_widget.addTab(self.detector_parameters, "")
@@ -248,6 +247,7 @@ class UIManager():
 def launch_ui():
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow() #QtWidgets.QMainWindow()
+    fh.checkConfFile()
     playback_manager = PlaybackManager(app, main_window)
     detector = Detector(playback_manager)
     tracker = Tracker(detector)

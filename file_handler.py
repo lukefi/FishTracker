@@ -28,6 +28,7 @@ from log_object import LogObject
 
 CONF_PATH = "conf.json"
 
+
 class FSONAR_File():
     def __init__(self, filename):
         self.FILE_PATH = filename
@@ -157,7 +158,6 @@ class FSONAR_File():
         self.distanceCompensation = value
 
 
-
 def FOpenSonarFile(filename):
     """
     Opens a sonar file and decides which DIDSON version it is.
@@ -192,6 +192,7 @@ def FOpenSonarFile(filename):
     versions[version]()
     return SONAR_File
 
+
 def DIDSON_v0(fhand, version, cls):
     """
     This function will handle version 0 DIDSON Files
@@ -207,12 +208,14 @@ def DIDSON_v1(fhand, version, cls):
     ## TODO _
     pass
 
+
 def DIDSON_v2(fhand, version, cls):
     """
     This function will handle version 2 DIDSON Files
     """
     ## TODO _
     pass
+
 
 def DIDSON_v3(fhand, version, cls):
     """
@@ -269,6 +272,7 @@ def DIDSON_v5(fhand, version, cls):
     cls.FILE_HANDLE = fhand
     return
 
+
 def loadJSON(jsonFilePath):
     """This function will be used to load JSON files.
     
@@ -285,6 +289,7 @@ def loadJSON(jsonFilePath):
     except:
         return None
 
+
 # TODO: Use default values instead multiple try/except patterns
 #       when accessing the values.
 def loadConf():
@@ -295,9 +300,15 @@ def loadConf():
     except FileNotFoundError:
         return createDefaultConfFile()
 
+
 def writeConf(conf):
     with open(CONF_PATH, 'w') as f:
         json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+
+
+def confExists():
+    return os.path.exists(CONF_PATH)
+
 
 class ConfKeys(Enum):
     batch_double_track = auto()
@@ -314,6 +325,7 @@ class ConfKeys(Enum):
     save_as_binary = auto()
     sonar_height = auto()
     test_file_path = auto()
+
 
 conf_default_values = {
     ConfKeys.batch_double_track: False,
@@ -349,6 +361,15 @@ conf_types = {
     ConfKeys.test_file_path: str
     }
 
+
+def checkConfFile():
+    try:
+        loadConf()
+    except:
+        LogObject().print2(f"Reading conf file failed, {sys.exc_info()[1]}")
+        createDefaultConfFile()
+
+
 def createDefaultConfFile():
     conf = dict()
     for key in ConfKeys:
@@ -356,6 +377,7 @@ def createDefaultConfFile():
 
     writeConf(conf)
     return conf
+
 
 def getConfValue(key: ConfKeys):
     """
@@ -374,6 +396,7 @@ def getConfValue(key: ConfKeys):
         else:
            return None
 
+
 def setConfValue(key: ConfKeys, value):
     """
     Unified solution for setting any of the conf file entries.
@@ -384,6 +407,7 @@ def setConfValue(key: ConfKeys, value):
         writeConf(conf)
     except:
         LogObject().print2(f"Writing conf file failed for key: {key}, sys.exc_info()[1]")
+
 
 def getTestFilePath():
     try:
@@ -396,6 +420,7 @@ def getTestFilePath():
         LogObject().print2("Reading test file path failed", sys.exc_info()[1])
         return None
 
+
 def getLatestDirectory():
     try:
         conf = loadConf()
@@ -407,6 +432,7 @@ def getLatestDirectory():
         LogObject().print2("Reading directory path failed:", sys.exc_info()[1])
         return str(os.path.expanduser("~"))
 
+
 def setLatestDirectory(path):
     if path is None or path == "":
         return
@@ -416,6 +442,7 @@ def setLatestDirectory(path):
         writeConf(conf)
     except:
         LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
+
 
 def getLatestSaveDirectory():
     try:
@@ -428,6 +455,7 @@ def getLatestSaveDirectory():
         LogObject().print2("Reading save directory path failed:", sys.exc_info()[1])
         return str(os.path.expanduser("~"))
 
+
 def setLatestSaveDirectory(path):
     if path is None or path == "":
         return
@@ -438,6 +466,7 @@ def setLatestSaveDirectory(path):
     except:
         LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
 
+
 def getSonarHeight():
     try:
         conf = loadConf()
@@ -445,6 +474,7 @@ def getSonarHeight():
     except:
         LogObject().print2("Reading sonar height failed", sys.exc_info()[1])
         return 1000
+
 
 def setSonarHeight(value):
     try:
@@ -454,6 +484,7 @@ def setSonarHeight(value):
     except:
         LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
 
+
 def getParallelProcesses():
     try:
         conf = loadConf()
@@ -461,6 +492,7 @@ def getParallelProcesses():
     except:
         LogObject().print2("Reading parallel process count failed", sys.exc_info()[1])
         return 1
+
 
 def setParallelProcesses(value):
     try:
@@ -497,6 +529,7 @@ def pathFromList(listOfDirectories):
         string -- full path to the specified file
     """
     return os.path.join(os.getcwd(), *listOfDirectories)
+
 
 def saveAnalysisPreset(presetName):
     ## TODO _ : Finish this function

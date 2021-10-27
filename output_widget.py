@@ -7,6 +7,9 @@ from PyQt5.QtWidgets import *
 from log_object import LogObject
 import file_handler as fh
 
+LOG_PATH = fh.getFilePathInAppData("log.txt")
+log_lock = QReadWriteLock()
+
 class WriteStream(object):
     """
     The new Stream Object which replaces the default stream associated with sys.stdout
@@ -120,12 +123,14 @@ class LogToFile:
 
     def write(self, string, verbosity, mode='a'):
         if self.verbosity >= verbosity:
-            with open("log.txt", mode) as file:
+            locker = QWriteLocker(log_lock)
+            with open(LOG_PATH, mode) as file:
                 file.write(f"{string}")
 
     def writeLine(self, line, verbosity, time_stamp, mode='a'):
         if self.verbosity >= verbosity:
-            with open("log.txt", mode) as file:
+            locker = QWriteLocker(log_lock)
+            with open(LOG_PATH, mode) as file:
                 file.write(f"{line} [{time_stamp}]\n")
 
 if __name__ == "__main__":

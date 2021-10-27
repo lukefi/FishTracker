@@ -1,14 +1,18 @@
-﻿from PyQt5.QtCore import *
+﻿import os.path
+import json
+
+from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+
 from detector import Detector
 from detector_parameters import DetectorParameters
-from mog_parameters import MOGParameters
-import json
-import os.path
+from file_handler import getFilePathInAppData, checkAppDataPath
 from log_object import LogObject
+from mog_parameters import MOGParameters
 
-PARAMETERS_PATH = "detector_parameters.json"
+PARAMETERS_PATH = getFilePathInAppData("detector_parameters.json")
+parameters_lock = QReadWriteLock()
 
 class LabeledSlider:
     def __init__(self, label, form_layout, connected_functions=[], default_value=0, min_value=0, max_value=1, parent=None, mapping=None, reverse_mapping=None, formatting = "{}"):
@@ -187,12 +191,6 @@ class DetectorParametersView(QWidget):
 
         self.verticalLayout.addLayout(self.calc_button_layout)
 
-        #self.detection_size = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Detection size", 10, 0, 20, self)
-        #self.mog_var_thresh = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "MOG var threshold", 11, 0, 20, self)
-        #self.min_fg_pixels = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Min foreground pixels", 25, 0, 50, self)
-        #self.nof_bg_frames = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Number of bg frames", 10, 5, 20, self, lambda x: 100*x)
-        #self.learning_rate = LabeledSlider(self.verticalLayout, [self.playback_manager.refreshFrame], "Learning rate", -20, -30, -10, self, lambda x: 10**(x/10), "{:.3f}")
-
         self.verticalLayout.addStretch()
 
         self.save_btn = QPushButton()
@@ -242,6 +240,8 @@ class DetectorParametersView(QWidget):
             return
 
         try:
+            checkAppDataPath()
+            locker = QWriteLocker(parameters_lock)
             with open(PARAMETERS_PATH, "w") as f:
                 json.dump(param_dict, f, indent=3)
         except FileNotFoundError as e:
@@ -249,6 +249,7 @@ class DetectorParametersView(QWidget):
 
     def loadJSON(self):
         try:
+            locker = QReadLocker(parameters_lock)
             with open(PARAMETERS_PATH, "r") as f:
                 dict = json.load(f)
         except FileNotFoundError as e:

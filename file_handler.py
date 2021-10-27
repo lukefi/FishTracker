@@ -14,6 +14,9 @@ import sys
 import os
 import json
 import struct
+import platform
+
+from PyQt5 import QtCore
 
 from enum import Enum, auto
 
@@ -26,7 +29,24 @@ from file_handlers.v5.v5_file_info import *
 from image_manipulation import ImageManipulation
 from log_object import LogObject
 
-CONF_PATH = "conf.json"
+
+if platform.system() == "Windows":
+    APPDATA_PATH = os.path.expandvars(r"%LOCALAPPDATA%\FishTracker")
+else:
+    # TODO: Set proper path for Linux / OSX
+    APPDATA_PATH = os.getcwd()
+
+CONF_PATH = os.path.join(APPDATA_PATH, "conf.json")
+
+
+def checkAppDataPath():
+    if not os.path.isdir(APPDATA_PATH):
+        os.mkdir(APPDATA_PATH)
+
+def getFilePathInAppData(file_name: str):
+    return os.path.join(APPDATA_PATH, file_name)
+
+conf_lock = QtCore.QReadWriteLock()
 
 
 class FSONAR_File():
@@ -290,24 +310,42 @@ def loadJSON(jsonFilePath):
         return None
 
 
-# TODO: Use default values instead multiple try/except patterns
-#       when accessing the values.
 def loadConf():
     try:
+        locker = QtCore.QReadLocker(conf_lock)
         with open(CONF_PATH, "r") as file:
             conf = json.load(file)
             return conf
     except FileNotFoundError:
+        locker.unlock()
         return createDefaultConfFile()
 
 
 def writeConf(conf):
+    checkAppDataPath()
+    locker = QtCore.QWriteLocker(conf_lock)
     with open(CONF_PATH, 'w') as f:
         json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
 
 
 def confExists():
     return os.path.exists(CONF_PATH)
+
+def checkConfFile():
+    try:
+        loadConf()
+    except:
+        LogObject().print2(f"Reading conf file failed, {sys.exc_info()[1]}")
+        createDefaultConfFile()
+
+
+def createDefaultConfFile():
+    conf = dict()
+    for key in ConfKeys:
+        conf[key.name] = conf_default_values[key]
+
+    writeConf(conf)
+    return conf
 
 
 class ConfKeys(Enum):
@@ -360,23 +398,6 @@ conf_types = {
     ConfKeys.sonar_height: int,
     ConfKeys.test_file_path: str
     }
-
-
-def checkConfFile():
-    try:
-        loadConf()
-    except:
-        LogObject().print2(f"Reading conf file failed, {sys.exc_info()[1]}")
-        createDefaultConfFile()
-
-
-def createDefaultConfFile():
-    conf = dict()
-    for key in ConfKeys:
-        conf[key.name] = conf_default_values[key]
-
-    writeConf(conf)
-    return conf
 
 
 def getConfValue(key: ConfKeys):

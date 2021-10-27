@@ -1,18 +1,20 @@
-﻿from PyQt5.QtCore import *
+﻿import os.path
+import json
+
+from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+
+from collapsible_box import CollapsibleBox
+from detector_parameters_view import LabeledSlider
+from file_handler import getFilePathInAppData, checkAppDataPath
+from filter_parameters import FilterParameters
+from log_object import LogObject
 from tracker import Tracker, TrackingState
 from tracker_parameters import TrackerParameters
-from filter_parameters import FilterParameters
-from detector_parameters_view import LabeledSlider
-from collapsible_box import CollapsibleBox
-from log_object import LogObject
 
-import json
-import os.path
-import numpy as np
-
-PARAMETERS_PATH = "tracker_parameters.json"
+PARAMETERS_PATH = getFilePathInAppData("tracker_parameters.json")
+parameters_lock = QReadWriteLock()
 
 class TrackerParametersView(QScrollArea):
     def __init__(self, playback_manager, tracker, detector, fish_manager=None, debug=False):
@@ -255,6 +257,8 @@ class TrackerParametersView(QScrollArea):
         dict = self.tracker.getAllParameters().getParameterDict()
 
         try:
+            checkAppDataPath()
+            locker = QWriteLocker(parameters_lock)
             with open(PARAMETERS_PATH, "w") as f:
                 json.dump(dict, f, indent=3)
         except FileNotFoundError as e:
@@ -262,6 +266,7 @@ class TrackerParametersView(QScrollArea):
 
     def loadJSON(self):
         try:
+            locker = QReadLocker(parameters_lock)
             with open(PARAMETERS_PATH, "r") as f:
                 dict = json.load(f)
         except FileNotFoundError as e:

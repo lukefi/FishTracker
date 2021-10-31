@@ -80,6 +80,11 @@ class Ui_MainWindow(object):
         self.action_FlowDir = QtWidgets.QAction(MainWindow)
         self.action_FlowDir.setObjectName("action_FlowDir")
         self.menu_Edit.addAction(self.action_FlowDir)
+
+        self.action_UserPref = QtWidgets.QAction(MainWindow)
+        self.action_UserPref.setObjectName("action_UserPref")
+        self.menu_Edit.addAction(self.action_UserPref)
+
         self.menubar.addAction(self.menu_Edit.menuAction())
 
         self.menu_Run = QtWidgets.QMenu(self.menubar)
@@ -103,4 +108,4 @@ class Ui_MainWindow(object):
         self.action_Open.setText(_translate("MainWindow", "&Open..."))
         self.action_Batch.setText(_translate("MainWindow", "&Batch"))
         self.action_FlowDir.setText(_translate("MainWindow", "&Switch flow direction"))
-
+        self.action_UserPref.setText(_translate("MainWindow", "&User preferences"))

@@ -142,7 +142,7 @@ class SonarViewer(QtWidgets.QDialog):
 
     def displayImage(self, tuple):
         if tuple is None:
-            self.MyFigureWidget.clear()
+            self.sonar_figure.clear()
 
         else:
             ind, frame = tuple

@@ -21,6 +21,7 @@ from output_widget import OutputViewer, LogToFile
 from log_object import LogObject
 from batch_dialog import BatchDialog
 from save_manager import SaveManager
+from user_preferences import UserPreferencesDialog
 
 class UIManager():
     def __init__(self, main_window, playback_manager, detector, tracker, fish_manager, save_manager):
@@ -105,6 +106,9 @@ class UIManager():
         self.ui.action_FlowDir.setShortcut('Ctrl+D')
         self.ui.action_FlowDir.triggered.connect(self.changeFlowDirection)
 
+        self.ui.action_UserPref.setShortcut('Ctrl+U')
+        self.ui.action_UserPref.triggered.connect(self.openUserPreferences)
+
         if fh.getTestFilePath() is not None:
             self.ui.action_OpenTest = QtWidgets.QAction(self.main_window)
             self.ui.action_OpenTest.setObjectName("action_OpenTest")
@@ -185,7 +189,7 @@ class UIManager():
     def saveAs(self):
         path = self.playback.selectSaveFile(None, "FishTracker Files (*.fish)")
         if path != "" :
-            self.save_manager.saveFile(path, True)
+            self.save_manager.saveFile(path, fh.getConfValue(fh.ConfKeys.save_as_binary))
 
     def save(self):
         path = None
@@ -224,6 +228,10 @@ class UIManager():
         dparams = self.detector.parameters.copy()
         tparams = self.tracker.getAllParameters()
         dialog = BatchDialog(self.playback, dparams, tparams)
+        dialog.exec_()
+
+    def openUserPreferences(self):
+        dialog = UserPreferencesDialog(self.playback)
         dialog.exec_()
 
     def changeFlowDirection(self):

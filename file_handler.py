@@ -406,7 +406,7 @@ def getConfValue(key: ConfKeys):
     """
     try:
         conf = loadConf()
-        if os.path.exists(conf[key.name]):
+        if key.name in conf.keys():
             return conf[key.name]
         else:
             return conf_default_values[key]

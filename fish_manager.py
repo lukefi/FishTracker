@@ -558,9 +558,11 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def setUpDownInversion(self, value):
         self.up_down_inverted = value
-        meters_per_pixel = 1.0 / self.playback_manager.getPixelsPerMeter()
-        for fish in self.all_fish.values():
-            fish.setPathVariables(self.up_down_inverted, self.frame_time, meters_per_pixel)
+        pixels_per_meter = self.playback_manager.getPixelsPerMeter()
+        if pixels_per_meter is not None:
+            meters_per_pixel = 1.0 / pixels_per_meter
+            for fish in self.all_fish.values():
+                fish.setPathVariables(self.up_down_inverted, self.frame_time, meters_per_pixel)
         self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def setShowEchogramFish(self, value):

@@ -14,37 +14,53 @@ from log_object import LogObject
 """
 File format as follows:
 {
-	"file type": "FishTracking"
-	"version": "0.1",
-	"path": "C:\Vetsjoki\Vetsi_2016-06-18_170000.aris",
-	"inverted upstream": False,
-	"detector":
-	{
-		"Detection size": 10,
-		"Min foreground pixels": 25,
-		"Median size": 3,
-		"Clustering epsilon:" 10,
-		"Clustering min samples": 10,
-		"MOG var threshold": 11,
-		"Background frames": 100
-		"Learning rate": 0.01
-	},
-	"tracker":
-	{
-		"Max age": 10,
-		"Min hits": 5,
-		"Search radius": 10
-	},
-	"detections":
-	{
-		frame1: [(1, [(x,y), (x,y)])],
-		frame2: [(2, [(x,y), (x,y), (x,y)]), (3, [(x,y), (x,y)])]
-	},
-	"fish":
-	{
-		1: [(frame1, (min_x, max_x, min_y, max_y)), (frame2, (min_x, max_x, min_y, max_y))],
-		2: [(frame2, (min_x, max_x, min_y, max_y))],
-	}
+    "file type": "FishTracker"
+    "version": "0.1",
+    "path": "C:\Vetsjoki\Vetsi_2016-06-18_170000.aris",
+    "inverted upstream": false,
+    "detector": {
+        "bg_subtractor": {
+            "learning_rate": 0.01,
+            "mixture_count": 5,
+            "mog_var_thresh": 11,
+            "nof_bg_frames": 100
+        },
+        "detector": {
+            "detection_size": 10,
+            "min_fg_pixels": 25,
+            "median_size": 3,
+            "dbscan_eps": 10,
+            "dbscan_min_samples": 10
+        }
+    },
+    "tracker": {
+        "primary_tracking": {
+            "max_age": 10,
+            "min_hits": 5,
+            "search_radius": 10,
+            "trim_tails": true
+        },
+        "filtering": {
+            "min_duration": 2,
+            "mad_limit": 0
+        },
+        "secondary_tracking": {
+            "max_age": 10,
+            "min_hits": 5,
+            "search_radius": 10,
+            "trim_tails": true
+        }
+    },
+    "detections":
+    {
+        frame_1: [[detection_label_0, [[x,y], [x,y], [x,y], [x,y]]]],
+        frame_2: [[detection_label_1, [[x,y], [x,y]]], [detection_label_2, [[x,y], [x,y], [x,y]]]]
+    },
+    "fish":
+    {
+        track_id_1: [[frame_1, detection_label_0, [min_x, max_x, min_y, max_y]], [frame_2, detection_label_1, [min_x, max_x, min_y, max_y]]],
+        track_id_2: [[frame_2, detection_label_2, [min_x, max_x, min_y, max_y]]]
+    }
 }
 """
 
@@ -85,7 +101,7 @@ class SaveManager(QtCore.QObject):
 		detections = self.detector.getSaveDictionary()
 		fish = self.fish_manager.getSaveDictionary()
 
-		data = { "file type": "FishTracking", "version": "0.1" }
+		data = { "file type": "FishTracker", "version": "0.1" }
 		data["path"] = os.path.abspath(self.playback_manager.path)
 		data["inverted upstream"] = self.fish_manager.up_down_inverted
 		data["detector"] = dp_dict

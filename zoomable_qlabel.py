@@ -448,7 +448,7 @@ if __name__ == "__main__":
     main_window = QtWidgets.QMainWindow()
     z_label = TestZoomableQLabel(True, True, True)
     #z_label = TestZoomableQLabel(False, True, False)
-    z_label.displayed_image = cv2.imread('echo_placeholder.png', 0)
+    z_label.displayed_image = cv2.imread('UI/echo_placeholder.png', 0)
     z_label.resetView()
     main_window.setCentralWidget(z_label)
     main_window.show()

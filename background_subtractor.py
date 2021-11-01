@@ -25,7 +25,6 @@ class BackgroundSubtractor(QtCore.QObject):
         self.image_width = 0
 
         self.fgbg_mog = None
-        self.fgbg_mog_debug_initialized_once = False
 
         # [trigger] Terminate initializing process.
         self.stop_initializing = False
@@ -71,8 +70,6 @@ class BackgroundSubtractor(QtCore.QObject):
         self.fgbg_mog.setNMixtures(self.mog_parameters.data.mixture_count)
         self.fgbg_mog.setVarThreshold(self.mog_parameters.data.mog_var_thresh)
         self.fgbg_mog.setShadowValue(0)
-
-        self.fgbg_mog_debug_initialized_once = True
 
         nof_frames = self.image_provider.getFrameCount()
         nof_bg_frames = min(nof_frames, self.mog_parameters.data.nof_bg_frames)
@@ -122,8 +119,7 @@ class BackgroundSubtractor(QtCore.QObject):
             return fg_mask_mog
 
         except AttributeError as e:
-            LogObject().print2(e, "\nDebug  (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
-            print(e, "\nDebug (FGBG mog initialized):", self.fgbg_mog_debug_initialized_once)
+            LogObject().print2("BG subtractor not initialized", e)
             return None
 
     def subtractBGFiltered(self, image, median_size):

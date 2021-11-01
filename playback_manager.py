@@ -150,7 +150,6 @@ class PlaybackManager(QObject):
         opens a file dialog for selecting the correct .aris file.
         Returns True, if file is already open, otherwise False.
         """
-        LogObject().print2(os.path.basename(self.path), "-", os.path.basename(path))
         if os.path.basename(self.path) == os.path.basename(path):
             return True
         

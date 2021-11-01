@@ -18,7 +18,7 @@ python main.py
 ## Quickstart guide
 1. Open &ast;.aris file by choosing "File"&#8594;"Open...". Previously saved results (&ast;.fish files) can be opened by choosing "File"&#8594;"Load..."
 2. The application computes a background model for background subtraction and an echogram. The progress of the application is printed on the "Log" tab.
-3. A vertical line seen in the echogram indicates the currently selected frame, which can be freely selected. The view can be zoomed with the scroll wheel and panned with the left mouse button.
+3. A vertical line seen in the echogram indicates the currently selected frame, which can be freely selected. The view can be zoomed with the scroll wheel and panned with the right mouse button.
 4. The quality of the background subtraction can be inspected by choosing the "Background subtraction" icon (topmost icon on the left-hand side of the sonar view).
 5. If fish seem to disappear from the view, it is recommended to lower the value of the "MOG var threshold" parameter. To confirm the changes, press "Apply Values".
 6. ”Calculate all” computes all detections for the entire data. "Log" tab can be used to follow the progress.

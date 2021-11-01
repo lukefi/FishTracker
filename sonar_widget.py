@@ -21,8 +21,6 @@ import cv2
 import seaborn as sns
 import iconsLauncher as uiIcons      # UI/iconsLauncher
 # uif : (u)ser (i)nterface (f)unction
-import UI_utils as uif              # UI/UI_utils
-import AutoAnalyzer
 
 ## library for reading SONAR files
 # FH: File Handler

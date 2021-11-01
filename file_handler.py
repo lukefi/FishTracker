@@ -19,8 +19,6 @@ from enum import Enum, auto
 
 from file_handlers.utils import *
 
-from file_handlers.v3.v3_file_info import *
-from file_handlers.v4.v4_file_info import *
 from file_handlers.v5.v5_file_info import *
 
 from image_manipulation import ImageManipulation

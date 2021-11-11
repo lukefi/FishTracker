@@ -1,8 +1,8 @@
 # Fish Tracker
 
-![Fish Tracker main view](main_view.png)
-
 Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video.
+
+![Fish Tracker main view](main_view.png)
 
 ## Run with Python
 The easiest way to run the source code is by using Anaconda and a provided yml file to create an environment. At the project root, run:

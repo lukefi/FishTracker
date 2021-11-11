@@ -1,7 +1,26 @@
+"""
+This file is part of Fish Tracker.
+Copyright 2021, VTT Technical research centre of Finland Ltd.
+Developed by: Mikael Uimonen.
+
+Fish Tracker is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Fish Tracker is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from fish_manager import pyqt_palette
 
-class MyComboBox(QtWidgets.QComboBox):
+class ModifiedComboBox(QtWidgets.QComboBox):
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -16,8 +35,6 @@ class MyComboBox(QtWidgets.QComboBox):
             event.ignore()
 
 class DropdownDelegate(QtWidgets.QStyledItemDelegate):
-    #color_default = QtGui.QColor("#aaedff")
-
     def __init__(self):
         QtWidgets.QItemDelegate.__init__(self)
 
@@ -25,13 +42,13 @@ class DropdownDelegate(QtWidgets.QStyledItemDelegate):
         if index.model().isColor(index):
             return ColorEditor(parent)
         elif index.model().isDropdown(index):
-            combo=MyComboBox(parent)
+            combo=ModifiedComboBox(parent)
             return combo
         else:
             return super().createEditor(parent, option, index)
 
     def setEditorData(self, editor, index):
-        if isinstance(editor, MyComboBox):
+        if isinstance(editor, ModifiedComboBox):
             editor.clear()
             editor.addItems(index.model().dropdown_options())
             editor.setCurrentIndex(index.model().getDropdownIndex(index))
@@ -55,32 +72,6 @@ class DropdownDelegate(QtWidgets.QStyledItemDelegate):
         else:
             super().paint(painter, option, index)
 
-    #def paint(self, painter, option, index):
-    #    if option.state & QtWidgets.QStyle.State_Selected:
-    #        option.palette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.black)
-    #        color = self.combineColors(self.color_default, self.background(option, index))
-    #        option.palette.setColor(QtGui.QPalette.Highlight, color)
-    #    super().paint(painter, option, index)
-
-    #def background(self, option, index):
-    #    return option.palette.color(QtGui.QPalette.Base)
-
-    #@staticmethod
-    #def combineColors(c1, c2):
-    #    c3 = QtGui.QColor()
-    #    c3.setRed((c1.red() + c2.red()) / 2)
-    #    c3.setGreen((c1.green() + c2.green()) / 2)
-    #    c3.setBlue((c1.blue() + c2.blue()) / 2)
-
-    #    return c3
-
-
-    #def setModelData(self, editor, model, index):
-    #    if isinstance(editor, QtWidgets.QComboBox):
-    #        model.setData(index, )
-
-    #    if isinstance(editor, QtWidgets.QLineEdit):
-    #        editor.setText(str(index.model().data(index, QtCore.Qt.DisplayRole)))
 
 class ColorEditor(QtWidgets.QWidget):
     # A signal to tell the delegate when we've finished editing.
@@ -107,9 +98,6 @@ class ColorLabel(object):
     def __init__(self, color_count=16):
         self.color_count = color_count
         self.scale = 15
-
-    #def sizeHint(self):
-    #    return QtCore.QSize(self.scale, self.scale)
 
     def paint(self, painter, rect, palette, color, isEditable=False):
         painter.save()

@@ -1,5 +1,5 @@
 # Fish Tracking
-LUKE Fish Tracking
+Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video.
 
 ## Run with Python
 The easiest way to run the source code is by using Anaconda and a provided yml file to create an environment. At the project root, run:
@@ -41,3 +41,18 @@ so the removal of the previous bundle does not have to be confirmed.
 
 The resulting bundle can be found in the "dist" folder. It includes an executable, "fish_tracker.exe", which can be used to run the program.
 For easier distribution, an installer can be created using a program called NSIS or similar.
+
+## Copyright
+Copyright 2021, VTT Technical research centre of Finland Ltd.
+
+This program is licensed under GNU General Public License version 3.
+
+The above copyright notice and this license notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

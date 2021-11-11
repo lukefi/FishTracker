@@ -1,4 +1,7 @@
-# Fish Tracking
+# Fish Tracker
+
+![Fish Tracker main view](main_view.png)
+
 Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video.
 
 ## Run with Python
@@ -43,8 +46,8 @@ The resulting bundle can be found in the "dist" folder. It includes an executabl
 For easier distribution, an installer can be created using a program called NSIS or similar.
 
 ## Copyright
-Copyright 2021, VTT Technical research centre of Finland Ltd.
-
+Copyright 2021, VTT Technical research centre of Finland Ltd.  
+Developed by: Mikael Uimonen and Otto Korkalo  
 This program is licensed under GNU General Public License version 3.
 
 The above copyright notice and this license notice shall be included in all copies or substantial portions of the Software.
@@ -56,3 +59,11 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+The following pieces of software have additional or alternate copyrights,
+licenses, and/or restrictions:
+
+| Program      | Files |
+| ----------- | ----------- |
+| [Fish Tracking](https://github.com/minamaged113/fish-tracking)   | [/ file_handlers / *](file_handlers/)<br/> [/ UI / icons / *](UI/icons)<br/> [/ file_handler.py](file_handler.py) <br/> [/ iconsLauncher.py](iconsLauncher.py) <br/> [/ sonar_widget.py](sonar_widget.py) |
+| [Sort](https://github.com/abewley/sort)      | [/ sort.py](sort.py)       |

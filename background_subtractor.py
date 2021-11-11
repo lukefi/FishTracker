@@ -1,7 +1,7 @@
 ﻿"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
-Developed by: Mikael Uimonen.
+Developed by: Otto Korkalo and Mikael Uimonen.
 
 Fish Tracker is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

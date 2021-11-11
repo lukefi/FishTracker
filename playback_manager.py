@@ -28,7 +28,6 @@ import numpy as np
 from queue import Queue
 import gc
 
-from debug import Debug
 from polar_transform import PolarTransform
 from log_object import LogObject
 

@@ -21,7 +21,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from zoomable_qlabel import ZoomableQLabel, DebugZQLabel
 import cv2
 import numpy as np
-from debug import Debug
 from log_object import LogObject
 from fish_manager import FishEntry, pyqt_palette, pyqt_palette_deep
 from background_subtractor import BackgroundSubtractor

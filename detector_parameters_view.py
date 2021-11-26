@@ -92,6 +92,37 @@ class LabeledSlider:
         for f in self.connected_functions:
             f(applied_value)
 
+class FloatValidator(QDoubleValidator):
+    def __init__(self, bottom, top, decimals, parent=None):
+        super().__init__(bottom, top, decimals, parent)
+
+    def validate(self, s, pos):
+        if len(s) == 0 or s == "-":
+            return (QValidator.Intermediate, s, pos)
+
+        decimal_point = '.'
+
+        try:
+            chars_after_point = len(s) - s.index(decimal_point) - 1
+        except ValueError:
+            return (QValidator.Invalid, s, pos)
+
+        if chars_after_point > self.decimals():
+            return (QValidator.Invalid, s, pos)
+
+        try:
+            d = float(s)
+        except ValueError:
+            return (QValidator.Invalid, s, pos)
+
+        if  self.bottom() <= d <= self.top():
+            return (QValidator.Acceptable, s, pos)
+        elif chars_after_point == 0:
+            return (QValidator.Intermediate, s, pos)
+        else:
+            return (QValidator.Invalid, s, pos)
+
+
 class DetectorParametersView(QWidget):
     def __init__(self, playback_manager, detector, sonar_processor):
         super().__init__()
@@ -130,13 +161,15 @@ class DetectorParametersView(QWidget):
         bg_sub = detector.bg_subtractor
         bg_sub_data = bg_sub.mog_parameters.data
         lambda_mog = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.mog_var_thresh, x)
-        self.mog_var_threshold_line = addLine("MOG var threshold", bg_sub_data.mog_var_thresh, QIntValidator(0, 20),[lambda_mog, refresh_lambda], self.form_layout2)
+        self.mog_var_threshold_line = addLine("MOG var threshold", bg_sub_data.mog_var_thresh, QIntValidator(0, 200),[lambda_mog, refresh_lambda], self.form_layout2)
 
         lambda_bg_frames = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.nof_bg_frames, x)
         self.nof_bg_frames_line = addLine("Background frames", bg_sub_data.nof_bg_frames, QIntValidator(10, 10000), [lambda_bg_frames, refresh_lambda], self.form_layout2)
 
         lambda_learning_rate = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.learning_rate, x)
-        self.learning_rate_line = addLine("Learning rate", bg_sub_data.learning_rate, QDoubleValidator(0.001, 0.1, 3), [lambda_learning_rate, refresh_lambda], self.form_layout2)
+        lr_validator = FloatValidator(bottom=0.0, top=1.0, decimals=3)
+        lr_validator.setNotation(QDoubleValidator.StandardNotation);
+        self.learning_rate_line = addLine("Learning rate", bg_sub_data.learning_rate, lr_validator, [lambda_learning_rate, refresh_lambda], self.form_layout2)
 
         self.verticalLayout.addLayout(self.form_layout2)
 
@@ -173,20 +206,20 @@ class DetectorParametersView(QWidget):
         # Detector parameters
         det_param_data = detector.parameters.data
         lambda_detection_size = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.detection_size, x)
-        self.detection_size_line = addLine("Detection size", det_param_data.detection_size, QIntValidator(0, 20), [lambda_detection_size, refresh_lambda], self.form_layout)
+        self.detection_size_line = addLine("Detection size", det_param_data.detection_size, QIntValidator(0, 200), [lambda_detection_size, refresh_lambda], self.form_layout)
 
         lambda_min_fg_pixels = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.min_fg_pixels, x)
-        self.min_fg_pixels_line  = addLine("Min foreground pixels", det_param_data.min_fg_pixels, QIntValidator(0, 50), [lambda_min_fg_pixels, refresh_lambda], self.form_layout)
+        self.min_fg_pixels_line  = addLine("Min foreground pixels", det_param_data.min_fg_pixels, QIntValidator(0, 200), [lambda_min_fg_pixels, refresh_lambda], self.form_layout)
 
         lambda_median_size = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.median_size, x)
         self.median_size_slider = LabeledSlider("Median size", self.form_layout, [lambda_median_size, refresh_lambda], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
         self.median_size_slider.setValue(det_param_data.median_size)
 
         lambda_dbscan_eps = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.dbscan_eps, x)
-        self.dbscan_eps_line = addLine("Clustering epsilon", det_param_data.dbscan_eps, QIntValidator(0, 20), [lambda_dbscan_eps, refresh_lambda], self.form_layout)
+        self.dbscan_eps_line = addLine("Clustering epsilon", det_param_data.dbscan_eps, QIntValidator(0, 200), [lambda_dbscan_eps, refresh_lambda], self.form_layout)
 
         lambda_dbscan_min_samples = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.dbscan_min_samples, x)
-        self.dbscan_min_samples_line = addLine("Clustering min samples", det_param_data.dbscan_min_samples, QIntValidator(0, 20), [lambda_dbscan_min_samples, refresh_lambda], self.form_layout)
+        self.dbscan_min_samples_line = addLine("Clustering min samples", det_param_data.dbscan_min_samples, QIntValidator(0, 200), [lambda_dbscan_min_samples, refresh_lambda], self.form_layout)
 
         self.verticalLayout.addLayout(self.form_layout)
 

@@ -374,6 +374,7 @@ class ConfKeys(Enum):
     batch_save_tracks = auto()
     batch_save_complete = auto()
 
+    filter_tracks_on_save = auto()
     latest_batch_directory = auto()
     latest_directory = auto()
     latest_save_directory = auto()
@@ -391,6 +392,7 @@ conf_default_values = {
     ConfKeys.batch_save_tracks: False,
     ConfKeys.batch_save_complete: True,
 
+    ConfKeys.filter_tracks_on_save: True,
     ConfKeys.latest_batch_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_save_directory: str(os.path.expanduser("~")),
@@ -408,6 +410,7 @@ conf_types = {
     ConfKeys.batch_save_tracks: bool,
     ConfKeys.batch_save_complete: bool,
 
+    ConfKeys.filter_tracks_on_save: bool,
     ConfKeys.latest_batch_directory: str,
     ConfKeys.latest_directory: str,
     ConfKeys.latest_save_directory: str,

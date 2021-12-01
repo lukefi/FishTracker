@@ -25,6 +25,7 @@ import cv2
 import seaborn as sns
 from bisect import insort
 from enum import IntEnum
+import file_handler as fh
 from tracker import Tracker
 from tracker_parameters import TrackerParameters
 from log_object import LogObject
@@ -619,6 +620,9 @@ class FishManager(QtCore.QAbstractTableModel):
     def getFishInFrame(self, ind):
         return [f for f in self.fish_list if ind in f.tracks.keys()]
 
+    def getSavedList(self):
+        return self.fish_list if fh.getConfValue(fh.ConfKeys.filter_tracks_on_save) else self.all_fish.values()
+
     def saveToFile(self, path):
         """
         Tries to save all fish information (from all_fish dictionary) to a file.
@@ -642,7 +646,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def getSaveLines(self):
         """
-        Iterates through all the fish and returns a list containing the fish object, frames the appear in, and the following information:
+        Iterates through all the fish and returns a list containing the fish objects, frames the fish appear in, and the following information:
         ID, Frame, Length, Angle, Direction, Corner coordinates and wether the values are from a detection or a track.
         Detection information are preferred over tracks.
         """
@@ -653,7 +657,7 @@ class FishManager(QtCore.QAbstractTableModel):
         lineBase1 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
         lineBase2 = "{};{};" + "{};{};{};".format(f1,f1,f1) + "{};"
 
-        for fish in self.all_fish.values():
+        for fish in self.getSavedList():
             for frame, td in fish.tracks.items():
                 track, detection = td
 
@@ -732,7 +736,8 @@ class FishManager(QtCore.QAbstractTableModel):
 		Returns a dictionary of fish to be saved in SaveManager.
 		"""
         fish = {}
-        for f in self.all_fish.values():
+
+        for f in self.getSavedList():
             fish_tracks = [self.convertToWritable(frame, int(det.label), track[0:4]) if det is not None else
                            self.convertToWritable(frame, None, track[0:4])
                            for frame, (track, det) in f.tracks.items()]

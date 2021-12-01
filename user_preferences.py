@@ -72,24 +72,29 @@ class UserPreferencesDialog(QtWidgets.QDialog):
         self.verbose_slider = setupSlider("Log verbosity", "0: Default, 1: Additional information, 2: Developer infromation",
                                           self.form_layout, fh.ConfKeys.log_verbosity, 0, 2)
 
-        #"save_as_binary": false,
-        self.check_timestamps = setupCheckbox("Save as binary", "If checked, saves the results in binary format to save space.",
-                                              self.form_layout, fh.ConfKeys.log_timestamp)
-
         #"sonar_height": 1000,
         val = fh.getConfValue(fh.ConfKeys.sonar_height)
         fun = lambda x: fh.setConfValue(fh.ConfKeys.sonar_height, x)
         sh_tooltip = "Determines the image height used in the SonarViewer. This affects the speed of the analysis and the obtained results."
         self.sonar_height_line = addLine("Sonar image height\t\t", sh_tooltip, val, QtGui.QIntValidator(100, 10000), [fun], self.form_layout)
 
+        #"save_as_binary": false,
+        self.check_binary = setupCheckbox("Save as binary", "If checked, saves the results in binary format to save space.",
+                                              self.form_layout, fh.ConfKeys.save_as_binary)
+
+
+        #"filter_tracks_on_save": true
+        self.check_filter_tracks = setupCheckbox("Apply filters", "If checked, applies filters before saving tracks, i.e. only currently visible tracks are saved.",
+                                              self.form_layout, fh.ConfKeys.filter_tracks_on_save)
+
 
         self.cbox_general = CollapsibleBox("General options", self)
         self.cbox_general.setContentLayout(self.form_layout)
-        self.cbox_general.on_pressed()
+        self.cbox_general.onPressed()
         self.main_layout.addWidget(self.cbox_general)
 
         self.cbox_batch = batchSaveOptions("Batch options")
-        self.cbox_batch.on_pressed()
+        self.cbox_batch.onPressed()
         self.main_layout.addWidget(self.cbox_batch)
 
         self.setLayout(self.main_layout)

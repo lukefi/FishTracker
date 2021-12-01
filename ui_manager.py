@@ -211,7 +211,7 @@ class UIManager():
         path = None
         if self.save_manager.fast_save_enabled:
             path = self.save_manager.previous_path
-            self.save_manager.saveFile(path, True)
+            self.save_manager.saveFile(path, fh.getConfValue(fh.ConfKeys.save_as_binary))
         else:
             self.saveAs()
 

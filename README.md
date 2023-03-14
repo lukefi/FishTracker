@@ -1,6 +1,6 @@
 # Fish Tracker
 
-Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video. THIS IS A TEST VERSION FOR OTHER FILE TYPES
+Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video. This is a functioning program but also under development.
 
 ![Fish Tracker main view](main_view.png)
 

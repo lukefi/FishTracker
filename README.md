@@ -1,6 +1,6 @@
 # Fish Tracker
 
-Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video.
+Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video. This is a branch for developing Tana-specific cases.
 
 ![Fish Tracker main view](main_view.png)
 

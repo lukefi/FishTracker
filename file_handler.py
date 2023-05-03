@@ -28,6 +28,13 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
+
+---------------------------------------------------------------------------
+
+Modifications in a effort to include mp4-files
+author: Lauri Tirkkonen
+date: 27.3.2023
+
 """
 
 import sys
@@ -35,6 +42,7 @@ import os
 import json
 import struct
 import platform
+import filetype
 
 from PyQt5 import QtCore
 
@@ -45,6 +53,7 @@ from file_handlers.utils import *
 from file_handlers.v3.v3_file_info import *
 from file_handlers.v4.v4_file_info import *
 from file_handlers.v5.v5_file_info import *
+from file_handlers.MP4.mp4_file_info import *
 
 from image_manipulation import ImageManipulation
 from log_object import LogObject
@@ -96,12 +105,75 @@ class FSONAR_File():
         self.distanceCompensation = False
 
     def getPolarFrame(self, FI):
-        frameSize = self.DATA_SHAPE[0] * self.DATA_SHAPE[1]
-        frameoffset = (self.FILE_HEADER_SIZE + self.FRAME_HEADER_SIZE +(FI*(self.FRAME_HEADER_SIZE+(frameSize))))
-        self.FILE_HANDLE.seek(frameoffset, 0)
+        if (self.version == "MP4"):
+            vcap = cv2.VideoCapture(self.FILE_PATH)
+            while(vcap.isOpened()):
+                vcap.set(cv2.CAP_PROP_POS_FRAMES, FI)
+                success, color = vcap.read()
+                if (success == True):
+                    gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY) 
+                vcap.release()
 
-        frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
-        frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
+                if (self.BEAM_COUNT == 135): # Image manipulation for 135-angle
+                    pts = np.array([[0,0], [768,0], [768,318], [384,475], [0,318]]) 
+                    rect = cv2.boundingRect(pts)
+                    x,y,w,h = rect
+                    cropped = gray[y:y+h, x:x+w].copy()
+
+                    pts = pts - pts.min(axis=0)
+                    mask = np.zeros(cropped.shape[:2], np.uint8)
+                    cv2.drawContours(mask, [pts], -1, (255,255,255), -1, cv2.LINE_AA)
+
+                    dst = cv2.bitwise_and(cropped, cropped, mask=mask)
+
+                    dst[mask == 0] = 0
+
+                    frame = np.array(dst, dtype=np.uint8)
+
+                    """
+                    # Replace to make excess transparent and reshape to grid dimensions (2267, 135)
+                    # Loses pixels and possibly falsifies data
+                    if (success == True):
+                        gray = cv2.cvtColor(color, cv2.COLOR_BGR2BGRA) #Add alpha layer
+                    vcap.release()
+
+                    pts = np.array([[0,0], [768,0], [768,318], [384,475], [0,318]]) 
+                    rect = cv2.boundingRect(pts)
+                    x,y,w,h = rect
+                    cropped = gray[y:y+h, x:x+w].copy()
+
+                    pts = pts - pts.min(axis=0)
+                    mask = np.zeros(cropped.shape[:2], np.uint8)
+                    cv2.drawContours(mask, [pts], -1, (255,255,255), -1, cv2.LINE_AA)
+
+                    dst = cv2.bitwise_and(cropped, cropped, mask=mask)
+
+                    dst[mask == 0] = 255
+
+                    frame = np.array(dst, dtype=np.uint8)
+
+                    greyedUp = np.all(dst[...,:3] == (255, 255, 255), axis=-1)
+
+                    dst[greyedUp,3] = 0
+
+                    dstGrey = cv2.cvtColor(dst[:,:,0:3], cv2.COLOR_BGRA2GRAY)
+                    mask2 = dst[:,:,3]
+
+                    maskidx = (mask2 != 0)
+                    
+                    frame = np.array(dstGrey[maskidx], dtype=np.uint8)
+                    frame = frame.reshape(2267, 135)"""
+                if (self.BEAM_COUNT == 18): # Image manipulation for 18-angle
+                    frame = np.array(gray, dtype=np.uint8)
+                    # todo
+
+        else:
+            frameSize = self.DATA_SHAPE[0] * self.DATA_SHAPE[1]
+            frameoffset = (self.FILE_HEADER_SIZE + self.FRAME_HEADER_SIZE +(FI*(self.FRAME_HEADER_SIZE+(frameSize))))
+            self.FILE_HANDLE.seek(frameoffset, 0)
+
+            frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
+            frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
 
         return frame
 
@@ -220,7 +292,8 @@ def FOpenSonarFile(filename):
         38159428: lambda: DIDSON_v2(fhand, version, SONAR_File),
         54936644: lambda: DIDSON_v3(fhand, version, SONAR_File),
         71713860: lambda: DIDSON_v4(fhand, version, SONAR_File),
-        88491076: lambda: DIDSON_v5(fhand, version, SONAR_File)
+        88491076: lambda: DIDSON_v5(fhand, version, SONAR_File),
+        00000000: lambda: MP4(fhand, version, SONAR_File)
     }
     try:
         fhand = open(filename, 'rb')
@@ -229,6 +302,12 @@ def FOpenSonarFile(filename):
             raise FileNotFoundError(e.errno, e.strerror, filename)
     # read the first 4 bytes in the file to decide the version
     version = struct.unpack(cType["uint32_t"], fhand.read(c("uint32_t")))[0]
+    # if not DIDSON, check if mp4
+    if (version not in (4604996, 21382212, 38159428, 54936644, 71713860, 88491076)):
+        kind = filetype.guess(filename)
+        version = kind.extension
+        if (version == "mp4"):
+            version = 00000000
     versions[version]()
     return SONAR_File
 
@@ -308,6 +387,15 @@ def DIDSON_v5(fhand, version, cls):
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v5_getAllFramesData(fhand, version, cls)
+    cls.FILE_PATH = fhand.name
+    cls.FILE_HANDLE = fhand
+    return
+
+
+def MP4(fhand, version, cls):
+    LogObject().print2("inside MP4")
+    print("inside MP4")
+    mp4_getAllFramesData(fhand, version, cls)
     cls.FILE_PATH = fhand.name
     cls.FILE_HANDLE = fhand
     return

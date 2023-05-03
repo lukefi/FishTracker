@@ -457,5 +457,5 @@ def v3_getAllFramesData(fhand, version, cls):
     cls.FRAMES = cv2.flip(cls.FRAMES.reshape((cls.samplesPerBeam, cls.BEAM_COUNT)), 0)
     cls.DATA_SHAPE = cls.FRAMES.shape
     
-    cls.FRAMES = cls.constructImages()
+    cls.FRAMES = cls.constructImages(cls.FRAMES)
     return

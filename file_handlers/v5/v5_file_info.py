@@ -380,7 +380,6 @@ def v5_getAllFramesData(fhand, version, cls):
     #cls.FRAMES = cls.constructImages()
     cls.FRAMES = cls.constructImages(cls.FRAMES)
 
-    
     return
 
 

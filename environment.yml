@@ -13,3 +13,4 @@ dependencies:
   - jinja2
   - numba
   - msgpack-python
+  - filetype

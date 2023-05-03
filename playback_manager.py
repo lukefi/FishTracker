@@ -75,7 +75,7 @@ class PlaybackManager(QObject):
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf)", update_conf=True):
+    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf *.mp4)", update_conf=True):
         """
         Select .aris file using QFileDialog
         """

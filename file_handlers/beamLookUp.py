@@ -79,6 +79,10 @@ telephoto96 = [ -6.806, -6.689, -6.560, -6.427, -6.293, -6.160, -6.027, -5.893,
                 5.760,  5.893,  6.027,  6.160,  6.293,  6.427,  6.560,  6.689,
                 6.806]
 
+mp4135 = [ -67.5, 67.5]
+
+mp418 = [ -9, 9]
+
 def BeamLookUp(BeamCount,largeLens, beam_angle =False):
     if BeamCount == 128:
         breakpoints = breakpoints128
@@ -94,6 +98,10 @@ def BeamLookUp(BeamCount,largeLens, beam_angle =False):
             breakpoints = telephoto48
         else:
             breakpoints = breakpoints48
+    if BeamCount == 135: 
+        breakpoints = mp4135
+    if BeamCount == 18:
+        breakpoints = mp418
 
     # beam = 999
     # if beam_angle > breakpoints[0]:
@@ -114,6 +122,10 @@ def beamAngle(beam_num, BeamCount):
         breakpoints = breakpoints64
     if BeamCount == 48:
         breakpoints = breakpoints48
+    if BeamCount == 135:
+        breakpoints = mp4135
+    if BeamCount == 18:
+        breakpoints = mp418
 
     angle = (breakpoints[beam_num]+breakpoints[beam_num+1])/2
     return angle

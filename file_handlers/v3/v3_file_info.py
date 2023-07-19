@@ -20,7 +20,7 @@ import file_handlers.beamLookUp as beamLookUp
 import numpy as np
 import re
 import cv2
-
+import array
 
 cwd = os.getcwd()
 JSON_FILE_PATH = cwd + "/file_handlers/v3/v3_file_headers_info.json"
@@ -434,15 +434,15 @@ def v3_getAllFramesData(fhand, version, cls):
                 utils.cType[frameHeader["configFlags"]["size"]],
                 fhand.read(utils.c(frameHeader["configFlags"]["size"])))[0]
         ## bit0: 1=classic, 0=extended windows; bit1: 0=Standard, 1=LR
-        configFlagsStr = bin(configFlags)
-        configFlags = 2 * int(configFlagsStr[-2]) + int(configFlagsStr[-1])
-        ## TODO _ : this needs to be completed
 
+        # configFlagsStr = bin(configFlags) # Doesn't include 0's at the front
+        configFlagsStr = '{:032b}'.format(configFlags) # 32bit has zeros at the front
+        # Maybe irrelevant. No testing with configflags 1 or 3 
+        configFlags = 2 * int(configFlagsStr[-2]) + int(configFlagsStr[-1]) 
+
+        ## TODO _ : this needs to be completed
     
-    
-    
-    windowLengthIndex = windowLengthIndex + 1 + 2 * (cls.highResolution == 0)
-    
+    windowLengthIndex = windowLengthIndex + 2 * (highResolution == 0)
 
     setWindowLength(configFlags, windowLengthIndex, cls)
     setWindowStart(configFlags, highResolution, cls)

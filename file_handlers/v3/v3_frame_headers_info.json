@@ -145,7 +145,7 @@
 
         },
         "windowStart" : {
-            "size": "float",
+            "size": "uint32_t",
             "bytes": 4,
             "location": 52,
             "title": "Window Start",

@@ -173,7 +173,7 @@ class FSONAR_File():
             self.FILE_HANDLE.seek(frameoffset, 0)
 
             frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
-            frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
+            frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0) # -1 to flip around x- and y- axis
 
         return frame
 

@@ -86,6 +86,7 @@ class FSONAR_File():
         self.BEAM_COUNT = None
         self.largeLens = None
         self.highResolution = None
+        self.reverse = None
         self.serialNumber = None
         self.sampleStartDelay = None
         self.soundSpeed = None
@@ -173,7 +174,10 @@ class FSONAR_File():
             self.FILE_HANDLE.seek(frameoffset, 0)
 
             frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
-            frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0) # -1 to flip around x- and y- axis
+            if (self.reverse == 0): # check sonar mount direction (from above = 0, from below = 1)
+                frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0) # 0 flips around the x-axis, positive value (e.g. 1) flips around y-axis. Negative value (e.g. -1) flips around both axes (the desired behaviour for self.reverse == 1). 
+            else:
+                frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), -1) # 0 flips around the x-axis, positive value (e.g. 1) flips around y-axis. Negative value (e.g. -1) flips around both axes (the desired behaviour for self.reverse == 1). 
 
         return frame
 

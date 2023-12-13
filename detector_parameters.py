@@ -25,11 +25,11 @@ from mog_parameters import MOGParameters
 class DetectorParameters(ParametersBase):
 	@dataclass
 	class Parameters:
-		detection_size: int = 10
-		min_fg_pixels: int = 25
-		median_size: int = 3
-		dbscan_eps: int = 10
-		dbscan_min_samples: int = 10
+		detection_size: int = 10 # original default 10
+		min_fg_pixels: int = 11 # original default 25
+		median_size: int = 3 # original default 3
+		dbscan_eps: int = 2 # original default 10
+		dbscan_min_samples: int = 10 # original default 10
 
 	class ParametersEnum(Enum):
 		detection_size = auto()

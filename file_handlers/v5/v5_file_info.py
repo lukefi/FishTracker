@@ -302,6 +302,7 @@ def v5_getAllFramesData(fhand, version, cls):
         - SONAR Sample Data     --> `allFrames`
         - Number of Beams [fl]  --> `numRawBeams`
         - Samples Per Beam [fl] --> `samplesPerChannel`
+        - Mount orientation [fl]--> 'reverse'
         - Type of Lens  [fr]    --> `largeLens`
         - Sample Start Delay[fr]--> `sampleStartDelay`
         - Sound Velocity[fr]    --> `soundSpeed`
@@ -312,7 +313,7 @@ def v5_getAllFramesData(fhand, version, cls):
     ## TODO _
     
     cls.version = "ARIS"
-    fileAttributesList = ["numRawBeams", "samplesPerChannel", "frameCount"]
+    fileAttributesList = ["numRawBeams", "samplesPerChannel", "frameCount", "reverse"]
     frameAttributesList = ["largeLens", "sampleStartDelay", "soundSpeed", "samplePeriod", "frameRate"]
 
     fileHeader = utils.getFileHeaderValue(version, fileAttributesList)
@@ -335,6 +336,12 @@ def v5_getAllFramesData(fhand, version, cls):
     cls.samplesPerBeam = struct.unpack(
             utils.cType[fileHeader["samplesPerChannel"]["size"]],
             fhand.read(utils.c(fileHeader["samplesPerChannel"]["size"])))[0]
+
+    #   Reading sonar mount orientation [from file header]
+    fhand.seek(fileHeader["reverse"]["location"], 0)
+    cls.reverse = struct.unpack(
+            utils.cType[fileHeader["reverse"]["size"]],
+            fhand.read(utils.c(fileHeader["reverse"]["size"])))[0]
 
     #   Reading Frame Rate [from frame header]
     fhand.seek(cls.FILE_HEADER_SIZE + fhand.seek(frameHeader["frameRate"]["location"], 0))

@@ -355,6 +355,7 @@ def v3_getAllFramesData(fhand, version, cls):
         - SONAR Sample Data     --> `allFrames`
         - Number of Beams [fl]  --> `numRawBeams`
         - Samples Per Beam [fl] --> `samplesPerChannel`
+        - Mount orientation [fl]--> 'reverse'
         - Type of Lens  [fr]    --> `largeLens`
         - Sample Start Delay[fr]--> `sampleStartDelay`
         - Sound Velocity[fr]    --> `soundSpeed`
@@ -365,7 +366,7 @@ def v3_getAllFramesData(fhand, version, cls):
     ## TODO _
     
     cls.version = "DDF_03"
-    fileAttributesList = ["numRawBeams", "samplesPerChannel", "frameCount", "highResolution", "serialNumber"]
+    fileAttributesList = ["numRawBeams", "samplesPerChannel", "reverse", "frameCount", "highResolution", "serialNumber"]
     frameAttributesList = ["configFlags", "windowStart", "windowLengthIndex"]
 
     fileHeader = utils.getFileHeaderValue(version, fileAttributesList)
@@ -395,6 +396,12 @@ def v3_getAllFramesData(fhand, version, cls):
     cls.samplesPerBeam = struct.unpack(
             utils.cType[fileHeader["samplesPerChannel"]["size"]],
             fhand.read(utils.c(fileHeader["samplesPerChannel"]["size"])))[0]
+
+     #   Reading sonar mount orientation [from file header]
+    fhand.seek(fileHeader["reverse"]["location"], 0)
+    cls.reverse = struct.unpack(
+            utils.cType[fileHeader["reverse"]["size"]],
+            fhand.read(utils.c(fileHeader["reverse"]["size"])))[0]
 
     #   Reading Serial number of file format to decide configuration flags later
     #   [from file header]

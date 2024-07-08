@@ -24,10 +24,10 @@ from parameters_base import ParametersBase
 class MOGParameters(ParametersBase):
     @dataclass
     class Parameters:
-        learning_rate: float = 0.01
-        mixture_count: int = 5
-        mog_var_thresh: int = 11
-        nof_bg_frames: int = 100
+        learning_rate: float = 0.01 # original default 0.01
+        mixture_count: int = 5 # original default 5
+        mog_var_thresh: int = 15 # original default 11
+        nof_bg_frames: int = 100 # original default 100
 
     class ParametersEnum(Enum):
         learning_rate = auto()

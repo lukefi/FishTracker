@@ -1,0 +1,38 @@
+# Default configuration for FishTracker batch processing
+
+input:
+  # Input file or directory path
+  path: "/data/P-Prosjekter2/825001_31_sats_utvikling_73_gjelland/Fishtracker/FishTracker_test/Korte eksempelfiler"
+  # File extensions to process when path is a directory
+  extensions: [".aris", ".mp4"]
+
+detector:
+  # Maximum frames to process (0 for all frames)
+  max_frames: 0
+  # Sonar height in units
+  sonar_height: 1000
+  # Background subtraction parameters
+  mog_history: 100
+  var_threshold: 5
+  detect_shadows: True
+  # Contour filtering parameters
+  min_contour_area: 10
+  max_contour_area: 1000
+
+tracker:
+  # Search radius for tracker
+  search_radius: 10
+  # Minimum hits to confirm track
+  min_hits: 3
+  # Maximum age of track before removal
+  max_age: 10
+
+output:
+  # Output directory for processed files
+  directory: "./results"
+  # Save fish data (.fish file)
+  save_fish: True
+  # Export detections to CSV
+  export_detections: True
+  # Export tracks to CSV
+  export_tracks: True

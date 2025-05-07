@@ -18,6 +18,7 @@ along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import json
+import logging
 import os
 import sys
 
@@ -98,7 +99,7 @@ class SaveManager(QtCore.QObject):
         fish_manager: FishManager,
     ):
         super().__init__()
-
+        self.logger = logging.getLogger(__name__)
         self.playback_manager = playback_manager
         self.detector = detector
         self.tracker = tracker
@@ -117,7 +118,7 @@ class SaveManager(QtCore.QObject):
         parameters to file.
         """
 
-        LogObject().print1(f"Saving data to '{path}'")
+        self.logger.info(f"Saving data to '{path}'")
 
         self.previous_path = path
         self.fast_save_enabled = True

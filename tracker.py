@@ -17,12 +17,14 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 from enum import Enum
 
 import cv2
 import numpy as np
 import seaborn as sns
 from PyQt5 import QtCore
+from tqdm import tqdm
 
 from filter_parameters import FilterParameters
 from log_object import LogObject
@@ -57,7 +59,7 @@ class Tracker(QtCore.QObject):
         super().__init__()
 
         self.detector = detector
-
+        self.logger = logging.getLogger(__name__)
         self.clear()
         self.tracking_state = TrackingState.IDLE
         self.stop_tracking = False
@@ -127,11 +129,11 @@ class Tracker(QtCore.QObject):
 
             # Return if the applied detector parameters are not up to date
             if self.detector.allCalculationAvailable():
-                LogObject().print("Stopped before tracking.")
+                self.logger.warning("Stopped before tracking.")
                 self.abortComputing(True)
                 return
 
-        LogObject().print1(
+        self.logger.info(
             f"Primary tracking. Available detections: "
             f"{self.detectionCount(self.detector.detections)}"
         )
@@ -172,7 +174,7 @@ class Tracker(QtCore.QObject):
             else:
                 detections[frame] = dets
 
-        LogObject().print1(
+        self.logger.info(
             f"Secondary tracking. Available detections: "
             f"{self.detectionCount(detections)}"
         )
@@ -221,14 +223,7 @@ class Tracker(QtCore.QObject):
         if reset_count:
             KalmanBoxTracker.count = 0
 
-        ten_perc = 0.1 * count
-        print_limit = 0
-
-        for i, dets in enumerate(detection_frames):
-            if i > print_limit:
-                LogObject().print("Tracking:", int(float(i) / count * 100), "%")
-                print_limit += ten_perc
-
+        for i, dets in enumerate(tqdm(detection_frames, desc="Tracking")):
             if self.stop_tracking:
                 LogObject().print("Stopped tracking at", i)
                 self.abortComputing(False)
@@ -236,7 +231,6 @@ class Tracker(QtCore.QObject):
 
             returned_tracks_by_frame[i] = self.trackBase(mot_tracker, dets, i)
 
-        LogObject().print("Tracking: 100 %")
         return returned_tracks_by_frame
 
     def trackBase(self, mot_tracker, frame, ind):
@@ -246,11 +240,8 @@ class Tracker(QtCore.QObject):
         (track, None).
         """
         if frame is None:
-            LogObject().print(
-                "Invalid detector results encountered at frame "
-                + str(ind)
-                + ". Consider rerunning the detector."
-            )
+            # self.logger.error(f"Invalid detector results encountered at frame {ind}")
+            # self.logger.error("Consider running the detector")
             return mot_tracker.update()
 
         detections = [d for d in frame if d.corners is not None]

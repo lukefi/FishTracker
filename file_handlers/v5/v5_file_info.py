@@ -356,7 +356,6 @@ def v5_getAllFramesData(fhand, version, cls):
 
     fileHeader = utils.getFileHeaderValue(version, fileAttributesList)
     frameHeader = utils.getFrameHeaderValue(version, frameAttributesList)
-    print("inside v5_getAllFramesData(fhand)")
     #   Reading Number of frames in the file [from file header]
     fhand.seek(fileHeader["frameCount"]["location"], 0)
     cls.frameCount = struct.unpack(

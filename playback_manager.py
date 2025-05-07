@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 import os
 import sys
 import time
@@ -27,6 +28,7 @@ import numpy as np
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from tqdm import tqdm
 
 import file_handler as fh
 from log_object import LogObject
@@ -68,6 +70,7 @@ class PlaybackManager(QObject):
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(16)
         self.playback_thread = None
+        self.logger = logging.getLogger(__name__)
 
         self.path = ""
         self.sonar = None
@@ -159,7 +162,6 @@ class PlaybackManager(QObject):
 
         self.path = path
         self.setTitle(path)
-        LogObject().print(f"Opened file '{path}'")
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar
@@ -344,7 +346,7 @@ class PlaybackManager(QObject):
             return None
 
     def stop(self):
-        LogObject().print2("Stop")
+        self.logger.info("Stop")
         if self.playback_thread:
             self.playback_thread.is_playing = False
             self.playback_thread.display_ind = self.playback_thread.last_displayed_ind
@@ -396,7 +398,7 @@ class PlaybackManager(QObject):
             self.setFrameInd(int(value * self.sonar.frameCount))
 
     def applicationClosing(self):
-        LogObject().print2("Closing PlaybackManager . . .")
+        self.logger.info("Closing PlaybackManager")
         self.stopAll()
         time.sleep(1)
 
@@ -448,12 +450,6 @@ class PlaybackManager(QObject):
     def pausePolarLoading(self, value):
         if self.playback_thread is not None:
             self.playback_thread.pause_polar_loading = value
-
-            if not self.isPolarsDone():
-                if value:
-                    LogObject().print2("Polar loading paused.")
-                else:
-                    LogObject().print2("Polar loading continued.")
 
     def isMappingDone(self):
         return (
@@ -524,24 +520,18 @@ class PlaybackThread(QRunnable):
 
     def loadPolarFrames(self):
         count = self.sonar.frameCount
-        ten_perc = 0.1 * count
-        print_limit = 0
         i = 0
-        while i < count and self.alive:
-            if self.pause_polar_loading:
-                time.sleep(0.1)
-                continue
+        for i in tqdm(range(count), desc="Loading polar frames"):
+            if not self.alive:  # bail out early if needed
+                break
 
-            if i > print_limit:
-                LogObject().print(
-                    "Loading:", int(float(print_limit) / count * 100), "%"
-                )
-                print_limit += ten_perc
-            if self.buffer[i] is None:
-                value = self.sonar.getPolarFrame(i)
+            while self.pause_polar_loading:  # “pause” mode
+                time.sleep(0.1)
+
+            if self.buffer[i] is None:  # fetch frame only if not cached
+                frame = self.sonar.getPolarFrame(i)
                 if self.alive:
-                    self.buffer[i] = value
-            i += 1
+                    self.buffer[i] = frame
 
     def polarsDone(self):
         if self.alive:
@@ -608,13 +598,21 @@ class Worker(QRunnable):
         try:
             result = self.fn(*self.args, **self.kwargs)
         except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
+            # Log the exception to a file
+            with open("error_log.txt", "a") as f:
+                exctype, value = sys.exc_info()[:2]
+                print(f"Exception Type: {exctype}")
+                traceback.print_exc(file=f)  # Write traceback to the file
+                f.write(f"Exception Type: {exctype}\n")
+                f.write(f"Exception Value: {value}\n")
+            # Emit error signal with exception details
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
+            # Return the result of the processing
+            self.signals.result.emit(result)
         finally:
-            self.signals.finished.emit()  # Done
+            # Emit the finished signal
+            self.signals.finished.emit()
 
 
 class TestFigure(QLabel):

@@ -18,6 +18,7 @@ along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import glob
+import logging
 import sys
 import traceback
 
@@ -26,6 +27,7 @@ import numpy as np
 import seaborn as sns
 import sklearn.cluster as cluster
 from PyQt5 import QtCore, QtWidgets
+from tqdm import tqdm
 
 from background_subtractor import BackgroundSubtractor
 from detector_parameters import DetectorParameters
@@ -58,6 +60,7 @@ class Detector(QtCore.QObject):
 
     def __init__(self, image_provider):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self.image_provider = image_provider
         self.bg_subtractor = BackgroundSubtractor(image_provider)
         self.parameters = None
@@ -206,17 +209,14 @@ class Detector(QtCore.QObject):
 
     def computeAll(self):
         self.computing = True
-        self.stop_computing = False
-        self.compute_on_event = False
-        self.state_changed_signal.emit()
 
-        LogObject().print1(self.bg_subtractor.mog_parameters)
-        LogObject().print1(self.parameters)
+        self.logger.info(self.bg_subtractor.mog_parameters)
+        self.logger.info(self.parameters)
 
         if self.bg_subtractor.parametersDirty():
             self.initMOG()
             if self.bg_subtractor.parametersDirty():
-                LogObject().print("Stopped before detecting.")
+                self.logger.info("Stopped before detecting.")
                 self.abortComputing(True)
                 return
 
@@ -229,14 +229,10 @@ class Detector(QtCore.QObject):
                 print_limit += ten_perc
 
             if self.stop_computing:
-                LogObject().print("Stopped detecting at", ind)
+                self.logger.info(f"Stopped detecting at {ind}")
                 self.abortComputing(False)
                 return
 
-            img = self.image_provider.getFrame(ind)
-            self.computeBase(ind, img)
-
-        LogObject().print("Detecting: 100 %")
         self.computing = False
         # self.detections_clearable = True
         self.applied_parameters = self.parameters.copy()
@@ -266,7 +262,6 @@ class Detector(QtCore.QObject):
             self.bg_subtractor.abortComputing()
 
     def clearDetections(self):
-        LogObject().print2("Cleared detections")
         nof_frames = self.image_provider.getFrameCount()
         self.detections = [None] * nof_frames
         self.vertical_detections = []

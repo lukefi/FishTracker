@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 from bisect import insort
 from enum import IntEnum
 
@@ -28,7 +29,6 @@ from PyQt5.QtCore import Qt
 
 import file_handler as fh
 from filter_parameters import FilterParameters
-from log_object import LogObject
 from tracker_parameters import TrackerParameters
 
 fish_headers = [
@@ -108,6 +108,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
         # All fish items currently stored.
         self.all_fish = {}
+        self.logger = logging.getLogger(__name__)
 
         # Fish items that are currently displayed.
         self.fish_list = []
@@ -247,7 +248,7 @@ class FishManager(QtCore.QAbstractTableModel):
                 return data_lambda_list[col](self.fish_list[row])
             except IndexError:
                 if row >= len(self.fish_list):
-                    LogObject().print(f"Bad index {row}/{len(self.fish_list) - 1}")
+                    self.logger.error(f"Bad index {row}/{len(self.fish_list) - 1}")
                 return QtCore.QVariant()
         else:
             return QtCore.QVariant()
@@ -334,7 +335,7 @@ class FishManager(QtCore.QAbstractTableModel):
                     del_f = self.all_fish.pop(fish_id)
                     del del_f
                 except KeyError:
-                    LogObject().print(
+                    self.logger.error(
                         "KeyError occured when removing entry with id:", fish_id
                     )
 
@@ -485,7 +486,9 @@ class FishManager(QtCore.QAbstractTableModel):
         mad_limit = filter_parameters.getParameter(
             FilterParameters.ParametersEnum.mad_limit
         )
-        LogObject().print1(f"Filter Parameters: {min_dets} {mad_limit}")
+        self.logger.info(
+            f"Filter Parameters - min_dets: {min_dets}, mad_limit: {mad_limit}"
+        )
 
         used_dets = self.applyFiltersAndGetUsedDetections(min_dets, mad_limit)
         self.playback_manager.runInThread(
@@ -580,15 +583,15 @@ class FishManager(QtCore.QAbstractTableModel):
         if mad_limit is not None:
             self.mad_limit = mad_limit
 
-        LogObject().print1(f"Fish before applying filters: {len(self.all_fish)}")
+        self.logger.info(f"Fish before applying filters: {len(self.all_fish)}")
         self.applyFilters()
-        LogObject().print1(f"Fish after applying filters: {len(self.all_fish)}")
+        self.logger.info(f"Fish after applying filters: {len(self.all_fish)}")
 
         used_dets = self.getDetectionsInFish()
         count = 0
         for _, dets in used_dets.items():
             count += len(dets)
-        LogObject().print1(f"Total detections used in filtered results: {count}")
+        self.logger.info(f"Total detections used in filtered results: {count}")
 
         self.min_detections = temp_min_detections
         self.mad_limit = temp_mad_limit
@@ -728,7 +731,7 @@ class FishManager(QtCore.QAbstractTableModel):
         Tries to save all fish information (from all_fish dictionary) to a file.
         """
         if self.playback_manager.playback_thread is None:
-            LogObject().print("No file open, cannot save.")
+            self.logger.error("No file open, cannot save.")
             return
 
         try:
@@ -745,9 +748,9 @@ class FishManager(QtCore.QAbstractTableModel):
                 for _, _, line in lines:
                     file.write(line)
 
-                LogObject().print("Tracks saved to path:", path)
+                self.logger.info("Tracks saved to path:", path)
         except PermissionError:
-            LogObject().print(f"Cannot open file {path}. Permission denied.")
+            self.logger.error(f"Cannot open file {path}. Permission denied.")
 
     def getSaveLines(self):
         """
@@ -859,9 +862,9 @@ class FishManager(QtCore.QAbstractTableModel):
                 self.refreshAllFishData()
                 self.trimFishList(force_color_update=True)
         except PermissionError:
-            LogObject().print(f"Cannot open file {path}. Permission denied.")
+            self.logger.error(f"Cannot open file {path}. Permission denied.")
         except ValueError as e:
-            LogObject().print(
+            self.logger.error(
                 f"Invalid values encountered in {path}, "
                 f"when trying to import tracks. {e}"
             )
@@ -914,7 +917,7 @@ class FishManager(QtCore.QAbstractTableModel):
                             break
 
                     if not match_found:
-                        LogObject().print(
+                        self.logger.warning(
                             f"Warning: Match not found in frame {frame} "
                             f"for label {det_label}"
                         )
@@ -930,9 +933,7 @@ class FishManager(QtCore.QAbstractTableModel):
 
     def printDirectionCounts(self):
         tc, uc, dc, nc = self.allDirectionCounts()
-        LogObject().print1(
-            f"Direction counts: Total {tc}, Up {uc}, Down {dc}, None {nc}"
-        )
+        self.logger.info(f"Direction counts: Total {tc}, Up {uc}, Down {dc}, None {nc}")
 
 
 class SwimDirection(IntEnum):

@@ -17,19 +17,21 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 import multiprocessing as mp
 import os
-import sys
 import time
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 
-from PyQt5 import QtCore, QtWidgets
+import hydra
+from omegaconf import DictConfig, OmegaConf
+from PyQt5 import QtCore
 
 import file_handler as fh
 import track_process as tp
 from detector_parameters import DetectorParameters
-from log_object import LogObject
 from playback_manager import Worker
 from tracker import AllTrackerParameters, FilterParameters, TrackerParameters
 
@@ -54,10 +56,7 @@ class BatchTrack(QtCore.QObject):
     Container for multiple TrackProcess objects.
     """
 
-    # Signaled when a process is started or finished.
     active_processes_changed_signal = QtCore.pyqtSignal()
-
-    # Signaled when all processes are finished or terminated.
     exit_signal = QtCore.pyqtSignal(bool)
 
     def __init__(
@@ -72,10 +71,16 @@ class BatchTrack(QtCore.QObject):
         secondary_track=False,
     ):
         super().__init__()
-        LogObject().print("Display: ", display)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Display: {display}")
+
+        self.logger.info(params_detector)
+
         self.files = files
         self.display = display
         self.secondary_track = secondary_track
+        self.params_detector = params_detector
+        self.params_tracker = params_tracker
 
         self.save_detections = fh.getConfValue(fh.ConfKeys.batch_save_detections)
         self.save_tracks = fh.getConfValue(fh.ConfKeys.batch_save_tracks)
@@ -83,13 +88,13 @@ class BatchTrack(QtCore.QObject):
         self.as_binary = fh.getConfValue(fh.ConfKeys.save_as_binary)
 
         if params_detector is None:
-            LogObject().print2("BatchTrack: Using default parameters for Detector.")
+            self.logger.info("Using default parameters for Detector.")
             self.detector_params = DetectorParameters()
         else:
             self.detector_params = params_detector
 
         if params_tracker is None:
-            LogObject().print2("BatchTrack: Using default parameters for Tracker.")
+            self.logger.info("Using default parameters for Tracker.")
             primary = TrackerParameters()
             filter = FilterParameters()
             secondary = TrackerParameters()
@@ -109,7 +114,6 @@ class BatchTrack(QtCore.QObject):
 
         self.thread_pool = QtCore.QThreadPool()
         self.thread_pool.setMaxThreadCount(parallel + 1)
-
         self.processes = []
         self.active_processes = []
         self.state = ProcessState.INITIALIZING
@@ -128,6 +132,7 @@ class BatchTrack(QtCore.QObject):
 
         worker = Worker(self.communicate)
         self.thread_pool.start(worker)
+        self.logger.info(f"Creating workers for {self.total_processes} files")
 
         # If using test file (defined in conf.json)
         if test:
@@ -143,7 +148,7 @@ class BatchTrack(QtCore.QObject):
                 id += 1
                 self.n_processes += 1
 
-        LogObject().print("Total processes:", self.n_processes)
+        self.logger.info(f"Total processes: {self.n_processes}")
 
     def startProcess(self, file, id, test):
         parent_conn, child_conn = mp.Pipe()
@@ -152,7 +157,6 @@ class BatchTrack(QtCore.QObject):
 
         worker = Worker(self.track, bt_info, child_conn, test)
         self.thread_pool.start(worker)
-        LogObject().print("Created Worker for file " + file)
 
     def track(self, bt_info, child_conn, test):
         """
@@ -160,6 +164,9 @@ class BatchTrack(QtCore.QObject):
         Waits for the process to finish before exiting. This way thread_pool will
         not start more processes in parallel than is defined.
         """
+
+        self.logger.info(f"Starting process for file {bt_info.file}")
+        self.logger.info(f"Process ID: {bt_info.id}")
 
         self.active_processes.append(bt_info.id)
         self.active_processes_changed_signal.emit()
@@ -194,8 +201,7 @@ class BatchTrack(QtCore.QObject):
         """
         Reduces n_processes by one and if none are remaining, emits the exit_signal
         """
-
-        LogObject().print(f"File {bt_info.file} finished.")
+        self.logger.info(f"File {bt_info.file} finished.")
         self.n_processes -= 1
         if self.n_processes <= 0:
             # Let main thread (running communicate) know the process is about to quit
@@ -212,7 +218,7 @@ class BatchTrack(QtCore.QObject):
         which leads to clean shutdown of the processes.
         """
         self.thread_pool.clear()
-        LogObject().print("Terminating")
+        self.logger.info("Terminating")
         self.state = ProcessState.TERMINATING
 
     def communicate(self):
@@ -231,7 +237,7 @@ class BatchTrack(QtCore.QObject):
                     and bt_info.process.is_alive()
                     and bt_info.connection.poll()
                 ):
-                    LogObject().print(bt_info.id, bt_info.connection.recv(), end="")
+                    self.logger.info(bt_info.id, bt_info.connection.recv(), end="")
             time.sleep(0.01)
 
         if self.state is ProcessState.TERMINATING:
@@ -258,7 +264,7 @@ class BatchTrack(QtCore.QObject):
                 except ValueError:
                     # Received message with no id
                     continue
-            LogObject().print(f"File [{bt_info.id}] terminated.")
+            self.logger.info(f"File [{bt_info.id}] terminated.")
 
         for bt_info in self.processes:
             if bt_info.process is not None:
@@ -267,39 +273,61 @@ class BatchTrack(QtCore.QObject):
         self.exit_signal.emit(False)
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-
-    parser = tp.getDefaultParser()
-    parser.add_argument(
-        "-p",
-        "--parallel",
-        type=int,
-        default=4,
-        help="number of files processed simultaneously in parallel",
+@hydra.main(version_base=None, config_path="configs", config_name="default.yaml")
+def main(cfg: DictConfig) -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
-    args = parser.parse_args()
-    files = tp.getFiles(args)
-    save_directory = fh.getLatestSaveDirectory()
+    logger = logging.getLogger(__name__)
 
-    LogObject().print(files)
+    logger.info("Batch processing started")
+    logger.info(f"Configuration:\n{OmegaConf.to_yaml(cfg)}")
+
+    input_path = Path(cfg.input.path)
+    files = []
+    if input_path.is_dir():
+        for ext in cfg.input.extensions:
+            files.extend(list(input_path.glob(f"**/*{ext}")))
+    else:
+        files = [input_path]
+    logger.info(f"Found {len(files)} files to process")
+    logger.info(f"Input files:\n {[file.name for file in files]}")
+
+    output_path = Path(cfg.output.directory)
+    if not output_path.exists():
+        logger.info(f"Creating output directory: {output_path}")
+        os.makedirs(output_path)
+
+    detector_params = DetectorParameters(
+        cfg.detector.detection_size,
+        cfg.detector.min_fg_pixels,
+        cfg.detector.median_size,
+        cfg.detector.dbscan_eps,
+        cfg.detector.dbscan_min_samples,
+    )
 
     batch_track = BatchTrack(
-        args.display,
-        files,
-        save_directory,
-        args.parallel,
-        params_detector=DetectorParameters(None, 15, 15, 9, 15, 15),
+        display=False,
+        files=files,
+        save_directory=cfg.output.directory,
+        parallel=cfg.batch_processing.parallel,
+        params_detector=detector_params,
         secondary_track=True,
     )
-    batch_track.exit_signal.connect(lambda b: app.exit())
 
-    # Delay beginTrack
-    timer = QtCore.QTimer()
-    timer.setSingleShot(True)
-    timer.timeout.connect(lambda: batch_track.beginTrack(args.test))
-    timer.start(100)
+    time.sleep(0.1)
+    batch_track.beginTrack()
+
+    while batch_track.state != ProcessState.FINISHED:
+        time.sleep(0.1)
 
     # Start app for signal brokering
-    sys.exit(app.exec_())
+    logger.info("Batch processing finished")
+
+
+if __name__ == "__main__":
+    main()

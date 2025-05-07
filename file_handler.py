@@ -373,7 +373,6 @@ def DIDSON_v5(fhand, version, cls):
             }
         }
     """
-    LogObject().print2("inside DIDSON v5")
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v5_getAllFramesData(fhand, version, cls)

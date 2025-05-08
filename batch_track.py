@@ -69,6 +69,9 @@ class BatchTrack(QtCore.QObject):
         params_detector=None,
         params_tracker=None,
         secondary_track=False,
+        save_detections=None,
+        save_tracks=None,
+        save_complete=None,
     ):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -82,9 +85,22 @@ class BatchTrack(QtCore.QObject):
         self.params_detector = params_detector
         self.params_tracker = params_tracker
 
-        self.save_detections = fh.getConfValue(fh.ConfKeys.batch_save_detections)
-        self.save_tracks = fh.getConfValue(fh.ConfKeys.batch_save_tracks)
-        self.save_complete = fh.getConfValue(fh.ConfKeys.batch_save_complete)
+        if save_detections is None:
+            self.logger.info("Using save_detections from conf.json.")
+            self.save_detections = fh.getConfValue(fh.ConfKeys.batch_save_detections)
+        else:
+            self.save_detections = save_detections
+        if save_tracks is None:
+            self.logger.info("Using save_tracks from conf.json.")
+            self.save_tracks = fh.getConfValue(fh.ConfKeys.batch_save_tracks)
+        else:
+            self.save_tracks = save_tracks
+        if save_complete is None:
+            self.logger.info("Using save_complete from conf.json.")
+            self.save_complete = fh.getConfValue(fh.ConfKeys.batch_save_complete)
+        else:
+            self.save_complete = save_complete
+
         self.as_binary = fh.getConfValue(fh.ConfKeys.save_as_binary)
 
         if params_detector is None:
@@ -319,6 +335,8 @@ def main(cfg: DictConfig) -> None:
         params_detector=detector_params,
         params_tracker=tracker_params,
         secondary_track=True,
+        save_detections=cfg.output.save_detections,
+        save_tracks=cfg.output.save_tracks,
     )
 
     time.sleep(0.1)

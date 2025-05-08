@@ -186,7 +186,9 @@ class BatchTrack(QtCore.QObject):
             as_binary=self.as_binary,
         )
 
-        proc = mp.Process(target=tp.trackProcess, args=(process_info,))
+        proc = mp.Process(
+            target=tp.trackProcess, args=(process_info, self.params_tracker)
+        )
         bt_info.process = proc
         proc.start()
 
@@ -301,12 +303,12 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Creating output directory: {output_path}")
         os.makedirs(output_path)
 
-    detector_params = DetectorParameters(
-        cfg.detector.detection_size,
-        cfg.detector.min_fg_pixels,
-        cfg.detector.median_size,
-        cfg.detector.dbscan_eps,
-        cfg.detector.dbscan_min_samples,
+    detector_params = DetectorParameters(**cfg.detector)
+
+    tracker_params = AllTrackerParameters(
+        primary=TrackerParameters(**cfg.tracker.primary_tracking),
+        filter=FilterParameters(**cfg.tracker.filtering),
+        secondary=TrackerParameters(**cfg.tracker.secondary_tracking),
     )
 
     batch_track = BatchTrack(
@@ -315,6 +317,7 @@ def main(cfg: DictConfig) -> None:
         save_directory=cfg.output.directory,
         parallel=cfg.batch_processing.parallel,
         params_detector=detector_params,
+        params_tracker=tracker_params,
         secondary_track=True,
     )
 

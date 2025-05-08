@@ -124,7 +124,9 @@ class TrackProcess(QtCore.QObject):
 
     exit_signal = QtCore.pyqtSignal()
 
-    def __init__(self, app: QtWidgets.QApplication, info: TrackProcessInfo):
+    def __init__(
+        self, app: QtWidgets.QApplication, info: TrackProcessInfo, params_tracker=None
+    ):
         super().__init__()
         self.app = app
         self.info = info
@@ -152,6 +154,9 @@ class TrackProcess(QtCore.QObject):
 
         self.detector = Detector(self.playback_manager)
         self.tracker = Tracker(self.detector)
+
+        if params_tracker is not None:
+            self.tracker.setAllParameters(params_tracker)
         self.setParametersFromDict(info.params_detector_dict, info.params_tracker_dict)
 
         self.fish_manager = FishManager(self.playback_manager, self.tracker)
@@ -304,9 +309,9 @@ class TrackProcess(QtCore.QObject):
         self.app.quit()
 
 
-def trackProcess(process_info: TrackProcessInfo):
+def trackProcess(process_info: TrackProcessInfo, params_tracker=None):
     app = QtWidgets.QApplication(sys.argv)
-    process = TrackProcess(app, process_info)
+    process = TrackProcess(app, process_info, params_tracker=params_tracker)
     logger = logging.getLogger(__name__)
     logger.info("Starting track process")
     process.track()

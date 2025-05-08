@@ -4,28 +4,33 @@ input:
   path: "/home/taheera.ahmed/code/FishTracker/data"
   extensions: [".aris", ".mp4"]
 
-batch_processing:
-  parallel: 1
-
-detector:
-  detection_size: 12
-  min_fg_pixels: 10
-  median_size: 10
-  dbscan_eps: 10
-  dbscan_min_samples: 10
-
-tracker:
-  max_age: 10
-  min_hits: 5
-  search_radius: 10
-  trim_trails: True
-
-filter:
-  min_duration: 2
-  mad_limit: 0
-
 output:
   directory: "./results"
   save_fish: True
   export_detections: True
   export_tracks: True
+
+batch_processing:
+  parallel: 1
+
+detector:
+  detection_size: 10
+  min_fg_pixels: 11
+  median_size: 3
+  dbscan_eps: 2
+  dbscan_min_samples: 10
+
+tracker:
+  primary_tracking:
+    max_age: 10
+    min_hits: 5
+    search_radius: 10
+    trim_tails: True
+  filtering:
+    min_duration: 2
+    mad_limit: 0
+  secondary_tracking:
+    max_age: 10
+    min_hits: 5
+    search_radius: 10
+    trim_tails: True

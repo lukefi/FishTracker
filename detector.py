@@ -222,6 +222,9 @@ class Detector(QtCore.QObject):
 
         count = self.image_provider.getFrameCount()
         for ind in tqdm(range(count), desc="Detecting", unit="frames"):
+            img = self.image_provider.getFrame(ind)
+            self.computeBase(ind, img)
+
             if self.stop_computing:
                 self.logger.info(f"Stopped detecting at {ind}")
                 self.abortComputing(False)

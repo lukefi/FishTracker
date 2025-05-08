@@ -246,7 +246,7 @@ class PlaybackManager(QObject):
         if path == "":
             self.main_window.setWindowTitle("FishTracker")
         else:
-            self.main_window.setWindowTitle(path)
+            self.main_window.setWindowTitle(str(path))
 
     def runInThread(self, f):
         """

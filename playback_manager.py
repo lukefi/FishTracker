@@ -535,7 +535,6 @@ class PlaybackThread(QRunnable):
 
     def polarsDone(self):
         if self.alive:
-            LogObject().print("Loading: 100 %")
             self.polars_loaded = True
             self.signals.polars_loaded_signal.emit()
 

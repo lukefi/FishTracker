@@ -295,7 +295,6 @@ def main(cfg: DictConfig) -> None:
     else:
         files = [input_path]
     logger.info(f"Found {len(files)} files to process")
-    logger.info(f"Input files:\n {[file.name for file in files]}")
 
     output_path = Path(cfg.output.directory)
     if not output_path.exists():

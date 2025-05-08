@@ -337,6 +337,7 @@ def main(cfg: DictConfig) -> None:
         secondary_track=True,
         save_detections=cfg.output.save_detections,
         save_tracks=cfg.output.save_tracks,
+        save_complete=cfg.output.save_fish,
     )
 
     time.sleep(0.1)

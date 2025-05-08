@@ -748,7 +748,7 @@ class FishManager(QtCore.QAbstractTableModel):
                 for _, _, line in lines:
                     file.write(line)
 
-                self.logger.info("Tracks saved to path:", path)
+                self.logger.info(f"Tracks saved to path: {str(path)}")
         except PermissionError:
             self.logger.error(f"Cannot open file {path}. Permission denied.")
 

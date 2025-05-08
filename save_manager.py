@@ -118,8 +118,6 @@ class SaveManager(QtCore.QObject):
         parameters to file.
         """
 
-        self.logger.info(f"Saving data to '{path}'")
-
         self.previous_path = path
         self.fast_save_enabled = True
 

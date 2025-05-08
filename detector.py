@@ -210,9 +210,6 @@ class Detector(QtCore.QObject):
     def computeAll(self):
         self.computing = True
 
-        self.logger.info(self.bg_subtractor.mog_parameters)
-        self.logger.info(self.parameters)
-
         if self.bg_subtractor.parametersDirty():
             self.initMOG()
             if self.bg_subtractor.parametersDirty():
@@ -310,7 +307,7 @@ class Detector(QtCore.QObject):
 
             return [d for d in dets if d.center is not None]
         except IndexError:
-            LogObject().print2(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
 
     def getDetections(self):
         return [
@@ -336,7 +333,7 @@ class Detector(QtCore.QObject):
             if set_as_applied:
                 self.applied_parameters = self.parameters.copy()
         else:
-            LogObject().print2("Detector parameters not found.")
+            self.logger.warning("Detector parameters not found.")
 
         if "bg_subtractor" in param_dict.keys():
             self.bg_subtractor.mog_parameters.setParameterDict(
@@ -345,7 +342,7 @@ class Detector(QtCore.QObject):
             if set_as_applied:
                 self.bg_subtractor.applyParameters()
         else:
-            LogObject().print2("Background subtractor parameters not found.")
+            self.logger.warning("Background subtractor parameters not found.")
 
     def bgSubtraction(self, image):
         median_size = self.parameters.getParameter(
@@ -389,10 +386,10 @@ class Detector(QtCore.QObject):
                                 )
                                 file.write(d.cornersToString(";"))
                                 file.write("\n")
-                LogObject().print("Detections saved to path:", path)
+                self.logger.info(f"Detections saved to path: {path}")
 
         except PermissionError:
-            LogObject().print(f"Cannot open file {path}. Permission denied.")
+            self.logger.error(f"Cannot open file {path}. Permission denied.")
 
     def loadDetectionsFromFile(self, path):
         """
@@ -435,15 +432,15 @@ class Detector(QtCore.QObject):
                 self.updateVerticalDetections()
                 self.compute_on_event = False
                 if ignored_dets > 0:
-                    LogObject().print(
+                    self.logger.warning(
                         f"Encountered {ignored_dets} detections that were out of range "
                         f"{nof_frames}."
                     )
 
         except PermissionError:
-            LogObject().print(f"Cannot open file {path}. Permission denied.")
+            self.logger.error(f"Cannot open file {path}. Permission denied.")
         except ValueError as e:
-            LogObject().print(
+            self.logger.error(
                 f"Invalid values encountered in {path}, "
                 f"when trying to import detections. {e}"
             )
@@ -678,7 +675,7 @@ class DetectorDisplay:
         for i in range(self.getFrameCount()):
             self.readParameters()
             images = self.detector.compute(i, self.getFrame(i), True)
-            LogObject().print(images)
+            self.logger.info(images)
             self.updateWindows(*images)
 
     def showWindow(self):

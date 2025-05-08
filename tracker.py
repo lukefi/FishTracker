@@ -132,10 +132,6 @@ class Tracker(QtCore.QObject):
                 self.abortComputing(True)
                 return
 
-        self.logger.info(
-            f"Primary tracking. Available detections: "
-            f"{self.detectionCount(self.detector.detections)}"
-        )
         self.tracks_by_frame = self.trackDetections(
             self.detector.detections, self.parameters, reset_count=True
         )
@@ -143,6 +139,11 @@ class Tracker(QtCore.QObject):
         self.applied_parameters = self.parameters.copy()
         self.applied_detector_parameters = self.detector.parameters.copy()
         self.applied_secondary_parameters = None
+
+        self.logger.info(
+            f"Primary tracking. Available detections: "
+            f"{self.detectionCount(self.detector.detections)}"
+        )
 
         self.tracking_state = TrackingState.IDLE
         self.state_changed_signal.emit()

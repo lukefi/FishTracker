@@ -346,7 +346,6 @@ class PlaybackManager(QObject):
             return None
 
     def stop(self):
-        self.logger.info("Stop")
         if self.playback_thread:
             self.playback_thread.is_playing = False
             self.playback_thread.display_ind = self.playback_thread.last_displayed_ind
@@ -398,7 +397,6 @@ class PlaybackManager(QObject):
             self.setFrameInd(int(value * self.sonar.frameCount))
 
     def applicationClosing(self):
-        self.logger.info("Closing PlaybackManager")
         self.stopAll()
         time.sleep(1)
 

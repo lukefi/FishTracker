@@ -146,3 +146,5 @@ dmypy.json
 outputs/
 detector_parameters.json
 tracker_parameters.json
+data/
+results/

@@ -4,17 +4,11 @@ Copyright 2025, Norwegian Institute for Nature Research
 """
 
 import logging
-import os
 from pathlib import Path
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
-
-from file_handler import (
-    ConfKeys,
-    setConfValue,
-)
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="default.yaml")

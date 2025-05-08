@@ -23,7 +23,10 @@ dependencies = [
   "numba",
   "msgpack",
   "numpy",
-  "filetype>=1.2.0"
+  "filetype>=1.2.0",
+  "tqdm",
+  "hydra-core",
+  "omegaconf"
 ]
 description = ""
 license = {text = "GPL-3.0+"}

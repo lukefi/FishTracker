@@ -31,7 +31,6 @@ from tqdm import tqdm
 
 from background_subtractor import BackgroundSubtractor
 from detector_parameters import DetectorParameters
-from log_object import LogObject
 from mog_parameters import MOGParameters
 from playback_manager import PlaybackManager, TestFigure
 

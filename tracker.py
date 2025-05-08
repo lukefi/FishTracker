@@ -27,7 +27,6 @@ from PyQt5 import QtCore
 from tqdm import tqdm
 
 from filter_parameters import FilterParameters
-from log_object import LogObject
 from sort import KalmanBoxTracker, Sort
 from tracker_parameters import TrackerParameters
 
@@ -203,7 +202,7 @@ class Tracker(QtCore.QObject):
         Returns a dictionary containing tracks by frame.
         """
 
-        LogObject().print1(tracker_parameters)
+        self.logger.info(tracker_parameters)
 
         self.stop_tracking = False
         count = len(detection_frames)
@@ -225,7 +224,7 @@ class Tracker(QtCore.QObject):
 
         for i, dets in enumerate(tqdm(detection_frames, desc="Tracking")):
             if self.stop_tracking:
-                LogObject().print("Stopped tracking at", i)
+                self.logger.error("Stopped tracking at", i)
                 self.abortComputing(False)
                 return {}
 
@@ -362,7 +361,7 @@ class Tracker(QtCore.QObject):
             all_params.setParameterDict(all_params_dict)
             self.setAllParameters(all_params)
         except TypeError as e:
-            LogObject().print2(e)
+            self.logger.error(f"Cannot set parameters from dictionary. Error: {e}")
 
 
 class AllTrackerParameters(QtCore.QObject):
@@ -473,7 +472,6 @@ if __name__ == "__main__":
             tracker.primaryTrack()
 
             if secondary:
-                LogObject().print("Secondary track...")
                 used_dets = fish_manager.applyFiltersAndGetUsedDetections()
                 tracker.secondaryTrack(used_dets, tracker.parameters)
 
@@ -495,10 +493,6 @@ if __name__ == "__main__":
 
         figure = TestFigure(playback_manager.togglePlay)
         main_window.setCentralWidget(figure)
-
-        LogObject().print(detector.parameters)
-        LogObject().print(detector.bg_subtractor.mog_parameters)
-        LogObject().print(tracker.parameters)
 
         main_window.show()
         sys.exit(app.exec_())

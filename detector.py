@@ -221,13 +221,7 @@ class Detector(QtCore.QObject):
                 return
 
         count = self.image_provider.getFrameCount()
-        ten_perc = 0.1 * count
-        print_limit = 0
-        for ind in range(count):
-            if ind > print_limit:
-                LogObject().print("Detecting:", int(float(ind) / count * 100), "%")
-                print_limit += ten_perc
-
+        for ind in tqdm(range(count), desc="Detecting", unit="frames"):
             if self.stop_computing:
                 self.logger.info(f"Stopped detecting at {ind}")
                 self.abortComputing(False)

@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -17,9 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from enum import Enum, auto
 from dataclasses import dataclass
+from enum import Enum, auto
+
 from parameters_base import ParametersBase
+
 
 class FilterParameters(ParametersBase):
     @dataclass

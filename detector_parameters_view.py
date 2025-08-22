@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os.path
 import json
 
 from PyQt5.QtCore import *
@@ -26,15 +25,30 @@ from PyQt5.QtWidgets import *
 
 from detector import Detector
 from detector_parameters import DetectorParameters
-from file_handler import getFilePathInAppData, checkAppDataPath
+from file_handler import checkAppDataPath, getFilePathInAppData
 from log_object import LogObject
 from mog_parameters import MOGParameters
 
 PARAMETERS_PATH = getFilePathInAppData("detector_parameters.json")
 parameters_lock = QReadWriteLock()
 
+
 class LabeledSlider:
-    def __init__(self, label, form_layout, connected_functions=[], default_value=0, min_value=0, max_value=1, parent=None, mapping=None, reverse_mapping=None, formatting = "{}"):
+    def __init__(
+        self,
+        label,
+        form_layout,
+        connected_functions=None,
+        default_value=0,
+        min_value=0,
+        max_value=1,
+        parent=None,
+        mapping=None,
+        reverse_mapping=None,
+        formatting="{}",
+    ):
+        if connected_functions is None:
+            connected_functions = []
         self.mapping = mapping
         self.reverse_mapping = reverse_mapping
         self.formatting = formatting
@@ -42,7 +56,7 @@ class LabeledSlider:
         self.layout = QHBoxLayout()
         self.layout.setObjectName("layout")
         self.layout.setSpacing(5)
-        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.value = QLabel("1.0", parent)
         self.value.setAlignment(Qt.AlignCenter | Qt.AlignTop)
@@ -58,7 +72,9 @@ class LabeledSlider:
         self.connected_functions = connected_functions
         self.slider.valueChanged.connect(self.valueChanged)
         if self.mapping is not None:
-            self.value.setText(self.formatting.format(self.mapping(self.slider.value())))
+            self.value.setText(
+                self.formatting.format(self.mapping(self.slider.value()))
+            )
         else:
             self.value.setText(self.formatting.format(self.slider.value()))
 
@@ -92,6 +108,7 @@ class LabeledSlider:
         for f in self.connected_functions:
             f(applied_value)
 
+
 class FloatValidator(QDoubleValidator):
     def __init__(self, bottom, top, decimals, parent=None):
         super().__init__(bottom, top, decimals, parent)
@@ -100,7 +117,7 @@ class FloatValidator(QDoubleValidator):
         if len(s) == 0 or s == "-":
             return (QValidator.Intermediate, s, pos)
 
-        decimal_point = '.'
+        decimal_point = "."
 
         try:
             chars_after_point = len(s) - s.index(decimal_point) - 1
@@ -115,7 +132,7 @@ class FloatValidator(QDoubleValidator):
         except ValueError:
             return (QValidator.Invalid, s, pos)
 
-        if  self.bottom() <= d <= self.top():
+        if self.bottom() <= d <= self.top():
             return (QValidator.Acceptable, s, pos)
         elif chars_after_point == 0:
             return (QValidator.Intermediate, s, pos)
@@ -136,7 +153,7 @@ class DetectorParametersView(QWidget):
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setSpacing(5)
-        self.verticalLayout.setContentsMargins(7,7,7,7)
+        self.verticalLayout.setContentsMargins(7, 7, 7, 7)
 
         def addLine(label, initial_value, validator, connected, layout):
             line = QLineEdit()
@@ -148,7 +165,8 @@ class DetectorParametersView(QWidget):
             layout.addRow(label, line)
             return line
 
-        refresh_lambda = lambda x: playback_manager.refreshFrame()
+        def refresh_lambda(x):
+            return playback_manager.refreshFrame()
 
         self.init_label = QLabel(self)
         self.init_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
@@ -160,44 +178,77 @@ class DetectorParametersView(QWidget):
         # BG subtraction parameters
         bg_sub = detector.bg_subtractor
         bg_sub_data = bg_sub.mog_parameters.data
-        lambda_mog = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.mog_var_thresh, x)
-        self.mog_var_threshold_line = addLine("MOG var threshold", bg_sub_data.mog_var_thresh, QIntValidator(0, 200),[lambda_mog, refresh_lambda], self.form_layout2)
 
-        lambda_bg_frames = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.nof_bg_frames, x)
-        self.nof_bg_frames_line = addLine("Background frames", bg_sub_data.nof_bg_frames, QIntValidator(10, 10000), [lambda_bg_frames, refresh_lambda], self.form_layout2)
+        def lambda_mog(x):
+            return bg_sub.setParameter(MOGParameters.ParametersEnum.mog_var_thresh, x)
 
-        lambda_learning_rate = lambda x: bg_sub.setParameter(MOGParameters.ParametersEnum.learning_rate, x)
+        self.mog_var_threshold_line = addLine(
+            "MOG var threshold",
+            bg_sub_data.mog_var_thresh,
+            QIntValidator(0, 200),
+            [lambda_mog, refresh_lambda],
+            self.form_layout2,
+        )
+
+        def lambda_bg_frames(x):
+            return bg_sub.setParameter(MOGParameters.ParametersEnum.nof_bg_frames, x)
+
+        self.nof_bg_frames_line = addLine(
+            "Background frames",
+            bg_sub_data.nof_bg_frames,
+            QIntValidator(10, 10000),
+            [lambda_bg_frames, refresh_lambda],
+            self.form_layout2,
+        )
+
+        def lambda_learning_rate(x):
+            return bg_sub.setParameter(MOGParameters.ParametersEnum.learning_rate, x)
+
         lr_validator = FloatValidator(bottom=0.0, top=1.0, decimals=3)
-        lr_validator.setNotation(QDoubleValidator.StandardNotation);
-        self.learning_rate_line = addLine("Learning rate", bg_sub_data.learning_rate, lr_validator, [lambda_learning_rate, refresh_lambda], self.form_layout2)
+        lr_validator.setNotation(QDoubleValidator.StandardNotation)
+        self.learning_rate_line = addLine(
+            "Learning rate",
+            bg_sub_data.learning_rate,
+            lr_validator,
+            [lambda_learning_rate, refresh_lambda],
+            self.form_layout2,
+        )
 
         self.verticalLayout.addLayout(self.form_layout2)
 
-        self.verticalSpacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalSpacer1 = QSpacerItem(
+            0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum
+        )
         self.verticalLayout.addItem(self.verticalSpacer1)
 
         self.recalculate_mog_btn = QPushButton()
         self.recalculate_mog_btn.setObjectName("recalculateMOGButton")
         self.recalculate_mog_btn.setText("Apply Values")
-        self.recalculate_mog_btn.setToolTip("Initialize the detector with given parameters")
+        self.recalculate_mog_btn.setToolTip(
+            "Initialize the detector with given parameters"
+        )
         self.recalculate_mog_btn.clicked.connect(self.recalculateMOG)
         self.recalculate_mog_btn.setMinimumWidth(150)
 
         self.init_button_layout = QHBoxLayout()
         self.init_button_layout.setObjectName("buttonLayout")
         self.init_button_layout.setSpacing(7)
-        self.init_button_layout.setContentsMargins(0,0,0,0)
+        self.init_button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.init_button_layout.addStretch()
         self.init_button_layout.addWidget(self.recalculate_mog_btn)
 
         self.verticalLayout.addLayout(self.init_button_layout)
 
-        self.verticalSpacer2 = QSpacerItem(0, 40, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalSpacer2 = QSpacerItem(
+            0, 40, QSizePolicy.Minimum, QSizePolicy.Maximum
+        )
         self.verticalLayout.addItem(self.verticalSpacer2)
 
         self.image_controls_label = QLabel(self)
-        self.image_controls_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.image_controls_label.setSizePolicy(
+            QSizePolicy.Minimum, QSizePolicy.Minimum
+        )
         self.image_controls_label.setText("Detector options")
         self.verticalLayout.addWidget(self.image_controls_label)
 
@@ -205,38 +256,98 @@ class DetectorParametersView(QWidget):
 
         # Detector parameters
         det_param_data = detector.parameters.data
-        lambda_detection_size = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.detection_size, x)
-        self.detection_size_line = addLine("Detection size", det_param_data.detection_size, QIntValidator(0, 200), [lambda_detection_size, refresh_lambda], self.form_layout)
 
-        lambda_min_fg_pixels = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.min_fg_pixels, x)
-        self.min_fg_pixels_line  = addLine("Min foreground pixels", det_param_data.min_fg_pixels, QIntValidator(0, 200), [lambda_min_fg_pixels, refresh_lambda], self.form_layout)
+        def lambda_detection_size(x):
+            return detector.setParameter(
+                DetectorParameters.ParametersEnum.detection_size, x
+            )
 
-        lambda_median_size = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.median_size, x)
-        self.median_size_slider = LabeledSlider("Median size", self.form_layout, [lambda_median_size, refresh_lambda], 0, 0, 3, self, lambda x: 2*x + 3, lambda x: (x - 3)/2)
+        self.detection_size_line = addLine(
+            "Detection size",
+            det_param_data.detection_size,
+            QIntValidator(0, 200),
+            [lambda_detection_size, refresh_lambda],
+            self.form_layout,
+        )
+
+        def lambda_min_fg_pixels(x):
+            return detector.setParameter(
+                DetectorParameters.ParametersEnum.min_fg_pixels, x
+            )
+
+        self.min_fg_pixels_line = addLine(
+            "Min foreground pixels",
+            det_param_data.min_fg_pixels,
+            QIntValidator(0, 200),
+            [lambda_min_fg_pixels, refresh_lambda],
+            self.form_layout,
+        )
+
+        def lambda_median_size(x):
+            return detector.setParameter(
+                DetectorParameters.ParametersEnum.median_size, x
+            )
+
+        self.median_size_slider = LabeledSlider(
+            "Median size",
+            self.form_layout,
+            [lambda_median_size, refresh_lambda],
+            0,
+            0,
+            3,
+            self,
+            lambda x: 2 * x + 3,
+            lambda x: (x - 3) / 2,
+        )
         self.median_size_slider.setValue(det_param_data.median_size)
 
-        lambda_dbscan_eps = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.dbscan_eps, x)
-        self.dbscan_eps_line = addLine("Clustering epsilon", det_param_data.dbscan_eps, QIntValidator(0, 200), [lambda_dbscan_eps, refresh_lambda], self.form_layout)
+        def lambda_dbscan_eps(x):
+            return detector.setParameter(
+                DetectorParameters.ParametersEnum.dbscan_eps, x
+            )
 
-        lambda_dbscan_min_samples = lambda x: detector.setParameter(DetectorParameters.ParametersEnum.dbscan_min_samples, x)
-        self.dbscan_min_samples_line = addLine("Clustering min samples", det_param_data.dbscan_min_samples, QIntValidator(0, 200), [lambda_dbscan_min_samples, refresh_lambda], self.form_layout)
+        self.dbscan_eps_line = addLine(
+            "Clustering epsilon",
+            det_param_data.dbscan_eps,
+            QIntValidator(0, 200),
+            [lambda_dbscan_eps, refresh_lambda],
+            self.form_layout,
+        )
+
+        def lambda_dbscan_min_samples(x):
+            return detector.setParameter(
+                DetectorParameters.ParametersEnum.dbscan_min_samples, x
+            )
+
+        self.dbscan_min_samples_line = addLine(
+            "Clustering min samples",
+            det_param_data.dbscan_min_samples,
+            QIntValidator(0, 200),
+            [lambda_dbscan_min_samples, refresh_lambda],
+            self.form_layout,
+        )
 
         self.verticalLayout.addLayout(self.form_layout)
 
-        self.verticalSpacer3 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum)
+        self.verticalSpacer3 = QSpacerItem(
+            0, 10, QSizePolicy.Minimum, QSizePolicy.Maximum
+        )
         self.verticalLayout.addItem(self.verticalSpacer3)
 
         self.calculate_all_btn = QPushButton()
         self.calculate_all_btn.setObjectName("calculateAllButton")
         self.calculate_all_btn.setText("Calculate All")
-        self.calculate_all_btn.setToolTip("Start a process that initializes the detector and detects fish in all the frames")
+        self.calculate_all_btn.setToolTip(
+            "Start a process that initializes the detector and "
+            "detects fish in all the frames"
+        )
         self.calculate_all_btn.clicked.connect(self.calculateAll)
         self.calculate_all_btn.setMinimumWidth(150)
 
         self.calc_button_layout = QHBoxLayout()
         self.calc_button_layout.setObjectName("buttonLayout")
         self.calc_button_layout.setSpacing(7)
-        self.calc_button_layout.setContentsMargins(0,0,0,0)
+        self.calc_button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.calc_button_layout.addStretch()
         self.calc_button_layout.addWidget(self.calculate_all_btn)
@@ -266,7 +377,7 @@ class DetectorParametersView(QWidget):
         self.button_layout = QHBoxLayout()
         self.button_layout.setObjectName("buttonLayout")
         self.button_layout.setSpacing(7)
-        self.button_layout.setContentsMargins(0,0,0,0)
+        self.button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.button_layout.addWidget(self.save_btn)
         self.button_layout.addWidget(self.load_btn)
@@ -277,7 +388,7 @@ class DetectorParametersView(QWidget):
 
         self.setLayout(self.verticalLayout)
 
-        #self.loadJSON()
+        # self.loadJSON()
 
         self.playback_manager.polars_loaded.connect(self.setButtonsEnabled)
         self.detector.state_changed_signal.connect(self.setButtonsEnabled)
@@ -302,7 +413,7 @@ class DetectorParametersView(QWidget):
     def loadJSON(self):
         try:
             locker = QReadLocker(parameters_lock)
-            with open(PARAMETERS_PATH, "r") as f:
+            with open(PARAMETERS_PATH) as f:
                 dict = json.load(f)
         except FileNotFoundError as e:
             LogObject().print("Error: Detector parameters file not found:", e)
@@ -351,26 +462,36 @@ class DetectorParametersView(QWidget):
             self.recalculate_mog_btn.setText("Apply Values")
 
     def setButtonsEnabled(self):
-        mog_value = self.playback_manager.isMappingDone() and self.bg_subtractor.parametersDirty()
+        mog_value = (
+            self.playback_manager.isMappingDone()
+            and self.bg_subtractor.parametersDirty()
+        )
         self.recalculate_mog_btn.setEnabled(mog_value)
 
-        all_value = self.playback_manager.isPolarsDone() and self.detector.allCalculationAvailable()
+        all_value = (
+            self.playback_manager.isPolarsDone()
+            and self.detector.allCalculationAvailable()
+        )
         self.calculate_all_btn.setEnabled(all_value)
+
 
 if __name__ == "__main__":
     import sys
-    from playback_manager import PlaybackManager
+
     from image_manipulation import ImageProcessor
+    from playback_manager import PlaybackManager
 
     app = QApplication(sys.argv)
     main_window = QMainWindow()
     playback_manager = PlaybackManager(app, main_window)
-    #playback_manager.openTestFile()
+    # playback_manager.openTestFile()
 
     sonar_processor = ImageProcessor()
 
     detector = Detector(playback_manager)
-    detector_parameters = DetectorParametersView(playback_manager, detector, sonar_processor)
+    detector_parameters = DetectorParametersView(
+        playback_manager, detector, sonar_processor
+    )
 
     main_window.setCentralWidget(detector_parameters)
     main_window.show()

@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -18,24 +18,29 @@ along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import sys
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 import file_handler as fh
-
-from PyQt5 import QtGui, QtCore, QtWidgets
-from playback_manager import PlaybackManager
-
 from batch_dialog import batchSaveOptions, setupCheckbox
 from collapsible_box import CollapsibleBox
 from detector_parameters_view import LabeledSlider
+from playback_manager import PlaybackManager
+
 
 def setupSlider(label, tooltip, layout, key, min_v, max_v):
     val = fh.getConfValue(key)
-    fun = lambda x: fh.setConfValue(key, x)
+
+    def fun(x):
+        return fh.setConfValue(key, x)
+
     qlabel = QtWidgets.QLabel(label)
     qlabel.setToolTip(tooltip)
     slider = LabeledSlider(qlabel, layout, [fun], val, min_v, max_v)
     slider.slider.setToolTip(tooltip)
     slider.value.setToolTip(tooltip)
     return slider
+
 
 def addLine(label, tooltip, initial_value, validator, connected, layout):
     qlabel = QtWidgets.QLabel(label)
@@ -64,29 +69,61 @@ class UserPreferencesDialog(QtWidgets.QDialog):
 
         self.form_layout = QtWidgets.QFormLayout()
 
-        #"log_timestamp": false,
-        self.check_timestamps = setupCheckbox("Log timestamp", "If checked, displays timestamps in the logged messages.",
-                                              self.form_layout, fh.ConfKeys.log_timestamp)
+        # "log_timestamp": false,
+        self.check_timestamps = setupCheckbox(
+            "Log timestamp",
+            "If checked, displays timestamps in the logged messages.",
+            self.form_layout,
+            fh.ConfKeys.log_timestamp,
+        )
 
-        #"log_verbosity": 0,
-        self.verbose_slider = setupSlider("Log verbosity", "0: Default, 1: Additional information, 2: Developer infromation",
-                                          self.form_layout, fh.ConfKeys.log_verbosity, 0, 2)
+        # "log_verbosity": 0,
+        self.verbose_slider = setupSlider(
+            "Log verbosity",
+            "0: Default, 1: Additional information, 2: Developer infromation",
+            self.form_layout,
+            fh.ConfKeys.log_verbosity,
+            0,
+            2,
+        )
 
-        #"sonar_height": 1000,
+        # "sonar_height": 1000,
         val = fh.getConfValue(fh.ConfKeys.sonar_height)
-        fun = lambda x: fh.setConfValue(fh.ConfKeys.sonar_height, x)
-        sh_tooltip = "Determines the image height used in the SonarViewer. This affects the speed of the analysis and the obtained results."
-        self.sonar_height_line = addLine("Sonar image height\t\t", sh_tooltip, val, QtGui.QIntValidator(100, 10000), [fun], self.form_layout)
 
-        #"save_as_binary": false,
-        self.check_binary = setupCheckbox("Save as binary", "If checked, saves the results in binary format to save space.",
-                                              self.form_layout, fh.ConfKeys.save_as_binary)
+        def fun(x):
+            return fh.setConfValue(fh.ConfKeys.sonar_height, x)
 
+        sh_tooltip = (
+            "Determines the image height used in the SonarViewer. "
+            "This affects the speed of the analysis and the obtained results."
+        )
+        self.sonar_height_line = addLine(
+            "Sonar image height\t\t",
+            sh_tooltip,
+            val,
+            QtGui.QIntValidator(100, 10000),
+            [fun],
+            self.form_layout,
+        )
 
-        #"filter_tracks_on_save": true
-        self.check_filter_tracks = setupCheckbox("Apply filters", "If checked, applies filters before saving tracks, i.e. only currently visible tracks are saved.",
-                                              self.form_layout, fh.ConfKeys.filter_tracks_on_save)
+        # "save_as_binary": false,
+        self.check_binary = setupCheckbox(
+            "Save as binary",
+            "If checked, saves the results in binary format to save space.",
+            self.form_layout,
+            fh.ConfKeys.save_as_binary,
+        )
 
+        # "filter_tracks_on_save": true
+        self.check_filter_tracks = setupCheckbox(
+            "Apply filters",
+            (
+                "If checked, applies filters before saving tracks, "
+                "i.e. only currently visible tracks are saved."
+            ),
+            self.form_layout,
+            fh.ConfKeys.filter_tracks_on_save,
+        )
 
         self.cbox_general = CollapsibleBox("General options", self)
         self.cbox_general.setContentLayout(self.form_layout)
@@ -100,7 +137,9 @@ class UserPreferencesDialog(QtWidgets.QDialog):
         self.setLayout(self.main_layout)
         self.setWindowTitle("User preferences")
 
+
 if __name__ == "__main__":
+
     def showDialog():
         dialog = UserPreferencesDialog(playback_manager)
         dialog.exec_()
@@ -111,7 +150,7 @@ if __name__ == "__main__":
 
     b = QtWidgets.QPushButton(w)
     b.setText("Show dialog")
-    b.move(50,50)
+    b.move(50, 50)
     b.clicked.connect(showDialog)
     w.setWindowTitle("BatcDialog test")
     w.show()

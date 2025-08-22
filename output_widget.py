@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -18,42 +18,48 @@ along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import sys
-import time
 from queue import Queue
+
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from PyQt5.QtWidgets import * 
-from log_object import LogObject
+from PyQt5.QtWidgets import *
+
 import file_handler as fh
+from log_object import LogObject
 
 LOG_PATH = fh.getFilePathInAppData("log.txt")
 log_lock = QReadWriteLock()
 
-class WriteStream(object):
+
+class WriteStream:
     """
     The new Stream Object which replaces the default stream associated with sys.stdout
     This object puts the received data in a queue
     """
-    def __init__(self,queue):
+
+    def __init__(self, queue):
         self.queue = queue
 
     def write(self, text):
-        if text not in ['', ' ', '\n']:
+        if text not in ["", " ", "\n"]:
             self.queue.put(text)
 
     def flush(self):
         pass
 
+
 class StreamReceiver(QObject):
     """
-    A QObject (to be run in a QThread) which sits waiting for data to come through a queue.
-    It blocks until data is available, and once it gets something from the queue, it sends
-    it to the "MainThread" by emitting a Qt Signal 
+    A QObject (to be run in a QThread) which sits waiting for data to come through a
+    queue.
+    It blocks until data is available, and once it gets something from the queue, it
+    sends it to the "MainThread" by emitting a Qt Signal
     """
+
     signal = pyqtSignal(str)
 
-    def __init__(self,queue,*args,**kwargs):
-        QObject.__init__(self,*args,**kwargs)
+    def __init__(self, queue, *args, **kwargs):
+        QObject.__init__(self, *args, **kwargs)
         self.queue = queue
 
     @pyqtSlot()
@@ -62,12 +68,12 @@ class StreamReceiver(QObject):
             text = self.queue.get()
             self.signal.emit(text)
 
-class OutputViewer(QWidget):
 
+class OutputViewer(QWidget):
     updateLogSignal = pyqtSignal(str)
 
-    def __init__(self,*args,**kwargs):
-        QWidget.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        QWidget.__init__(self, *args, **kwargs)
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
         self.clear_button = QPushButton("Clear")
@@ -83,9 +89,10 @@ class OutputViewer(QWidget):
 
     def connectToLogObject(self, format=None):
         """
-        Connect text_edit field to LogObject signal. A formatting function, which takes a string as input
-        and returns the modified string, can be provided for custom formatting.
-        
+        Connect text_edit field to LogObject signal. A formatting function, which takes
+        a string as input and returns the modified string, can be provided for custom
+        formatting.
+
         Note: The conf file has an option to include time stamp to the displayed log.
         """
         log = LogObject()
@@ -99,7 +106,7 @@ class OutputViewer(QWidget):
         """
         Adds a time stamp to the provided string.
         """
-        return "{} [{}]".format(str, time_stamp)
+        return f"{str} [{time_stamp}]"
 
     def redirectStdOut(self):
         """
@@ -110,7 +117,8 @@ class OutputViewer(QWidget):
         self.queue = Queue()
         sys.stdout = WriteStream(self.queue)
 
-        # Create thread that will listen on the other end of the queue, and send the text to the textedit in our application
+        # Create thread that will listen on the other end of the queue, and send the
+        # text to the textedit in our application
         self.thread = QThread()
         self.receiver = StreamReceiver(self.queue)
         self.receiver.signal.connect(self.appendText)
@@ -122,10 +130,10 @@ class OutputViewer(QWidget):
     def appendText(self, text, verbosity, time_stamp):
         if self.verbosity >= verbosity:
             self.text_edit.moveCursor(QTextCursor.End)
-            if(self.time_stamp):
-                self.text_edit.insertPlainText( f"{text} [{time_stamp}]\n" )
+            if self.time_stamp:
+                self.text_edit.insertPlainText(f"{text} [{time_stamp}]\n")
             else:
-                self.text_edit.insertPlainText( f"{text}\n" )
+                self.text_edit.insertPlainText(f"{text}\n")
 
             lines = self.text_edit.toPlainText().splitlines(False)
             if len(lines) > 0:
@@ -134,23 +142,25 @@ class OutputViewer(QWidget):
     def clear(self):
         self.text_edit.clear()
 
+
 class LogToFile:
     def __init__(self, verbosity=2, clear=True):
         self.verbosity = verbosity
         if clear:
-            self.write("", 2, mode='w')
+            self.write("", 2, mode="w")
 
-    def write(self, string, verbosity, mode='a'):
+    def write(self, string, verbosity, mode="a"):
         if self.verbosity >= verbosity:
             locker = QWriteLocker(log_lock)
             with open(LOG_PATH, mode) as file:
                 file.write(f"{string}")
 
-    def writeLine(self, line, verbosity, time_stamp, mode='a'):
+    def writeLine(self, line, verbosity, time_stamp, mode="a"):
         if self.verbosity >= verbosity:
             locker = QWriteLocker(log_lock)
             with open(LOG_PATH, mode) as file:
                 file.write(f"{line} [{time_stamp}]\n")
+
 
 if __name__ == "__main__":
     # An example QObject (to be run in a QThread) which outputs information with print
@@ -162,18 +172,17 @@ if __name__ == "__main__":
 
     # An Example application QWidget containing the textedit to redirect stdout to
     class MyApp(QWidget):
-        def __init__(self,*args,**kwargs):
-            QWidget.__init__(self,*args,**kwargs)
+        def __init__(self, *args, **kwargs):
+            QWidget.__init__(self, *args, **kwargs)
 
             self.thread = None
             self.layout = QVBoxLayout(self)
             self.output_viewer = OutputViewer()
             self.output_viewer.redirectStdOut()
-            self.button = QPushButton('start long running thread')
+            self.button = QPushButton("start long running thread")
             self.button.clicked.connect(self.start_thread)
             self.layout.addWidget(self.output_viewer)
             self.layout.addWidget(self.button)
-
 
         @pyqtSlot()
         def start_thread(self):
@@ -188,7 +197,7 @@ if __name__ == "__main__":
             self.thread.start()
 
     # Create QApplication and QWidget
-    qapp = QApplication(sys.argv)  
+    qapp = QApplication(sys.argv)
     app = MyApp()
     app.show()
     sys.exit(qapp.exec_())

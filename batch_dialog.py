@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -17,16 +17,19 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import sys, os
-import track_process as tp
+import os
+import sys
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 import file_handler as fh
 import iconsLauncher as uiIcons
-
-from PyQt5 import QtGui, QtCore, QtWidgets
-from playback_manager import PlaybackManager
+import track_process as tp
 from batch_track import BatchTrack
-from log_object import LogObject
 from collapsible_box import CollapsibleBox
+from log_object import LogObject
+from playback_manager import PlaybackManager
+
 
 def setupCheckbox(label, tooltip, layout, key):
     qlabel = QtWidgets.QLabel(label)
@@ -38,26 +41,45 @@ def setupCheckbox(label, tooltip, layout, key):
     checkbox.stateChanged.connect(lambda x: fh.setConfValue(key, x))
     return checkbox
 
+
 def batchSaveOptions(label):
     form_layout_save = QtWidgets.QFormLayout()
 
-    check_save_dets = setupCheckbox("Export detections\t\t", "Export detections to a text file.",
-                                            form_layout_save, fh.ConfKeys.batch_save_detections)
-    check_save_tracks = setupCheckbox("Export tracks", "Export tracks to a text file.",
-                                            form_layout_save, fh.ConfKeys.batch_save_tracks)
-    check_save_complete = setupCheckbox("Save results", "Save results to a .fish file.",
-                                                form_layout_save, fh.ConfKeys.batch_save_complete)
-    check_binary = setupCheckbox("Binary format", "Save results to a binary format. JSON format is used otherwise.",
-                                        form_layout_save, fh.ConfKeys.save_as_binary)
+    check_save_dets = setupCheckbox(
+        "Export detections\t\t",
+        "Export detections to a text file.",
+        form_layout_save,
+        fh.ConfKeys.batch_save_detections,
+    )
+    check_save_tracks = setupCheckbox(
+        "Export tracks",
+        "Export tracks to a text file.",
+        form_layout_save,
+        fh.ConfKeys.batch_save_tracks,
+    )
+    check_save_complete = setupCheckbox(
+        "Save results",
+        "Save results to a .fish file.",
+        form_layout_save,
+        fh.ConfKeys.batch_save_complete,
+    )
+    check_binary = setupCheckbox(
+        "Binary format",
+        "Save results to a binary format. JSON format is used otherwise.",
+        form_layout_save,
+        fh.ConfKeys.save_as_binary,
+    )
 
     collapsible_save = CollapsibleBox(label)
     collapsible_save.setContentLayout(form_layout_save)
     return collapsible_save
 
+
 class BatchDialog(QtWidgets.QDialog):
     """
     UI window/dialog for configuring and launching BatchTrack processes.
     """
+
     def __init__(self, playback_manager, params_detector=None, params_tracker=None):
         super().__init__()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
@@ -84,7 +106,10 @@ class BatchDialog(QtWidgets.QDialog):
         # Number of parallel processes
         self.parallel_layout = QtWidgets.QHBoxLayout()
 
-        parallel_tooltip = "Defines the number of files that are processed simultaneosly / in parallel."
+        parallel_tooltip = (
+            "Defines the number of files that are processed "
+            "simultaneously / in parallel."
+        )
         self.label_p = QtWidgets.QLabel("Parallel:")
         self.label_p.setToolTip(parallel_tooltip)
         self.parallel_layout.addWidget(self.label_p)
@@ -109,7 +134,7 @@ class BatchDialog(QtWidgets.QDialog):
         self.path_layout.addWidget(self.label_path)
 
         self.line_edit_path = QtWidgets.QLineEdit(self)
-        #self.line_edit_path.setAlignment(QtCore.Qt.AlignRight)
+        # self.line_edit_path.setAlignment(QtCore.Qt.AlignRight)
         self.line_edit_path.editingFinished.connect(self.savePathEditFinished)
         self.line_edit_path.setText(self.save_path)
         self.line_edit_path.setToolTip(path_tooltip)
@@ -130,7 +155,9 @@ class BatchDialog(QtWidgets.QDialog):
 
         self.check_double = QtWidgets.QCheckBox("")
         self.check_double.setChecked(fh.getConfValue(fh.ConfKeys.batch_double_track))
-        self.check_double.stateChanged.connect(lambda x: fh.setConfValue(fh.ConfKeys.batch_double_track, x))
+        self.check_double.stateChanged.connect(
+            lambda x: fh.setConfValue(fh.ConfKeys.batch_double_track, x)
+        )
         self.double_layout.addWidget(self.check_double)
 
         self.main_layout.addLayout(self.double_layout)
@@ -212,11 +239,9 @@ class BatchDialog(QtWidgets.QDialog):
         open_path = self.line_edit_path.text()
         open_path = open_path if os.path.exists(open_path) else None
         path = self.playback_manager.selectSaveDirectory(open_path, update_conf=False)
-        if path != "" :
+        if path != "":
             self.save_path = path
             self.line_edit_path.setText(path)
-
-
 
     def getFiles(self):
         for file in tp.getFiles():
@@ -228,7 +253,7 @@ class BatchDialog(QtWidgets.QDialog):
         for file in self.file_list.selectedItems():
             if file.text() in self.files:
                 self.files.remove(file.text())
-        
+
         self.updateList()
 
     def setRemoveBtnActive(self, current, previous):
@@ -272,15 +297,24 @@ class BatchDialog(QtWidgets.QDialog):
         fh.setConfValue(fh.ConfKeys.batch_double_track, self.check_double.isChecked())
         fh.setConfValue(fh.ConfKeys.latest_batch_directory, self.save_path)
 
-        self.batch_track = BatchTrack(False, self.files, self.save_path, self.n_parallel,
-                                      True, self.detector_params, self.tracker_params,
-                                      self.check_double.isChecked())
+        self.batch_track = BatchTrack(
+            False,
+            self.files,
+            self.save_path,
+            self.n_parallel,
+            True,
+            self.detector_params,
+            self.tracker_params,
+            self.check_double.isChecked(),
+        )
         self.batch_track.active_processes_changed_signal.connect(self.setStatusLabel)
         self.batch_track.exit_signal.connect(self.onBatchExit)
 
         use_test_file = self.check_test is not None and self.check_test.isChecked()
 
-        f = lambda: self.batch_track.beginTrack(use_test_file)
+        def f():
+            return self.batch_track.beginTrack(use_test_file)
+
         self.playback_manager.runInThread(f)
 
         self.start_btn.setText("Cancel")
@@ -317,9 +351,15 @@ class BatchDialog(QtWidgets.QDialog):
         else:
             process_ids = [id + 1 for id in self.batch_track.active_processes]
             if len(process_ids) > 1:
-                text = "Status: Processing files {} / {}".format(process_ids, self.batch_track.total_processes)
+                text = (
+                    f"Status: Processing files {process_ids} / "
+                    f"{self.batch_track.total_processes}"
+                )
             elif len(process_ids) == 1:
-                text = "Status: Processing file {} / {}".format(process_ids[0], self.batch_track.total_processes)
+                text = (
+                    f"Status: Processing file {process_ids[0]} / "
+                    f"{self.batch_track.total_processes}"
+                )
             else:
                 text = "Status: No active files to process"
 
@@ -335,17 +375,18 @@ class BatchDialog(QtWidgets.QDialog):
 
 class EmptyOrIntValidator(QtGui.QIntValidator):
     def __init__(self, *args, **kwargs):
-        super(EmptyOrIntValidator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def validate(self, text, pos):
-        state, text, pos = super(EmptyOrIntValidator, self).validate(text, pos)
-            
+        state, text, pos = super().validate(text, pos)
+
         if state != QtGui.QValidator.Acceptable and text == "":
             state = QtGui.QValidator.Acceptable
         return state, text, pos
 
 
 if __name__ == "__main__":
+
     def showDialog():
         dialog = BatchDialog(playback_manager)
         dialog.exec_()
@@ -356,7 +397,7 @@ if __name__ == "__main__":
 
     b = QtWidgets.QPushButton(w)
     b.setText("Show dialog")
-    b.move(50,50)
+    b.move(50, 50)
     b.clicked.connect(showDialog)
     w.setWindowTitle("BatcDialog test")
     w.show()

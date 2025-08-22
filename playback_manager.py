@@ -17,21 +17,25 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import sys, os, errno
+import logging
+import os
+import sys
+import time
 import traceback
-import file_handler as fh
-from PyQt5.QtWidgets import *
+
+import cv2
+import numpy as np
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-import cv2, time
-import numpy as np
-from queue import Queue
-import gc
+from PyQt5.QtWidgets import *
+from tqdm import tqdm
 
-from polar_transform import PolarTransform
+import file_handler as fh
 from log_object import LogObject
+from polar_transform import PolarTransform
 
 FRAME_SIZE = 1.5
+
 
 class Event(list):
     def __call__(self, *args, **kwargs):
@@ -39,15 +43,16 @@ class Event(list):
             f(*args, **kwargs)
 
     def __repr__(self):
-        return "Event(%s)" % list.__repr__(self)
+        return f"Event({list.__repr__(self)})"
+
 
 class PlaybackManager(QObject):
-
     # Signals that polar mapping is done and a PolarTransform object is created
     mapping_done = pyqtSignal()
     # Signals that all polar frames are loaded.
     polars_loaded = pyqtSignal()
-    # Called before frame_available. This is done in the main thread for every frame, no heavy calculation here.
+    # Called before frame_available. This is done in the main thread for every frame,
+    # no heavy calculation here.
     frame_available_immediate = Event()
     # Signal that passes the current frame (cartesian) to all connected functions.
     frame_available = pyqtSignal(tuple)
@@ -65,6 +70,7 @@ class PlaybackManager(QObject):
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(16)
         self.playback_thread = None
+        self.logger = logging.getLogger(__name__)
 
         self.path = ""
         self.sonar = None
@@ -75,23 +81,34 @@ class PlaybackManager(QObject):
 
         app.aboutToQuit.connect(self.applicationClosing)
 
-    def openFile(self, open_path=None, selected_filter="Sonar Files (*.aris *.ddf)", update_conf=True):
+    def openFile(
+        self,
+        open_path=None,
+        selected_filter="Sonar Files (*.aris *.ddf *.mp4)",
+        update_conf=True,
+    ):
         """
         Select .aris file using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestDirectory()
-        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Open File", open_path, selected_filter)
+        file_path_tuple = QFileDialog.getOpenFileName(
+            self.main_window, "Open File", open_path, selected_filter
+        )
         if update_conf:
             fh.setLatestDirectory(os.path.dirname(file_path_tuple[0]))
         self.loadFile(file_path_tuple[0])
 
-    def selectSaveDirectory(self, open_path=None, selected_filter=QFileDialog.ShowDirsOnly, update_conf=True):
+    def selectSaveDirectory(
+        self, open_path=None, selected_filter=QFileDialog.ShowDirsOnly, update_conf=True
+    ):
         """
         Select save directory using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
         print(selected_filter)
-        path = QFileDialog.getExistingDirectory(self.main_window, "Select directory", open_path, selected_filter)
+        path = QFileDialog.getExistingDirectory(
+            self.main_window, "Select directory", open_path, selected_filter
+        )
         if update_conf:
             fh.setLatestSaveDirectory(path)
         return path
@@ -101,7 +118,9 @@ class PlaybackManager(QObject):
         Select a file for saving detections or tracking results using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
-        file_path_tuple = QFileDialog.getSaveFileName(self.main_window, "Save file", open_path, selected_filter)
+        file_path_tuple = QFileDialog.getSaveFileName(
+            self.main_window, "Save file", open_path, selected_filter
+        )
         if update_conf:
             fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
@@ -111,7 +130,9 @@ class PlaybackManager(QObject):
         Select a detection or tracking result file to be loaded using QFileDialog
         """
         open_path = open_path if open_path is not None else fh.getLatestSaveDirectory()
-        file_path_tuple = QFileDialog.getOpenFileName(self.main_window, "Load File", open_path, selected_filter)
+        file_path_tuple = QFileDialog.getOpenFileName(
+            self.main_window, "Load File", open_path, selected_filter
+        )
         if update_conf:
             fh.setLatestSaveDirectory(os.path.dirname(file_path_tuple[0]))
         return file_path_tuple[0]
@@ -130,8 +151,10 @@ class PlaybackManager(QObject):
             sonar.frameCount = min(overrideLength, sonar.frameCount)
 
         if self.playback_thread:
-            #LogObject().print("Stopping existing thread.")
-            #self.playback_thread.signals.playback_ended_signal.connect(self.setLoadedFile)
+            # LogObject().print("Stopping existing thread.")
+            # self.playback_thread.signals.playback_ended_signal.connect(
+            #     self.setLoadedFile
+            # )
             self.closeFile()
             self.setLoadedFile(sonar)
         else:
@@ -139,17 +162,18 @@ class PlaybackManager(QObject):
 
         self.path = path
         self.setTitle(path)
-        LogObject().print(f"Opened file '{path}'")
 
     def setLoadedFile(self, sonar):
         self.sonar = sonar
-        #self.fps = sonar.frameRate
+        self.fps = sonar.frameRate
 
         # Initialize new PlaybackThread
         self.playback_thread = PlaybackThread(self.path, self.sonar, self.thread_pool)
 
         # Initialize frame forwarding
-        self.playback_thread.signals.frame_available_signal.connect(self.frame_available_f)
+        self.playback_thread.signals.frame_available_signal.connect(
+            self.frame_available_f
+        )
 
         # Initialize other signals
         self.playback_thread.signals.polars_loaded_signal.connect(self.polars_loaded)
@@ -157,7 +181,7 @@ class PlaybackManager(QObject):
         self.playback_thread.signals.mapping_done_signal.connect(self.mapping_done)
         self.thread_pool.start(self.playback_thread)
 
-        # Start 
+        # Start
         self.file_opened.emit(self.sonar)
         self.startFrameTimer()
 
@@ -170,7 +194,7 @@ class PlaybackManager(QObject):
         """
         if os.path.basename(self.path) == os.path.basename(path):
             return True
-        
+
         if override_open:
             if os.path.exists(path):
                 self.loadFile(path)
@@ -182,13 +206,11 @@ class PlaybackManager(QObject):
                 self.openFile()
                 return False
 
-
-
     def frame_available_f(self, value):
         """
         Forwards signal form PlaybackThread to the two signals below.
         """
-        #self.frame_available_early.emit(value)
+        # self.frame_available_early.emit(value)
         self.frame_available_immediate(value)
         self.frame_available.emit(value)
 
@@ -206,7 +228,7 @@ class PlaybackManager(QObject):
         self.setTitle()
         self.file_closed.emit()
 
-        #self.polar_transform = None
+        # self.polar_transform = None
 
     def getFileName(self, extension=True):
         if self.path == "":
@@ -215,7 +237,7 @@ class PlaybackManager(QObject):
         if extension:
             return basename
         else:
-            return basename.split('.')[0]
+            return basename.split(".")[0]
 
     def setTitle(self, path=""):
         if self.main_window is None:
@@ -224,7 +246,7 @@ class PlaybackManager(QObject):
         if path == "":
             self.main_window.setWindowTitle("FishTracker")
         else:
-            self.main_window.setWindowTitle(path)
+            self.main_window.setWindowTitle(str(path))
 
     def runInThread(self, f):
         """
@@ -240,7 +262,7 @@ class PlaybackManager(QObject):
         """
         if self.playback_thread and self.playback_thread.polar_transform:
             LogObject().print("Start")
-            #print("F:", sys.getrefcount(self.playback_thread))
+            # print("F:", sys.getrefcount(self.playback_thread))
             self.playback_thread.is_playing = True
             self.showNextImage()
 
@@ -251,8 +273,7 @@ class PlaybackManager(QObject):
         if self.frame_timer is None:
             self.frame_timer = QTimer(self)
             self.frame_timer.timeout.connect(self.displayFrame)
-            self.frame_timer.start(1000.0 / self.fps)
-
+            self.frame_timer.start(int(1000.0 / self.fps))
 
     def displayFrame(self):
         """
@@ -325,7 +346,6 @@ class PlaybackManager(QObject):
             return None
 
     def stop(self):
-        LogObject().print2("Stop")
         if self.playback_thread:
             self.playback_thread.is_playing = False
             self.playback_thread.display_ind = self.playback_thread.last_displayed_ind
@@ -340,7 +360,9 @@ class PlaybackManager(QObject):
 
     def getFrameNumberText(self):
         if self.playback_thread:
-            return "Frame: {}/{}".format(self.playback_thread.display_ind+1, self.sonar.frameCount)
+            return (
+                f"Frame: {self.playback_thread.display_ind + 1}/{self.sonar.frameCount}"
+            )
         else:
             return "No File Loaded"
 
@@ -351,7 +373,7 @@ class PlaybackManager(QObject):
         """
         Transforms cartesian coordinates to polar coordinates in metric units,
         using the current PolarTransform.
-        
+
         Note: Use isMappingDone to check if this function can be used.
 
         Returns: (distance, angle)
@@ -370,13 +392,11 @@ class PlaybackManager(QObject):
         else:
             return 0
 
-
     def setRelativeIndex(self, value):
         if self.sonar:
             self.setFrameInd(int(value * self.sonar.frameCount))
 
     def applicationClosing(self):
-        LogObject().print2("Closing PlaybackManager . . .")
         self.stopAll()
         time.sleep(1)
 
@@ -406,6 +426,15 @@ class PlaybackManager(QObject):
         else:
             return None
 
+    def getFrameTimeStamp(self):
+        """
+        Return frame sonar time stamp.
+        """
+        if self.sonar:
+            return self.sonar.frameTime
+        else:
+            return None
+
     def getImageShape(self):
         """
         Returns (width, height) of the cartesian image in pixels.
@@ -429,17 +458,15 @@ class PlaybackManager(QObject):
         if self.playback_thread is not None:
             self.playback_thread.pause_polar_loading = value
 
-            if not self.isPolarsDone():
-                if value:
-                    LogObject().print2("Polar loading paused.")
-                else:
-                    LogObject().print2("Polar loading continued.")
-
     def isMappingDone(self):
-        return self.playback_thread is not None and self.playback_thread.polar_transform is not None
+        return (
+            self.playback_thread is not None
+            and self.playback_thread.polar_transform is not None
+        )
 
     def isPolarsDone(self):
         return self.playback_thread is not None and self.playback_thread.polars_loaded
+
 
 class PlaybackSignals(QObject):
     """
@@ -458,14 +485,17 @@ class PlaybackSignals(QObject):
     # Signals that playback has ended.
     playback_ended_signal = pyqtSignal()
 
+
 class PlaybackThread(QRunnable):
     """
     A QRunnable class, that is created when a new .aris-file is loaded.
     It keeps track of the currently displayed frame and makes sure that new frames
     are processed before / when they are needed.
 
-    Pausing does not stop this thread, since it is necessary for smoother interaction with UI.
+    Pausing does not stop this thread, since it is necessary for smoother interaction
+    with UI.
     """
+
     def __init__(self, path, sonar, thread_pool):
         super().__init__()
         self.signals = PlaybackSignals()
@@ -485,7 +515,7 @@ class PlaybackThread(QRunnable):
         self.alive = True
 
     def __del__(self):
-        #print("Playback thread destroyed")
+        # print("Playback thread destroyed")
         pass
 
     def run(self):
@@ -495,36 +525,33 @@ class PlaybackThread(QRunnable):
         self.loadPolarFrames()
         self.polarsDone()
 
-
     def loadPolarFrames(self):
         count = self.sonar.frameCount
-        ten_perc = 0.1 * count
-        print_limit = 0
         i = 0
-        while i < count and self.alive:
-            if self.pause_polar_loading:
-                time.sleep(0.1)
-                continue
+        for i in tqdm(range(count), desc="Loading polar frames"):
+            if not self.alive:  # bail out early if needed
+                break
 
-            if i > print_limit:
-                LogObject().print("Loading:", int(float(print_limit) / count * 100), "%")
-                print_limit += ten_perc
-            if self.buffer[i] is None:
-                value = self.sonar.getPolarFrame(i)
+            while self.pause_polar_loading:  # “pause” mode
+                time.sleep(0.1)
+
+            if self.buffer[i] is None:  # fetch frame only if not cached
+                frame = self.sonar.getPolarFrame(i)
                 if self.alive:
-                    self.buffer[i] = value
-            i += 1
+                    self.buffer[i] = frame
 
     def polarsDone(self):
         if self.alive:
-            LogObject().print("Loading: 100 %")
             self.polars_loaded = True
             self.signals.polars_loaded_signal.emit()
 
     def createMapping(self):
-        radius_limits = (self.sonar.windowStart, self.sonar.windowStart + self.sonar.windowLength)
+        radius_limits = (
+            self.sonar.windowStart,
+            self.sonar.windowStart + self.sonar.windowLength,
+        )
         height = fh.getSonarHeight()
-        beam_angle = 2 * self.sonar.firstBeamAngle/180*np.pi
+        beam_angle = 2 * self.sonar.firstBeamAngle / 180 * np.pi
 
         return PolarTransform(self.sonar.DATA_SHAPE, height, radius_limits, beam_angle)
 
@@ -547,7 +574,7 @@ class PlaybackThread(QRunnable):
                         self.display_ind += 1
 
             except IndexError as e:
-                LogObject().print2(e, self.display_ind, "/", len(self.buffer)-1)
+                LogObject().print2(e, self.display_ind, "/", len(self.buffer) - 1)
                 self.signals.playback_ended_signal.emit()
 
     def clear(self):
@@ -570,6 +597,7 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
+        self.logger = logging.getLogger(__name__)
 
     @pyqtSlot()
     def run(self):
@@ -577,13 +605,17 @@ class Worker(QRunnable):
         try:
             result = self.fn(*self.args, **self.kwargs)
         except:
-            traceback.print_exc()
+            # Log the exception to a file
             exctype, value = sys.exc_info()[:2]
+            self.logger.error(f"Exception occurred: {exctype} - {value}")
+            self.logger.error("Exception occurred", exc_info=True)
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
+            # Return the result of the processing
+            self.signals.result.emit(result)
         finally:
-            self.signals.finished.emit()  # Done
+            # Emit the finished signal
+            self.signals.finished.emit()
 
 
 class TestFigure(QLabel):
@@ -614,14 +646,16 @@ class TestFigure(QLabel):
         self.setUpdatesEnabled(False)
         self.clear()
         qformat = QImage.Format_Indexed8
-        if len(image.shape)==3:
-            if image.shape[2]==4:
+        if len(image.shape) == 3:
+            if image.shape[2] == 4:
                 qformat = QImage.Format_RGBA8888
             else:
                 qformat = QImage.Format_RGB888
 
         img = cv2.resize(image, (self.size().width(), self.size().height()))
-        img = QImage(img, img.shape[1], img.shape[0], img.strides[0], qformat).rgbSwapped()
+        img = QImage(
+            img, img.shape[1], img.shape[0], img.strides[0], qformat
+        ).rgbSwapped()
         figurePixmap = QPixmap.fromImage(img)
         self.setPixmap(figurePixmap.scaled(self.size(), Qt.KeepAspectRatio))
         self.setAlignment(Qt.AlignCenter)
@@ -635,13 +669,13 @@ class TestFigure(QLabel):
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setPen(Qt.red)
-        point = QPoint(10,20)
+        point = QPoint(10, 20)
         painter.drawText(point, str(self.frame_ind))
 
         if self.delta_time != 0:
             self.fps = 0.3 * (1.0 / self.delta_time) + 0.7 * self.fps
-        point = QPoint(10,50)
-        painter.drawText(point, "{:.1f}".format(self.fps))
+        point = QPoint(10, 50)
+        painter.drawText(point, f"{self.fps:.1f}")
 
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
@@ -653,10 +687,13 @@ class TestFigure(QLabel):
 
 
 if __name__ == "__main__":
+
     def playback_test():
         def loadFile():
             playback_manager.openTestFile()
-            playback_manager.playback_thread.signals.mapping_done_signal.connect(lambda: playback_manager.play())
+            playback_manager.playback_thread.signals.mapping_done_signal.connect(
+                lambda: playback_manager.play()
+            )
 
         app = QApplication(sys.argv)
         main_window = QMainWindow()
@@ -683,4 +720,4 @@ if __name__ == "__main__":
         playback_thread.loadPolarFrames()
 
     playback_test()
-    #benchmark_loading()
+    # benchmark_loading()

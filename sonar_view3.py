@@ -17,35 +17,40 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from PyQt5 import QtCore, QtWidgets
 
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-
-class Ui_MainWindow(object):
+class Ui_MainWindow:
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1113, 845)
-        MainWindow.setStyleSheet("QSplitter::handle:horizontal {\n"
-"background: qlineargradient(x1:0, y1:0, x2:1, y2:1,\n"
-"    stop:0 #eee, stop:1 #ccc);\n"
-"border: 0px solid #777;\n"
-"width: 3px;\n"
-"border-radius: 4px;\n"
-"}\n"
-"\n"
-"QSplitter::handle:vertical {\n"
-"background: qlineargradient(x1:0, y1:0, x2:1, y2:1,\n"
-"    stop:0 #eee, stop:1 #ccc);\n"
-"border: 0px solid #777;\n"
-"height: 3px;\n"
-"border-radius: 4px;\n"
-"}\n"
-"")
+        MainWindow.setStyleSheet(
+            "QSplitter::handle:horizontal {\n"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1,\n"
+            "    stop:0 #eee, stop:1 #ccc);\n"
+            "border: 0px solid #777;\n"
+            "width: 3px;\n"
+            "border-radius: 4px;\n"
+            "}\n"
+            "\n"
+            "QSplitter::handle:vertical {\n"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1,\n"
+            "    stop:0 #eee, stop:1 #ccc);\n"
+            "border: 0px solid #777;\n"
+            "height: 3px;\n"
+            "border-radius: 4px;\n"
+            "}\n"
+            ""
+        )
         self.centralwidget = QtWidgets.QWidget(MainWindow)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.centralwidget.sizePolicy().hasHeightForWidth()
+        )
         self.centralwidget.setSizePolicy(sizePolicy)
         self.centralwidget.setStyleSheet("")
         self.centralwidget.setObjectName("centralwidget")
@@ -114,7 +119,9 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.info_widget.setTabText(self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1"))
+        self.info_widget.setTabText(
+            self.info_widget.indexOf(self.tab_1), _translate("MainWindow", "Tab 1")
+        )
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.menu_Run.setTitle(_translate("MainWindow", "&Run"))
         self.menu_Edit.setTitle(_translate("MainWindow", "&Edit"))

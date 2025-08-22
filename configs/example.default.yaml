@@ -1,0 +1,40 @@
+# Default configuration for FishTracker batch processing
+
+input:
+  flow_direction: left-to-right # Options: left-to-right, right-to-left
+  file_paths:
+    - <path/to/file_1.aris>
+    - <path/to/file_2.aris>
+    - ...
+    - <path/to/file_n.aris>
+
+output:
+  directory: <output_dir>
+  save_fish: True
+  save_detections: True
+  save_tracks: True
+
+batch_processing:
+  parallel: 1
+
+detector:
+  detection_size: 10
+  min_fg_pixels: 11
+  median_size: 3
+  dbscan_eps: 2
+  dbscan_min_samples: 10
+
+tracker:
+  primary_tracking:
+    max_age: 10
+    min_hits: 5
+    search_radius: 10
+    trim_tails: True
+  filtering:
+    min_duration: 2
+    mad_limit: 0
+  secondary_tracking:
+    max_age: 10
+    min_hits: 5
+    search_radius: 10
+    trim_tails: True

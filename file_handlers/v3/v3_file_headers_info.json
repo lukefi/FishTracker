@@ -146,7 +146,7 @@
         "strHeaderID": {
             "size": "char[256]",
             "bytes" : 256,
-            "location": 80, 
+            "location": 80,
             "title": "Header ID",
             "description": "User input to identify file.",
             "default": null,

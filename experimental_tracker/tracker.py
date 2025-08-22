@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
@@ -20,8 +19,8 @@ along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-
 from track import Track
+
 
 class Tracker:
     """Tracker class for track management.
@@ -32,7 +31,7 @@ class Tracker:
 
     Attributes:
         max_age: Max number of frames that a tracks survives without new measurements.
-        min_hits: Min number of consecutive measurements needed for initiating new track.
+        min_hits: Min number of consecutive measurements needed for initiating new track
         search_radius: Euclidean gating threshold for data association.
     """
 
@@ -48,11 +47,11 @@ class Tracker:
         """
 
         x, y = linear_sum_assignment(cost_matrix)
-        return np.array(list(zip(x, y)))
+        return np.array(list(zip(x, y, strict=False)))
 
     @staticmethod
     def distance(d1, d2):
-        return (d1[0]-d2[0])**2 + (d1[1]-d2[1])**2 
+        return (d1[0] - d2[0]) ** 2 + (d1[1] - d2[1]) ** 2
 
     @staticmethod
     def compute_cost(pt_1, pt_2, radius=10):
@@ -71,16 +70,16 @@ class Tracker:
         for i, p1 in enumerate(pt_1):
             for j, p2 in enumerate(pt_2):
                 d = Tracker.distance(p1, p2)
-                cost_matrix[i,j] = d
+                cost_matrix[i, j] = d
 
-        cost_matrix[cost_matrix > radius ** 2] = float(1e100) # TODO 
+        cost_matrix[cost_matrix > radius**2] = 1e100  # TODO
 
         return cost_matrix
 
     @staticmethod
     def match_points(points_1, points_2, search_radius=10):
-        """Computes data association task between two point sets. 
- 
+        """Computes data association task between two point sets.
+
         Args:
             points_1: Numpy array of 2D points.
             points_2: Numpy array of 2D points.
@@ -100,7 +99,7 @@ class Tracker:
 
         matched_indices = []
         for __, idx in enumerate(indices):
-            if cost_matrix[idx[0],idx[1]] <  search_radius ** 2:
+            if cost_matrix[idx[0], idx[1]] < search_radius**2:
                 matched_indices.append(idx)
 
         matched_indices = np.array(matched_indices)
@@ -110,14 +109,14 @@ class Tracker:
 
         unmatched_pts1 = []
         for pt, __ in enumerate(points_1):
-            if pt not in matched_indices[:,0]:
+            if pt not in matched_indices[:, 0]:
                 unmatched_pts1.append(pt)
 
-        unmatched_pts2 = []     
+        unmatched_pts2 = []
         for pt, __ in enumerate(points_2):
-            if pt not in matched_indices[:,1]:
+            if pt not in matched_indices[:, 1]:
                 unmatched_pts2.append(pt)
-        
+
         return matched_indices, unmatched_pts1, unmatched_pts2
 
     def __init__(self, max_age=5, min_hits=3, search_radius=10):
@@ -133,14 +132,14 @@ class Tracker:
     def get_track_points(self):
         """Returns an array (Numpy) of latest track positions."""
 
-        track_points = np.empty((0,2))
+        track_points = np.empty((0, 2))
         for t, __ in enumerate(self.tracks):
             track_points = np.vstack([track_points, [self.tracks[t].last_position]])
         return track_points
 
     def _match_detections_and_tracks(self, detections):
         """Computes data association between measurements and existing tracks.
- 
+
         Args:
             detections: Measurements, Numpy array of 2D points.
 
@@ -149,7 +148,9 @@ class Tracker:
         """
 
         track_points = self.get_track_points()
-        ma_indices, um_detections, __ = Tracker.match_points(detections, track_points, self.search_radius)
+        ma_indices, um_detections, __ = Tracker.match_points(
+            detections, track_points, self.search_radius
+        )
 
         # All detetctions unmatched
         if len(ma_indices) == 0:
@@ -158,41 +159,41 @@ class Tracker:
         # Update measurements for associated tracks
         for idx in ma_indices:
             self.tracks[idx[1]].last_measurement = detections[idx[0]]
-        
+
         return detections[um_detections]
 
-    def _remove_tentative(self): #TODO paremmin
+    def _remove_tentative(self):  # TODO paremmin
         for t1 in self.tracks:
-            if t1.status is "Removed":
+            if t1.status == "Removed":
                 continue
             t1_loc = t1.last_position
             for t2 in self.tracks:
-                if t2.status is "Removed":
+                if t2.status == "Removed":
                     continue
                 t2_loc = t2.last_position
                 cost = Tracker.distance(t1_loc, t2_loc)
                 if cost == 0:
                     continue
-                if cost < self.search_radius ** 2:
-                    if t1.status is "Tentative":
+                if cost < self.search_radius**2:
+                    if t1.status == "Tentative":
                         t1.status = "Removed"
-                    if t1.status is "Active" and t2.status is "Tentative":
+                    if t1.status == "Active" and t2.status == "Tentative":
                         t2.status = "Removed"
 
     def _initiate_new_tracks(self, detections):
         """Creates new tracks from detections.
- 
+
         Args:
             detections: Measurements, Numpy array of 2D points.
         """
 
-        for i, detection in enumerate(detections):
+        for _, detection in enumerate(detections):
             # Do not initialize new track too close to existing tracks
             can_initialize = True
             for track in self.tracks:
                 track_position = track.last_position
                 cost = Tracker.distance(track_position, detection)
-                if cost < self.search_radius ** 2:
+                if cost < self.search_radius**2:
                     can_initialize = False
 
             if can_initialize:
@@ -201,9 +202,9 @@ class Tracker:
     def remove_deleted(self):
         self.tracks = [t for t in self.tracks if not t.status == "Removed"]
 
-    def update(self, detections = np.empty((0, 2))):
+    def update(self, detections=np.empty((0, 2))):
         """Performs track management steps.
- 
+
         Args:
             detections: Measurements, Numpy array of 2D points.
         """
@@ -216,12 +217,12 @@ class Tracker:
 
         # Remove tentative inside tracks
         self._remove_tentative()
-        #self.remove_deleted()
+        # self.remove_deleted()
 
         # Data association
         unmatched_detections = self._match_detections_and_tracks(detections)
 
-        # 
+        #
         for track in self.tracks:
             track.post_process(self.min_hits)
 

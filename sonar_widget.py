@@ -17,55 +17,63 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-#This module is used to display captured SONAR data from DIDOSN or ARIS
-#files, and also used to show results of the analysis, and details about
-#the detected fishes.
+# This module is used to display captured SONAR data from DIDOSN or ARIS
+# files, and also used to show results of the analysis, and details about
+# the detected fishes.
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from main_window import MainWindow
-from image_manipulation import ImageProcessor
-from zoomable_qlabel import ZoomableQLabel
-from detector import Detector
-from tracker import Tracker
-from fish_manager import FishManager, FishEntry, pyqt_palette, color_palette_deep, N_COLORS
-from playback_manager import Event
-from log_object import LogObject
+import json
 
 ## DEBUG :{ following block of libraries for debug only
 import os
-import json
+from ast import literal_eval
+
 ## }
-
 import cv2
+import numpy as np
 import seaborn as sns
-import iconsLauncher as uiIcons      # UI/iconsLauncher
-# uif : (u)ser (i)nterface (f)unction
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QPointF
 
+# uif : (u)ser (i)nterface (f)unction
 ## library for reading SONAR files
 # FH: File Handler
 import file_handler as FH
-import numpy as np
-import time
-from ast import literal_eval
-from matplotlib import pyplot as plt
+import iconsLauncher as uiIcons  # UI/iconsLauncher
+from detector import Detector
+from fish_manager import (
+    FishEntry,
+    FishManager,
+    color_palette_deep,
+    pyqt_palette,
+)
+from image_manipulation import ImageProcessor
+from log_object import LogObject
+from main_window import MainWindow
+from playback_manager import Event
+from tracker import Tracker
+from zoomable_qlabel import ZoomableQLabel
+
 
 class SonarViewer(QtWidgets.QDialog):
-    """This class holds the main window which will be used to 
+    """This class holds the main window which will be used to
     show the SONAR images, analyze them and edit images.
-    
+
     Arguments:
-        QtWidgets.QDialog {Class} -- inheriting from 
+        QtWidgets.QDialog {Class} -- inheriting from
                                       PyQt5.QtWidgets.QDialog class.
     """
+
     _BGS_Threshold = 25
-    _fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold = _BGS_Threshold)
+    _fgbg = cv2.createBackgroundSubtractorMOG2(varThreshold=_BGS_Threshold)
     UI_FRAME_INDEX = 0
     subtractBackground = False
     _postAnalysisViewer = False
     play = False
     marker = None
 
-    def __init__(self, main_window, playback_manager, detector, tracker, fish_manager): #, resultsView = False, results=False):
+    def __init__(
+        self, main_window, playback_manager, detector, tracker, fish_manager
+    ):  # , resultsView = False, results=False):
         """Initializes the window and loads the first frame and
         places the UI elements, each in its own place.
         """
@@ -88,7 +96,9 @@ class SonarViewer(QtWidgets.QDialog):
         self.playback_manager.file_closed.connect(self.onFileClose)
 
         if isinstance(self.main_window, MainWindow):
-            self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
+            self.main_window.FStatusBarFrameNumber.setText(
+                self.playback_manager.getFrameNumberText()
+            )
 
         QtWidgets.QDialog.__init__(self)
         self.FLayout = QtWidgets.QGridLayout()
@@ -96,18 +106,17 @@ class SonarViewer(QtWidgets.QDialog):
         FNextBTN = QtWidgets.QPushButton(self)
         FNextBTN.clicked.connect(self.playback_manager.showNextImage)
         FNextBTN.setShortcut(QtCore.Qt.Key_Right)
-        FNextBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('next')))
-        
+        FNextBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon("next")))
+
         FPreviousBTN = QtWidgets.QPushButton(self)
         FPreviousBTN.clicked.connect(self.playback_manager.showPreviousImage)
         FPreviousBTN.setShortcut(QtCore.Qt.Key_Left)
-        FPreviousBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('previous')))
-        
+        FPreviousBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon("previous")))
+
         self.FPlayBTN = QtWidgets.QPushButton(self)
         self.FPlayBTN.clicked.connect(self.togglePlayPause)
         self.FPlayBTN.setShortcut(QtCore.Qt.Key_Space)
-        self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('play')))
-
+        self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon("play")))
 
         self.F_BGS_BTN = QtWidgets.QPushButton(self)
         self.F_BGS_BTN.setObjectName("Subtract Background")
@@ -126,30 +135,32 @@ class SonarViewer(QtWidgets.QDialog):
         self.F_BGS_Slider.setDisabled(True)
 
         self.F_BGS_ValueLabel = QtWidgets.QLabel()
-        
+
         self.sonar_figure = SonarFigure(self)
-        self.sonar_figure.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.sonar_figure.setMouseTracking(True)        
+        self.sonar_figure.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
+        )
+        self.sonar_figure.setMouseTracking(True)
 
         self.FSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.updateSliderLimits(0,0,0)
+        self.updateSliderLimits(0, 0, 0)
         self.FSlider.setTickPosition(QtWidgets.QSlider.TicksBelow)
         self.FSlider.valueChanged.connect(self.playback_manager.setFrameInd)
 
-        self.FLayout.addWidget(self.sonar_figure,0,1,1,3)
-        self.FLayout.addWidget(self.FSlider,1,1,1,3)
-        self.FLayout.addWidget(FPreviousBTN, 2,1)
-        self.FLayout.addWidget(self.FPlayBTN, 2,2)
-        self.FLayout.addWidget(FNextBTN, 2,3)
-        
-        self.FLayout.setContentsMargins(0,0,0,0)
-        self.FLayout.setColumnStretch(0,0)
-        self.FLayout.setColumnStretch(1,1)
-        self.FLayout.setColumnStretch(2,1)
-        self.FLayout.setColumnStretch(3,1)
-        self.FLayout.setRowStretch(0,1)
-        self.FLayout.setRowStretch(1,0)
-        self.FLayout.setRowStretch(2,0)
+        self.FLayout.addWidget(self.sonar_figure, 0, 1, 1, 3)
+        self.FLayout.addWidget(self.FSlider, 1, 1, 1, 3)
+        self.FLayout.addWidget(FPreviousBTN, 2, 1)
+        self.FLayout.addWidget(self.FPlayBTN, 2, 2)
+        self.FLayout.addWidget(FNextBTN, 2, 3)
+
+        self.FLayout.setContentsMargins(0, 0, 0, 0)
+        self.FLayout.setColumnStretch(0, 0)
+        self.FLayout.setColumnStretch(1, 1)
+        self.FLayout.setColumnStretch(2, 1)
+        self.FLayout.setColumnStretch(3, 1)
+        self.FLayout.setRowStretch(0, 1)
+        self.FLayout.setRowStretch(1, 0)
+        self.FLayout.setRowStretch(2, 0)
         self.FLayout.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
         if self._postAnalysisViewer:
@@ -187,24 +198,34 @@ class SonarViewer(QtWidgets.QDialog):
                     if det is not None:
                         dets_in_tracks.add(det)
                         if sfig.show_detections:
-                            image = det.visualizeArea(image, color_palette_deep[fish.color_ind])
-                    
-                detections = [d for d in self.detector.getCurrentDetection() if d not in dets_in_tracks]
+                            image = det.visualizeArea(
+                                image, color_palette_deep[fish.color_ind]
+                            )
+
+                detections = [
+                    d
+                    for d in self.detector.getCurrentDetection()
+                    if d not in dets_in_tracks
+                ]
             else:
                 detections = self.detector.getCurrentDetection()
-            
+
             # Overlay rest of the detections
-            if sfig.show_detections or (sfig.show_detection_size and not sfig.show_tracks):
+            if sfig.show_detections or (
+                sfig.show_detection_size and not sfig.show_tracks
+            ):
                 sfig.visualized_dets = detections
                 if sfig.show_detections:
                     if sfig.show_tracks:
                         for det in detections:
                             image = det.visualizeArea(image, [0.9] * 3)
                     else:
-                        colors = sns.color_palette('deep', max([0] + [det.label + 1 for det in detections]))
+                        colors = sns.color_palette(
+                            "deep", max([0] + [det.label + 1 for det in detections])
+                        )
                         for det in detections:
                             image = det.visualizeArea(image, colors[det.label])
-        
+
             if self.show_first_frame:
                 sfig.resetViewToShape(image.shape)
 
@@ -217,10 +238,10 @@ class SonarViewer(QtWidgets.QDialog):
                 self.show_first_frame = False
 
             if isinstance(self.main_window, MainWindow):
-                self.main_window.FStatusBarFrameNumber.setText(self.playback_manager.getFrameNumberText())
+                self.main_window.FStatusBarFrameNumber.setText(
+                    self.playback_manager.getFrameNumberText()
+                )
             self.updateSliderValue(self.playback_manager.getFrameInd())
-
-
 
     def updateSliderValue(self, value):
         self.FSlider.blockSignals(True)
@@ -248,18 +269,18 @@ class SonarViewer(QtWidgets.QDialog):
 
     def measureDistance(self, value):
         self.sonar_figure.setMeasuring(value)
-    
+
     def FBackgroundSubtract(self):
         """
         This function enables and disables background subtraction in the
         UI. It is called from F_BGS_BTN QtWidgets.QPushButton.
         """
-        if (self.F_BGS_BTN.isChecked()):
+        if self.F_BGS_BTN.isChecked():
             self.subtractBackground = True
             self.F_BGS_Slider.setDisabled(False)
             self.F_BGS_ValueLabel.setDisabled(False)
             self.F_BGS_ValueLabel.setText(str(self.F_BGS_Slider.value))
-            self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10,2))
+            self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 2))
         else:
             self.subtractBackground = False
             self.F_BGS_Slider.setDisabled(True)
@@ -285,67 +306,71 @@ class SonarViewer(QtWidgets.QDialog):
         self.morphStructDimInp.setPlaceholderText("(10,2)")
         self.popupLayout.addRow(self.morphStructLabel, self.morphStruct)
         self.popupLayout.addRow(self.morphStructDim, self.morphStructDimInp)
-        
+
         # start frame {default: 1}
         self.startFrame = QtWidgets.QLabel("Start Frame")
         self.startFrameInp = QtWidgets.QLineEdit()
         self.startFrameInp.setPlaceholderText("1")
         self.popupLayout.addRow(self.startFrame, self.startFrameInp)
-        
+
         self.blurVal = QtWidgets.QLabel("Blur Value")
         self.blurValInp = QtWidgets.QLineEdit()
         self.blurValInp.setPlaceholderText("(5,5)")
         self.popupLayout.addRow(self.blurVal, self.blurValInp)
-        
+
         self.bgTh = QtWidgets.QLabel("Background Threshold")
         self.bgThInp = QtWidgets.QLineEdit()
         self.bgThInp.setPlaceholderText("25")
         self.popupLayout.addRow(self.bgTh, self.bgThInp)
-        
+
         self.maxApp = QtWidgets.QLabel("Maximum Appearance")
         self.maxAppInp = QtWidgets.QLineEdit()
         self.maxAppInp.setPlaceholderText("30 frames")
         self.popupLayout.addRow(self.maxApp, self.maxAppInp)
-        
+
         self.maxDis = QtWidgets.QLabel("Maximum Disappearance")
         self.maxDisInp = QtWidgets.QLineEdit()
         self.maxDisInp.setPlaceholderText("5 frames")
         self.popupLayout.addRow(self.maxDis, self.maxDisInp)
-        
+
         self.radiusInput = QtWidgets.QLineEdit()
         self.radiusLabel = QtWidgets.QLabel("Search radius (px)")
         self.radiusInput.setPlaceholderText("30 px")
         self.popupLayout.addRow(self.radiusLabel, self.radiusInput)
-        
-        self.showImages = QtWidgets.QCheckBox("Show images while processing. (takes longer time)")
+
+        self.showImages = QtWidgets.QCheckBox(
+            "Show images while processing. (takes longer time)"
+        )
         self.showImages.setChecked(True)
         self.popupLayout.addRow(self.showImages)
-        
+
         self.loadPresetBTN = QtWidgets.QPushButton("Load Preset")
-        self.loadPresetBTN.clicked.connect(lambda : uif.loadTemplate(self))
-        
+        self.loadPresetBTN.clicked.connect(lambda: uif.loadTemplate(self))
+
         self.savePresetBTN = QtWidgets.QPushButton("Save Preset")
         self.savePresetBTN.clicked.connect(FH.saveAnalysisPreset)
 
         self.defaultPresetBTN = QtWidgets.QPushButton("Defaults")
-        self.defaultPresetBTN.clicked.connect(lambda: uif.loadTemplate(self, default=True))
-        
+        self.defaultPresetBTN.clicked.connect(
+            lambda: uif.loadTemplate(self, default=True)
+        )
+
         self.setAsDefaultBTN = QtWidgets.QPushButton("Set As Defaults")
         self.setAsDefaultBTN.clicked.connect(FH.saveAnalysisPreset)
 
         self.startAnalysis = QtWidgets.QPushButton("Start")
         self.startAnalysis.clicked.connect(self.handleAnalyzerInput)
-        
+
         rowButtonsLayout1 = QtWidgets.QHBoxLayout()
         rowButtonsLayout2 = QtWidgets.QHBoxLayout()
-        
+
         rowButtonsLayout1.addWidget(self.loadPresetBTN)
         rowButtonsLayout1.addWidget(self.savePresetBTN)
         rowButtonsLayout1.addWidget(self.setAsDefaultBTN)
-        
+
         rowButtonsLayout2.addWidget(self.defaultPresetBTN)
         rowButtonsLayout2.addWidget(self.startAnalysis)
-        
+
         self.popupLayout.addRow(rowButtonsLayout1)
         self.popupLayout.addRow(rowButtonsLayout2)
 
@@ -355,10 +380,10 @@ class SonarViewer(QtWidgets.QDialog):
 
     def handleAnalyzerInput(self):
         ## TODO _ : function to take input from popup dialog box
-        
-        # handling kernel shape type from drop down menu 
+
+        # handling kernel shape type from drop down menu
         kernel = self.morphStruct.currentText()
-        
+
         # handling kernel dimensions
         if self.morphStructDimInp.text() == "":
             kernelDim = None
@@ -390,7 +415,7 @@ class SonarViewer(QtWidgets.QDialog):
             minApp = int(self.maxAppInp.text())
 
         # handling maximum disappearance
-        if self.maxDisInp.text() == "" :
+        if self.maxDisInp.text() == "":
             maxDis = None
         else:
             maxDis = int(self.maxDisInp.text())
@@ -422,39 +447,40 @@ class SonarViewer(QtWidgets.QDialog):
         dump = open(os.path.join(os.getcwd(), "data_all.json"))
         dump = dump.read()
         dump = json.loads(dump)
-        self.FDetectedDict = dump['data']
+        self.FDetectedDict = dump["data"]
 
         # block 2
-        # self.FDetectedDict = AutoAnalyzer.FAnalyze(self, kernel = kernel, 
+        # self.FDetectedDict = AutoAnalyzer.FAnalyze(self, kernel = kernel,
         #                                     kernelDim = kernelDim,
         #                                     startFrame = startFrame,
         #                                     blurDim = blurDim,
         #                                     bgTh= bgTh,
-        #                                     minApp= minApp, 
+        #                                     minApp= minApp,
         #                                     maxDis = maxDis,
         #                                     searchRadius= searchRadius,
         #                                     imshow = imshow)
         # }
         self.popup.close()
-        if(len(self.FDetectedDict)):
-            self.FResultsViewer = SonarViewer(self.FParent, resultsView= True, results=self.FDetectedDict)
+        if len(self.FDetectedDict):
+            self.FResultsViewer = SonarViewer(
+                self.FParent, resultsView=True, results=self.FDetectedDict
+            )
             self.FParent.setCentralWidget(self.FResultsViewer)
         return
 
     def togglePlayPause(self):
         self.playback_manager.togglePlay()
         self.choosePlayIcon()
-            
+
     def choosePlayIcon(self):
         if self.playback_manager.isPlaying():
-            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('pause')))
+            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon("pause")))
         else:
-            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon('play')))
-
+            self.FPlayBTN.setIcon(QtGui.QIcon(uiIcons.FGetIcon("play")))
 
     def FListDetected(self):
         index = 1
-        listOfFish = list()
+        listOfFish = []
         self.FList = QtWidgets.QListWidget()
 
         for fish in self.FDetectedDict.keys():
@@ -469,9 +495,8 @@ class SonarViewer(QtWidgets.QDialog):
         self.FApplyBTN.clicked.connect(self.FApply)
 
         self.FLayout.addWidget(self.FApplyBTN, 2, 5)
-        self.FLayout.addWidget(self.FList, 0,4,2,2, QtCore.Qt.AlignRight)
+        self.FLayout.addWidget(self.FList, 0, 4, 2, 2, QtCore.Qt.AlignRight)
         return
-
 
     def showFish(self, fishNumber, inputDict):
         ## TODO _
@@ -483,45 +508,43 @@ class SonarViewer(QtWidgets.QDialog):
         for i in inputDict["frames"]:
             # ffigure.setUpdatesEnabled(False)
             self.UI_FRAME_INDEX = i
-            x = int( inputDict["locations"][counter][0])
-            y = int( inputDict["locations"][counter][1])
-            
-            self.marker = str(x)+','+str(y)
+            x = int(inputDict["locations"][counter][0])
+            y = int(inputDict["locations"][counter][1])
+
+            self.marker = str(x) + "," + str(y)
             self.FSlider.setValue(self.UI_FRAME_INDEX)
-            
+
             self.marker = None
             self.repaint()
-            counter +=1
+            counter += 1
         self.marker = None
         return
-
 
     def FApply(self):
         ## TODO _
         inputDict = self.FDetectedDict
-        dictToBeSaved = dict()
-        data = dict()
+        dictToBeSaved = {}
+        data = {}
         for i in inputDict.keys():
-            if inputDict[i]['index'].FIfFish.isChecked():
+            if inputDict[i]["index"].FIfFish.isChecked():
                 dictToBeSaved[i] = inputDict[i]
 
         for n in dictToBeSaved.keys():
             data[str(n)] = {
-                "ID" : dictToBeSaved[n]["ID"],
-                "locations" : tuple(map(tuple, dictToBeSaved[n]["locations"])),
-                "frames" : dictToBeSaved[n]["frames"],
+                "ID": dictToBeSaved[n]["ID"],
+                "locations": tuple(map(tuple, dictToBeSaved[n]["locations"])),
+                "frames": dictToBeSaved[n]["frames"],
                 "left": list(map(int, dictToBeSaved[n]["left"])),
                 "top": list(map(int, dictToBeSaved[n]["top"])),
                 "width": list(map(int, dictToBeSaved[n]["width"])),
-                "height" : list(map(int, dictToBeSaved[n]["height"])),
-                "area": list(map(int, dictToBeSaved[n]["area"]))
-
+                "height": list(map(int, dictToBeSaved[n]["height"])),
+                "area": list(map(int, dictToBeSaved[n]["area"])),
             }
-        path = self.playback_manager.sonar.FILE_PATH.split('.')
-        path = path[0] + '.json'        
-        with open(path, 'w') as outFile:
+        path = self.playback_manager.sonar.FILE_PATH.split(".")
+        path = path[0] + ".json"
+        with open(path, "w") as outFile:
             json.dump(data, outFile)
-        
+
         return
 
     def setAutomaticContrast(self, value):
@@ -537,7 +560,7 @@ class SonarViewer(QtWidgets.QDialog):
         if self.playback_manager.isMappingDone():
             dist, angle = self.playback_manager.getBeamDistance(x, y)
             angle = angle / np.pi * 180 + 90
-            txt = "Distance: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
+            txt = f"Distance: {dist:.2f} m,\t Angle: {angle:.1f} deg\t"
             self.main_window.FStatusBarMousePos.setText(txt)
 
     def setStatusBarDistance(self, points):
@@ -550,7 +573,7 @@ class SonarViewer(QtWidgets.QDialog):
             x1, y1, x2, y2 = points
             dist, angle = self.polar_transform.getMetricDistance(y2, x2, y1, x1)
             angle = angle / np.pi * 180
-            txt = "Measure: {:.2f} m,\t Angle: {:.1f} deg\t".format(dist, angle)
+            txt = f"Measure: {dist:.2f} m,\t Angle: {angle:.1f} deg\t"
             self.main_window.FStatusBarDistance.setText(txt)
 
     def measurementDone(self, points):
@@ -573,7 +596,7 @@ class SonarViewer(QtWidgets.QDialog):
         if self.polar_transform is not None:
             L = self.polar_transform.getOuterEdge(20, False)
             R = self.polar_transform.getOuterEdge(20, True)
-            return np.vstack((L,R))
+            return np.vstack((L, R))
         else:
             return None
 
@@ -581,7 +604,7 @@ class SonarViewer(QtWidgets.QDialog):
         if self.polar_transform is not None:
             return self.polar_transform.radius_limits
         else:
-            return (0,0)
+            return (0, 0)
 
 
 class SonarFigure(ZoomableQLabel):
@@ -621,7 +644,9 @@ class SonarFigure(ZoomableQLabel):
             elif self.measure_origin is not None:
                 self.measure_toggle(True)
 
-                self.sonar_viewer.measurementDone((self.measure_origin[1], self.measure_origin[0], ys, xs))
+                self.sonar_viewer.measurementDone(
+                    (self.measure_origin[1], self.measure_origin[0], ys, xs)
+                )
                 self.measure_origin = None
                 self.update()
 
@@ -636,7 +661,7 @@ class SonarFigure(ZoomableQLabel):
             self.measure_origin = None
             self.measure_point = None
             self.update()
-    
+
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
 
@@ -647,10 +672,12 @@ class SonarFigure(ZoomableQLabel):
         if self.sonar_viewer:
             if self.measure_origin is not None:
                 self.update()
-                self.sonar_viewer.setStatusBarDistance((self.measure_origin[1], self.measure_origin[0], ys, xs))
+                self.sonar_viewer.setStatusBarDistance(
+                    (self.measure_origin[1], self.measure_origin[0], ys, xs)
+                )
 
             if self.pixmap():
-                self.sonar_viewer.setStatusBarMousePos(xs,ys)
+                self.sonar_viewer.setStatusBarMousePos(xs, ys)
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -658,7 +685,7 @@ class SonarFigure(ZoomableQLabel):
         painter = QtGui.QPainter(self)
         font = painter.font()
         self.font_metrics = QtGui.QFontMetrics(font)
-        
+
         self.drawUpDown(painter)
         self.drawDepthAxis(painter)
         self.drawMeasurementLine(painter)
@@ -666,33 +693,40 @@ class SonarFigure(ZoomableQLabel):
         self.visualizeDetections(painter, self.visualized_dets)
         self.visualizeFishTracks(painter, self.visualized_tracks)
 
-
     def drawUpDown(self, painter):
         painter.setPen(QtCore.Qt.white)
+        x_left = int(max(20, 0.05 * self.window_width))
+        y = int(0.95 * self.window_height)
+
         if self.sonar_viewer.getSwimDirection():
-            painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "UP")
-            painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 30, 0.95 * self.window_height, "DOWN")
+            painter.drawText(x_left, y, "UP")
+            painter.drawText(
+                int(self.window_width - max(20, 0.05 * self.window_width) - 30),
+                y,
+                "DOWN",
+            )
         else:
-            painter.drawText(max(20, 0.05 * self.window_width), 0.95 * self.window_height, "DOWN")
-            painter.drawText(self.window_width - max(20, 0.05 * self.window_width) - 10, 0.95 * self.window_height, "UP")
+            painter.drawText(x_left, y, "DOWN")
+            painter.drawText(
+                int(self.window_width - max(20, 0.05 * self.window_width) - 10), y, "UP"
+            )
 
     def drawDepthAxis(self, painter):
         # Draw depth axis
         painter.setPen(QtCore.Qt.white)
         axisBase = self.sonar_viewer.getAxisBase()
         if axisBase is not None:
-
             depthMin, depthMax = self.sonar_viewer.getDepthMinMax()
 
-            y = self.image2viewY(axisBase[:,0])
-            x = self.image2viewX(axisBase[:,1])
-            l0 = np.array((x[0],y[0]))
-            l1 = np.array((x[1],y[1]))
-            r0 = np.array((x[2],y[2]))
-            r1 = np.array((x[3],y[3]))
+            y = self.image2viewY(axisBase[:, 0])
+            x = self.image2viewX(axisBase[:, 1])
+            l0 = np.array((x[0], y[0]))
+            l1 = np.array((x[1], y[1]))
+            r0 = np.array((x[2], y[2]))
+            r1 = np.array((x[3], y[3]))
 
-            painter.drawLine(*l0, *l1)
-            painter.drawLine(*r0, *r1)
+            painter.drawLine(QPointF(*l0), QPointF(*l1))
+            painter.drawLine(QPointF(*r0), QPointF(*r1))
 
             count = 5
 
@@ -702,20 +736,23 @@ class SonarFigure(ZoomableQLabel):
                 else:
                     len = 5
 
-                t = float(i)/(count-1)
+                t = float(i) / (count - 1)
                 depth = depthMin + t * (depthMax - depthMin)
 
-                li = (1-t) * l0 + t * l1
-                ri = (1-t) * r0 + t * r1
+                li = (1 - t) * l0 + t * l1
+                ri = (1 - t) * r0 + t * r1
 
-                painter.drawLine(*li, *(li - np.array((len,0))))
-                painter.drawLine(*ri, *(ri + np.array((len,0))))
+                painter.drawLine(QPointF(*li), QPointF(*(li - np.array((len, 0)))))
+                painter.drawLine(QPointF(*ri), QPointF(*(ri + np.array((len, 0)))))
 
-                text = "%.1f" % depth
+                text = f"{depth:.1f}"
                 text_width = QtGui.QFontMetrics(self.font()).width(text)
 
-                painter.drawText(*li + np.array((-15 - text_width, 5)), text)
-                painter.drawText(*ri + np.array((15, 5)), text)
+                offset_li = li + np.array((-15 - text_width, 5))
+                painter.drawText(QPointF(*offset_li), text)
+
+                offset_ri = ri + np.array((15, 5))
+                painter.drawText(QPointF(*offset_ri), text)
 
     def drawMeasurementLine(self, painter):
         if self.measure_origin is None or self.measure_point is None:
@@ -725,7 +762,7 @@ class SonarFigure(ZoomableQLabel):
         x = self.image2viewX(np.array((self.measure_origin[0], self.measure_point[0])))
         y = self.image2viewY(np.array((self.measure_origin[1], self.measure_point[1])))
 
-        painter.drawLine(x[0], y[0] ,x[1] ,y[1])
+        painter.drawLine(x[0], y[0], x[1], y[1])
 
     def visualizeDetections(self, painter, detections):
         painter.setPen(QtCore.Qt.white)
@@ -740,11 +777,16 @@ class SonarFigure(ZoomableQLabel):
 
             # Draw detection bounding box
             if self.show_detections:
-                corners_x = self.image2viewX(det.corners[:,1])
-                corners_y = self.image2viewY(det.corners[:,0])
-                for i in range(0,3):
-                    painter.drawLine(corners_x[i], corners_y[i], corners_x[i+1], corners_y[i+1])
-                painter.drawLine(corners_x[3], corners_y[3], corners_x[0], corners_y[0])
+                corners_x = self.image2viewX(det.corners[:, 1])
+                corners_y = self.image2viewY(det.corners[:, 0])
+                for i in range(0, 3):
+                    p1 = QPointF(corners_x[i], corners_y[i])
+                    p2 = QPointF(corners_x[i + 1], corners_y[i + 1])
+                    painter.drawLine(p1, p2)
+
+                p1 = QPointF(corners_x[3], corners_y[3])
+                p2 = QPointF(corners_x[0], corners_y[0])
+                painter.drawLine(p1, p2)
 
     def visualizeFishTracks(self, painter, fish_by_frame):
         for fish in fish_by_frame:
@@ -760,7 +802,7 @@ class SonarFigure(ZoomableQLabel):
 
                 x = self.image2viewX(center[1]) - text_width / 2
                 y = self.image2viewY(center[0] + 10) + 11
-                point = QtCore.QPoint(x, y)
+                point = QtCore.QPointF(float(x), float(y))
 
                 painter.drawText(point, text)
 
@@ -769,17 +811,29 @@ class SonarFigure(ZoomableQLabel):
                 if self.show_detection_size and det is not None:
                     x = self.image2viewX(center[1])
                     y = self.image2viewY(center[0] - 10) - 1
-                    self.drawDetectionSizeText(painter, det, (x,y))
+                    self.drawDetectionSizeText(painter, det, (x, y))
 
                 # Draw track bounding box
                 corners_x = self.image2viewX(np.array([tr[1], tr[3]]))
                 corners_y = self.image2viewY(np.array([tr[0], tr[2]]))
 
                 painter.setPen(pyqt_palette[fish.color_ind])
-                painter.drawLine(corners_x[0], corners_y[0], corners_x[0], corners_y[1])
-                painter.drawLine(corners_x[0], corners_y[1], corners_x[1], corners_y[1])
-                painter.drawLine(corners_x[1], corners_y[1], corners_x[1], corners_y[0])
-                painter.drawLine(corners_x[1], corners_y[0], corners_x[0], corners_y[0])
+                painter.drawLine(
+                    QtCore.QPointF(float(corners_x[0]), float(corners_y[0])),
+                    QtCore.QPointF(float(corners_x[0]), float(corners_y[1])),
+                )
+                painter.drawLine(
+                    QtCore.QPointF(float(corners_x[0]), float(corners_y[1])),
+                    QtCore.QPointF(float(corners_x[1]), float(corners_y[1])),
+                )
+                painter.drawLine(
+                    QtCore.QPointF(float(corners_x[1]), float(corners_y[1])),
+                    QtCore.QPointF(float(corners_x[1]), float(corners_y[0])),
+                )
+                painter.drawLine(
+                    QtCore.QPointF(float(corners_x[1]), float(corners_y[0])),
+                    QtCore.QPointF(float(corners_x[0]), float(corners_y[0])),
+                )
 
     def drawDetectionSizeText(self, painter, det, pos=None):
         if det.length > 0:
@@ -790,9 +844,9 @@ class SonarFigure(ZoomableQLabel):
                 x = self.image2viewX(int(det.center[1])) - text_width / 2
                 y = self.image2viewY(int(det.center[0] - det.diff[0])) - 6
             else:
-                x,y = pos
+                x, y = pos
                 x -= text_width / 2
-            point = QtCore.QPoint(x, y)
+            point = QtCore.QPointF(x, y)
             painter.drawText(point, text)
 
     def clear(self):
@@ -801,21 +855,22 @@ class SonarFigure(ZoomableQLabel):
         self.visualized_tracks = []
         self.visualized_id = 0
 
-class FFishListItem():
+
+class FFishListItem:
     def __init__(self, cls, inputDict, fishNumber):
         self.fishNumber = fishNumber
         self.inputDict = inputDict
         self.listItem = QtWidgets.QListWidgetItem()
         self.FWdiget = QtWidgets.QWidget()
 
-        self.FWdigetText = QtWidgets.QLabel("Fish #{}".format(self.fishNumber))
+        self.FWdigetText = QtWidgets.QLabel(f"Fish #{self.fishNumber}")
 
         self.avgFishLength = QtWidgets.QLabel()
-        self.avgFishLength.setText("Length: {}".format(uif.getAvgLength()))
-        
+        self.avgFishLength.setText(f"Length: {uif.getAvgLength()}")
+
         self.FIfFish = QtWidgets.QCheckBox("is Fish")
         self.FIfFish.setChecked(False)
-        
+
         self.FWdigetBTN = QtWidgets.QPushButton("Show")
 
         self.linkFish = QtWidgets.QPushButton()
@@ -840,14 +895,15 @@ class FFishListItem():
         self.FWdiget.setLayout(self.FWdigetLayout)
         self.listItem.setSizeHint(self.FWdiget.sizeHint())
 
+
 if __name__ == "__main__":
     import sys
+
     from playback_manager import PlaybackManager
 
     def startDetector():
         detector.initMOG()
         detector.setShowBGSubtraction(False)
-
 
     def test():
         LogObject().print("Polars loaded test print")
@@ -862,7 +918,9 @@ if __name__ == "__main__":
     playback_manager.mapping_done.connect(test)
     playback_manager.mapping_done.connect(startDetector)
     playback_manager.frame_available_immediate.append(detector.compute_from_event)
-    sonar_viewer = SonarViewer(main_window, playback_manager, detector, tracker, fish_manager)
+    sonar_viewer = SonarViewer(
+        main_window, playback_manager, detector, tracker, fish_manager
+    )
     sonar_viewer.sonar_figure.show_detections = True
     sonar_viewer.image_processor.setColorMap(False)
 

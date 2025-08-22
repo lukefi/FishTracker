@@ -17,8 +17,9 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from ui_manager import launch_ui
 import multiprocessing
+
+from ui_manager import launch_ui
 
 if __name__ == "__main__":
     # Freezing is required by PyInstaller

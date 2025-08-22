@@ -17,13 +17,14 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         self.status_length = 100
         super().__init__()
-        
+
     def setupStatusBar(self):
         self.FStatusBar = QtWidgets.QStatusBar()
         self.FStatusLog = QtWidgets.QLabel()
@@ -39,6 +40,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def updateStatusLog(self, str):
         if len(str) > self.status_length:
-            self.FStatusLog.setText(str[0:self.status_length - 3] + "...")
+            self.FStatusLog.setText(str[0 : self.status_length - 3] + "...")
         else:
             self.FStatusLog.setText(str)

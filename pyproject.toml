@@ -1,0 +1,44 @@
+[dependency-groups]
+dev = [
+  "deptry",
+  "pre-commit"
+]
+
+[project]
+authors = [
+  {name = "Mikael Uimonen"},
+  {name = "Otto Korkalo"},
+  {name = "Taheera Ahmed", email = "taheera.ahmed@nina.no"}
+]
+dependencies = [
+  "matplotlib",
+  "pytz",
+  "scipy",
+  "opencv-python",
+  "PyQt5==5.12.3",
+  "filterpy==1.4.5",
+  "scikit-image",
+  "seaborn",
+  "scikit-learn",
+  "numba",
+  "msgpack",
+  "numpy",
+  "filetype>=1.2.0",
+  "tqdm",
+  "hydra-core",
+  "omegaconf",
+  "pandas"
+]
+description = ""
+license = {text = "GPL-3.0+"}
+name = "fishtracker"
+readme = "README.md"
+requires-python = "~=3.11"
+version = "0.1.0"
+
+[tool.ruff]
+fix = true
+
+[tool.ruff.lint]
+ignore = ["COM812", "F405", "F841", "A002", "A001", "F403", "E722", "F821", "B008"]
+select = ["E", "W", "I", "F", "UP", "S", "B", "A", "COM", "LOG", "Q"]

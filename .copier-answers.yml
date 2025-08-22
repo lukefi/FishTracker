@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier
+_commit: v0.1.5
+_src_path: gh:ninanor/python-template
+author_name: taheeraahmed
+debug: false
+default_branch_name: master
+docker: false
+email: taheera.ahmed@nina.no
+notebook: false
+project_name: FishTracker
+project_slug: fishtracker
+repo_name: FishTracker
+repo_org: ninanor
+template_type: python
+type_annotations: false

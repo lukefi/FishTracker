@@ -6,7 +6,7 @@ LUKE-OY. The software is intended to be an open-source.
 author: Mina Ghobrial.
 date:   May 28th, 2018.
 
-References: 
+References:
 #   https://github.com/SoundMetrics
 #   https://github.com/EminentCodfish/pyARIS
 
@@ -28,27 +28,33 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
+
+---------------------------------------------------------------------------
+
+Modifications in a effort to include mp4-files
+author: Lauri Tirkkonen
+date: 27.3.2023
+
 """
 
-import sys
-import os
 import json
-import struct
+import os
 import platform
-
-from PyQt5 import QtCore
-
+import struct
+import sys
 from enum import Enum, auto
 
-from file_handlers.utils import *
+import filetype
+from PyQt5 import QtCore
+from skimage.transform import warp
 
+from file_handlers.MP4.mp4_file_info import *
+from file_handlers.utils import *
 from file_handlers.v3.v3_file_info import *
 from file_handlers.v4.v4_file_info import *
 from file_handlers.v5.v5_file_info import *
-
 from image_manipulation import ImageManipulation
 from log_object import LogObject
-
 
 if platform.system() == "Windows":
     APPDATA_PATH = os.path.expandvars(r"%LOCALAPPDATA%\FishTracker")
@@ -63,20 +69,24 @@ def checkAppDataPath():
     if not os.path.isdir(APPDATA_PATH):
         os.mkdir(APPDATA_PATH)
 
+
 def getFilePathInAppData(file_name: str):
     return os.path.join(APPDATA_PATH, file_name)
+
 
 conf_lock = QtCore.QReadWriteLock()
 
 
-class FSONAR_File():
+class FSONAR_File:
     def __init__(self, filename):
         self.FILE_PATH = filename
         self.frameCount = None
         self.frameRate = None
+        self.frameTime = None
         self.BEAM_COUNT = None
         self.largeLens = None
         self.highResolution = None
+        self.reverse = None
         self.serialNumber = None
         self.sampleStartDelay = None
         self.soundSpeed = None
@@ -96,15 +106,63 @@ class FSONAR_File():
         self.distanceCompensation = False
 
     def getPolarFrame(self, FI):
-        frameSize = self.DATA_SHAPE[0] * self.DATA_SHAPE[1]
-        frameoffset = (self.FILE_HEADER_SIZE + self.FRAME_HEADER_SIZE +(FI*(self.FRAME_HEADER_SIZE+(frameSize))))
-        self.FILE_HANDLE.seek(frameoffset, 0)
+        if self.version == "MP4":
+            vcap = cv2.VideoCapture(self.FILE_PATH)
+            while vcap.isOpened():
+                vcap.set(cv2.CAP_PROP_POS_FRAMES, FI)
+                success, color = vcap.read()
+                if success:
+                    gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
+                vcap.release()
 
-        frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
-        frame = cv2.flip(frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0)
+                if self.BEAM_COUNT == 135:  # Image manipulation for 135-angle
+                    pts = np.array([[0, 0], [768, 0], [768, 318], [384, 475], [0, 318]])
+                    rect = cv2.boundingRect(pts)
+                    x, y, w, h = rect
+                    cropped = gray[y : y + h, x : x + w].copy()
+
+                    pts = pts - pts.min(axis=0)
+                    mask = np.zeros(cropped.shape[:2], np.uint8)
+                    cv2.drawContours(mask, [pts], -1, (255, 255, 255), -1, cv2.LINE_AA)
+
+                    dst = cv2.bitwise_and(cropped, cropped, mask=mask)
+
+                    dst[mask == 0] = 0
+
+                    frame = np.array(dst, dtype=np.uint8)
+
+                if self.BEAM_COUNT == 18:  # Image manipulation for 18-angle
+                    frame = np.array(gray, dtype=np.uint8)
+                    # todo
+
+        else:
+            frameSize = self.DATA_SHAPE[0] * self.DATA_SHAPE[1]
+            frameoffset = (
+                self.FILE_HEADER_SIZE
+                + self.FRAME_HEADER_SIZE
+                + (FI * (self.FRAME_HEADER_SIZE + (frameSize)))
+            )
+            self.FILE_HANDLE.seek(frameoffset, 0)
+
+            frame = np.frombuffer(self.FILE_HANDLE.read(frameSize), dtype=np.uint8)
+            if (
+                self.reverse == 0
+            ):  # check sonar mount direction (from above = 0, from below = 1)
+                # 0 flips around the x-axis, positive value (e.g. 1) flips aroundy-axis.
+                # Negative value (e.g. -1) flips around both axes (the desired behaviour
+                # for self.reverse == 1).
+                frame = cv2.flip(
+                    frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), 0
+                )
+            else:
+                # 0 flips around the x-axis, positive value (e.g. 1) flips around y-axis
+                # Negative value (e.g. -1) flips around both axes (the desired behaviour
+                # for self.reverse == 1).
+                frame = cv2.flip(
+                    frame.reshape((self.DATA_SHAPE[0], self.DATA_SHAPE[1])), -1
+                )
 
         return frame
-
 
     def getFrame(self, FI):
         polar = self.getPolarFrame(FI)
@@ -115,84 +173,90 @@ class FSONAR_File():
         self.FRAMES = self.constructImages(polar)
         return polar, self.FRAMES
 
-    def constructImages(self, frames, d0 = None, dm = None, am= None):
+    def constructImages(self, frames, d0=None, dm=None, am=None):
         """This function works on mapping the original samples
         inside the file frames, to the actual real-life coordinates.
-        
+
         Keyword Arguments:
             d0 {[type]} -- [description] (default: {None})
             dm {[type]} -- [description] (default: {None})
             am {[type]} -- [description] (default: {None})
-        
+
         Returns:
             [type] -- [description]
         """
         ## TODO _
         allAngles = beamLookUp.BeamLookUp(self.BEAM_COUNT, self.largeLens)
-        
+
         # d0 = self.sampleStartDelay * 0.000001 * self.soundSpeed/2
-        d0 = self.windowStart   # in meters
-        # dm = d0 + self.samplePeriod * self.samplesPerBeam * 0.000001 * self.soundSpeed/2
-        dm = self.windowStart + self.windowLength   # in meters
+        d0 = self.windowStart  # in meters
+        # dm = (
+        #     d0
+        #     + self.samplePeriod * self.samplesPerBeam * 0.000001 * self.soundSpeed / 2
+        # )
+        dm = self.windowStart + self.windowLength  # in meters
         # am = allAngles[-1]
-        am = self.firstBeamAngle    # in degrees
+        am = self.firstBeamAngle  # in degrees
         K = self.samplesPerBeam
         N, M = self.DATA_SHAPE
 
-        xm = dm*np.tan(am/180*np.pi)
-        L = int(K/(dm-d0) * 2*xm)
+        xm = dm * np.tan(am / 180 * np.pi)
+        output_width = int(K / (dm - d0) * 2 * xm)
 
-        sx = L/(2*xm)
-        sa = M/(2*am)
-        sd = N/(dm-d0)
-        O = sx*d0
-        Q = sd*d0
+        sx = output_width / (2 * xm)
+        sa = M / (2 * am)
+        sd = N / (dm - d0)
+        x_offset = sx * d0
+        Q = sd * d0
 
         def invmap(inp):
-            xi = inp[:,0]
-            yi = inp[:,1]
-            xc = (xi - L/2)/sx
-            yc = (K + O - yi)/sx
+            xi = inp[:, 0]
+            yi = inp[:, 1]
+            xc = (xi - output_width / 2) / sx
+            yc = (K + x_offset - yi) / sx
             dc = np.sqrt(xc**2 + yc**2)
-            ac = np.arctan(xc / yc)/np.pi*180
-            ap = ac*sa
-            dp = dc*sd
-            a = ap + M/2
+            ac = np.arctan(xc / yc) / np.pi * 180
+            ap = ac * sa
+            dp = dc * sd
+            a = ap + M / 2
             d = N + Q - dp
-            outp = np.array((a,d)).T
+            outp = np.array((a, d)).T
             return outp
 
-        #LogObject().print2(d0, dm, am, xm, K)
+        # LogObject().print2(d0, dm, am, xm, K)
 
-        out = warp(frames, invmap, output_shape=(K, L))
-        out = (out/np.amax(out)*255).astype(np.uint8)
+        out = warp(frames, invmap, output_shape=(K, output_width))
+        out = (out / np.amax(out) * 255).astype(np.uint8)
         return out
 
     def getBeamDistance(self, x, y):
-        K = self.samplesPerBeam
-        N, M = self.DATA_SHAPE
+        samples_per_beam = self.samplesPerBeam
+        data_height, data_width = self.DATA_SHAPE
         d0 = self.windowStart
-        # dm = d0 + self.samplePeriod * self.samplesPerBeam * 0.000001 * self.soundSpeed/2
+        # dm = (
+        #     d0
+        #     + self.samplePeriod * self.samplesPerBeam * 0.000001 * self.soundSpeed / 2
+        # )
         dm = self.windowStart + self.windowLength
         am = self.firstBeamAngle
-        xm = dm*np.tan(am/180*np.pi)
+        xm = dm * np.tan(am / 180 * np.pi)
 
-        L = int(K/(dm-d0) * 2*xm)
-        sx = L/(2*xm)
-        sa = M/(2*am)
-        sd = N/(dm-d0)
-        O = sx*d0
-        Q = sd*d0
+        output_width = int(samples_per_beam / (dm - d0) * 2 * xm)
+        sx = output_width / (2 * xm)
+        sa = data_width / (2 * am)
+        sd = data_height / (dm - d0)
+        x_offset = sx * d0
+        Q = sd * d0  # Not ambiguous, can remain as-is
 
-        xi = (x*L)
-        yi = (y*K)
+        xi = x * output_width
+        yi = y * samples_per_beam
 
-        xc = (xi - L/2)
-        yc = (K + O - yi)
+        xc = xi - output_width / 2
+        yc = samples_per_beam + x_offset - yi
         dc = np.sqrt(xc**2 + yc**2)
-        ac = np.arctan(xc / yc)/np.pi*180
+        ac = np.arctan(xc / yc) / np.pi * 180
 
-        return [dc/sd, ac]
+        return [dc / sd, ac]
 
     def setDistanceCompensation(self, value):
         self.distanceCompensation = value
@@ -220,15 +284,22 @@ def FOpenSonarFile(filename):
         38159428: lambda: DIDSON_v2(fhand, version, SONAR_File),
         54936644: lambda: DIDSON_v3(fhand, version, SONAR_File),
         71713860: lambda: DIDSON_v4(fhand, version, SONAR_File),
-        88491076: lambda: DIDSON_v5(fhand, version, SONAR_File)
+        88491076: lambda: DIDSON_v5(fhand, version, SONAR_File),
+        00000000: lambda: MP4(fhand, version, SONAR_File),
     }
     try:
-        fhand = open(filename, 'rb')
-        
+        fhand = open(filename, "rb")
+
     except FileNotFoundError as e:
-            raise FileNotFoundError(e.errno, e.strerror, filename)
+        raise FileNotFoundError(e.errno, e.strerror, filename) from e
     # read the first 4 bytes in the file to decide the version
     version = struct.unpack(cType["uint32_t"], fhand.read(c("uint32_t")))[0]
+    # if not DIDSON, check if mp4
+    if version not in (4604996, 21382212, 38159428, 54936644, 71713860, 88491076):
+        kind = filetype.guess(filename)
+        version = kind.extension
+        if version == "mp4":
+            version = 00000000
     versions[version]()
     return SONAR_File
 
@@ -267,8 +338,7 @@ def DIDSON_v3(fhand, version, cls):
     v3_getAllFramesData(fhand, version, cls)
     cls.FILE_PATH = fhand.name
     cls.FILE_HANDLE = fhand
-    
-    
+
     return
 
 
@@ -282,7 +352,7 @@ def DIDSON_v4(fhand, version, cls):
     v4_getAllFramesData(fhand, version, cls)
     cls.FILE_PATH = fhand.name
     cls.FILE_HANDLE = fhand
-    
+
     return
 
 
@@ -304,7 +374,6 @@ def DIDSON_v5(fhand, version, cls):
             }
         }
     """
-    LogObject().print2("inside DIDSON v5")
     cls.FRAME_HEADER_SIZE = getFrameHeaderSize(version)
     cls.FILE_HEADER_SIZE = getFileHeaderSize(version)
     v5_getAllFramesData(fhand, version, cls)
@@ -313,9 +382,18 @@ def DIDSON_v5(fhand, version, cls):
     return
 
 
+def MP4(fhand, version, cls):
+    LogObject().print2("inside MP4")
+    print("inside MP4")
+    mp4_getAllFramesData(fhand, version, cls)
+    cls.FILE_PATH = fhand.name
+    cls.FILE_HANDLE = fhand
+    return
+
+
 def loadJSON(jsonFilePath):
     """This function will be used to load JSON files.
-    
+
     Arguments:
         jsonFilePath {string} -- path to the JSON file to load
 
@@ -323,7 +401,7 @@ def loadJSON(jsonFilePath):
         dict -- containing the data from JSON file.
     """
     try:
-        with open(jsonFilePath, "r") as template:
+        with open(jsonFilePath) as template:
             config = json.load(template)
             return config
     except:
@@ -333,7 +411,7 @@ def loadJSON(jsonFilePath):
 def loadConf():
     try:
         locker = QtCore.QReadLocker(conf_lock)
-        with open(CONF_PATH, "r") as file:
+        with open(CONF_PATH) as file:
             conf = json.load(file)
             return conf
     except FileNotFoundError:
@@ -344,12 +422,13 @@ def loadConf():
 def writeConf(conf):
     checkAppDataPath()
     locker = QtCore.QWriteLocker(conf_lock)
-    with open(CONF_PATH, 'w') as f:
-        json.dump(conf, f, sort_keys=True, indent=2, separators=(',', ': '))
+    with open(CONF_PATH, "w") as f:
+        json.dump(conf, f, sort_keys=True, indent=2, separators=(",", ": "))
 
 
 def confExists():
     return os.path.exists(CONF_PATH)
+
 
 def checkConfFile():
     try:
@@ -360,7 +439,7 @@ def checkConfFile():
 
 
 def createDefaultConfFile():
-    conf = dict()
+    conf = {}
     for key in ConfKeys:
         conf[key.name] = conf_default_values[key]
 
@@ -391,7 +470,6 @@ conf_default_values = {
     ConfKeys.batch_save_detections: False,
     ConfKeys.batch_save_tracks: False,
     ConfKeys.batch_save_complete: True,
-
     ConfKeys.filter_tracks_on_save: True,
     ConfKeys.latest_batch_directory: str(os.path.expanduser("~")),
     ConfKeys.latest_directory: str(os.path.expanduser("~")),
@@ -401,15 +479,14 @@ conf_default_values = {
     ConfKeys.parallel_processes: 1,
     ConfKeys.save_as_binary: False,
     ConfKeys.sonar_height: 1000,
-    ConfKeys.test_file_path: ""
-    }
+    ConfKeys.test_file_path: "",
+}
 
 conf_types = {
     ConfKeys.batch_double_track: bool,
     ConfKeys.batch_save_detections: bool,
     ConfKeys.batch_save_tracks: bool,
     ConfKeys.batch_save_complete: bool,
-
     ConfKeys.filter_tracks_on_save: bool,
     ConfKeys.latest_batch_directory: str,
     ConfKeys.latest_directory: str,
@@ -419,8 +496,8 @@ conf_types = {
     ConfKeys.parallel_processes: int,
     ConfKeys.save_as_binary: bool,
     ConfKeys.sonar_height: int,
-    ConfKeys.test_file_path: str
-    }
+    ConfKeys.test_file_path: str,
+}
 
 
 def getConfValue(key: ConfKeys):
@@ -438,7 +515,7 @@ def getConfValue(key: ConfKeys):
         if key in conf_default_values:
             return conf_default_values[key]
         else:
-           return None
+            return None
 
 
 def setConfValue(key: ConfKeys, value):
@@ -450,7 +527,9 @@ def setConfValue(key: ConfKeys, value):
         conf[key.name] = conf_types[key](value)
         writeConf(conf)
     except:
-        LogObject().print2(f"Writing conf file failed for key: {key}, sys.exc_info()[1]")
+        LogObject().print2(
+            f"Writing conf file failed for key: {key}, sys.exc_info()[1]"
+        )
 
 
 def getTestFilePath():
@@ -545,7 +624,7 @@ def setParallelProcesses(value):
         writeConf(conf)
     except:
         LogObject().print2("Writing conf file failed:", sys.exc_info()[1])
-            
+
 
 def pathFromList(listOfDirectories):
     """This function generates a sting path suitable for the used OS.
@@ -563,12 +642,12 @@ def pathFromList(listOfDirectories):
     the input list should be in the following form
     ["dir1", "dirB", "file2.txt"]
     and it returns a string holding the full path to that file.
-    
+
     Arguments:
         listOfDirectories {list} -- list of strings, each of which is a
-                                    part of the relative path to the 
+                                    part of the relative path to the
                                     specified file.
-    
+
     Returns:
         string -- full path to the specified file
     """

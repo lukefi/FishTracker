@@ -1,4 +1,4 @@
-﻿"""
+"""
 This file is part of Fish Tracker.
 Copyright 2021, VTT Technical research centre of Finland Ltd.
 Developed by: Mikael Uimonen.
@@ -17,10 +17,11 @@ You should have received a copy of the GNU General Public License
 along with Fish Tracker.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from dropdown_delegate import DropdownDelegate
+from PyQt5 import QtCore, QtWidgets
+
 from detector import Detector
 from log_object import LogObject
+
 
 class DetectionDataModel(QtCore.QAbstractTableModel):
     def __init__(self, detector):
@@ -39,7 +40,7 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
         return self.row_count
 
     def columnCount(self, index=None):
-        return 3
+        return 4
 
     def data(self, index, role):
         if role == QtCore.Qt.DisplayRole:
@@ -59,6 +60,12 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 return round(d.angle, 1)
             elif col == 2:
                 return round(d.length, 3)
+            elif col == 3:
+                return round(d.aspect, 1)
+            elif col == 4:
+                return round(d.l2a_ratio, 1)
+            elif col == 5:
+                return d.frame_pc_time
             else:
                 return ""
 
@@ -68,11 +75,17 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
                 if section == 0:
                     return "Distance (m)"
                 elif section == 1:
-                    return "Angle (deg)"
+                    return "Angle (°)"
                 elif section == 2:
                     return "Length (m)"
+                elif section == 3:
+                    return "Aspect (°)"
+                elif section == 4:
+                    return "Length2area (m⁻¹)"
+                elif section == 5:
+                    return "Time"
             else:
-                return '{: >4}'.format(section)
+                return f"{section: >4}"
 
     def checkLayout(self, count):
         if self.row_count != count:
@@ -83,7 +96,11 @@ class DetectionDataModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return Qt.ItemIsEnabled
 
-        return QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled
+        return (
+            QtCore.Qt.ItemIsSelectable
+            | QtCore.Qt.ItemIsEditable
+            | QtCore.Qt.ItemIsEnabled
+        )
 
 
 class DetectionList(QtWidgets.QWidget):
@@ -91,34 +108,32 @@ class DetectionList(QtWidgets.QWidget):
         super().__init__()
         self.data_model = data_model
 
-        #self.scroll = QtWidgets.QScrollArea(self)
-        #self.scroll.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # self.scroll = QtWidgets.QScrollArea(self)
+        # self.scroll.setSizePolicy(
+        #     QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        # )
 
         self.table = QtWidgets.QTableView(self)
-        self.table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.table.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         self.table.setModel(data_model)
         self.table.setSortingEnabled(True)
-        self.table.sortByColumn(0, QtCore.Qt.AscendingOrder);
-        self.table.setStyleSheet("QTableView\n"
-                                 "{\n"
-                                 "border: none;\n"
-                                 "}\n"
-                                 "")
+        self.table.sortByColumn(0, QtCore.Qt.AscendingOrder)
+        self.table.setStyleSheet("QTableView\n{\nborder: none;\n}\n")
 
         self.vertical_layout = QtWidgets.QVBoxLayout()
         self.vertical_layout.setObjectName("verticalLayout")
         self.vertical_layout.addWidget(self.table)
         self.vertical_layout.setSpacing(0)
-        self.vertical_layout.setContentsMargins(0,0,0,0)
+        self.vertical_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.vertical_layout)
-            
-
 
 
 if __name__ == "__main__":
     import sys
+
     from playback_manager import PlaybackManager
-    from fish_manager import FishManager
 
     def startDetector(playback_manager, detector):
         detector.initMOG()
@@ -139,7 +154,9 @@ if __name__ == "__main__":
         detector = Detector(playback_manager)
         detector.mog_parameters.nof_bg_frames = 100
 
-        playback_manager.mapping_done.connect(lambda: startDetector(playback_manager, detector))
+        playback_manager.mapping_done.connect(
+            lambda: startDetector(playback_manager, detector)
+        )
         playback_manager.frame_available.connect(lambda t: handleFrame(detector, t))
 
         data_model = DetectionDataModel(detector)
@@ -160,11 +177,12 @@ if __name__ == "__main__":
         file = playback_manager.selectLoadFile()
 
         playback_manager.openTestFile()
-        playback_manager.mapping_done.connect(lambda: startDetector(playback_manager, detector))
+        playback_manager.mapping_done.connect(
+            lambda: startDetector(playback_manager, detector)
+        )
 
         detector.loadDetectionsFromFile(file)
         LogObject().print([d for d in detector.detections if d is not None])
-       
 
         data_model = DetectionDataModel(detector)
         detection_list = DetectionList(data_model)
@@ -172,5 +190,5 @@ if __name__ == "__main__":
         main_window.show()
         sys.exit(app.exec_())
 
-    #defaultTest()
+    # defaultTest()
     loadTest()

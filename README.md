@@ -1,6 +1,6 @@
 # Fish Tracker
 
-Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video. This is a functioning program that is also under development. <link href="https://www.luke.fi/fi/asiantuntijat/jani-helminen" rel="Contact Jani Helminen (Luke)"/>
+Fish Tracker is an application for semi-automatic tracking and counting of fish in a sonar video. This is a functioning program that is also under development. Contact person: Jani Helminen (Luke) - https://www.luke.fi/fi/asiantuntijat/jani-helminen
 
 ![Fish Tracker main view](main_view.png)
 
